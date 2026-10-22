@@ -1,0 +1,29 @@
+name: Correctness or boot bug
+description: A non-sensitive failure with reproducible evidence
+labels: [bug]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps and artifact identity
+      description: Include revision or image SHA-256, commands, last visible checkpoint and error text.
+    validations:
+      required: true
+  - type: textarea
+    id: platform
+    attributes:
+      label: Hardware or emulator configuration
+      description: CPU, RAM, firmware, boot method, Secure Boot state and Ventoy version if used.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Photos or logs without credentials, memory dumps, serial numbers or service tags.

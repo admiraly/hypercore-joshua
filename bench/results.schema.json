@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JOSHUA benchmark result v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revision", "platform", "environment", "workload", "metric", "unit", "trials", "comparison"],
+  "properties": {
+    "schemaVersion": { "const": 0 },
+    "revision": { "type": "string", "minLength": 1 },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cpu", "ramBytes", "firmware", "microcode", "devices"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "cpu": { "type": "string", "minLength": 1 },
+        "ramBytes": { "type": "integer", "minimum": 1 },
+        "firmware": { "type": "string", "minLength": 1 },
+        "microcode": { "type": "string", "minLength": 1 },
+        "devices": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "toolchain", "mitigations", "durability", "powerPolicy", "ambientCelsius"],
+      "properties": {
+        "os": { "type": "string", "minLength": 1 },
+        "toolchain": { "type": "string", "minLength": 1 },
+        "mitigations": { "type": "string", "minLength": 1 },
+        "durability": { "type": "string", "minLength": 1 },
+        "powerPolicy": { "type": "string", "minLength": 1 },
+        "ambientCelsius": { "type": "number" }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "parameters", "seed"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "parameters": { "type": "object" },
+        "seed": { "type": "integer" }
+      }
+    },
+    "metric": { "type": "string", "minLength": 1 },
+    "unit": { "type": "string", "minLength": 1 },
+    "trials": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "cacheState", "cpuMHz", "temperatureCelsius"],
+        "properties": {
+          "value": { "type": "number", "minimum": 0 },
+          "cacheState": { "enum": ["warm", "cold"] },
+          "cpuMHz": { "type": "number", "exclusiveMinimum": 0 },
+          "temperatureCelsius": { "type": "number" }
+        }
+      }
+    },
+    "comparison": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["baselineRecord", "equivalenceNotes"],
+      "properties": {
+        "baselineRecord": { "type": "string", "minLength": 1 },
+        "equivalenceNotes": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

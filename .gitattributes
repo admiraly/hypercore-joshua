@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.iso binary
+*.img binary
+*.EFI binary

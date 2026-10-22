@@ -1,0 +1,10 @@
+.tools/
+out/
+*.tmp
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.dmp
+*.log

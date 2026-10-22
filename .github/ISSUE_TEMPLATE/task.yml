@@ -1,0 +1,30 @@
+name: Engineering task
+description: Scoped implementation or design work for humans and agents
+labels: [enhancement]
+body:
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: Identify the spec requirement, milestone, affected paths and dependencies.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Observable acceptance criteria
+      description: Include the commands, tests or review evidence needed to close this task.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Contract and safety considerations
+      description: ABI, registers, ownership, isolation, DMA, interrupt or durability implications.
+    validations:
+      required: true
+  - type: textarea
+    id: handoff
+    attributes:
+      label: Ownership and handoff
+      description: Claim ownership in a comment before starting and coordinate overlapping paths.
