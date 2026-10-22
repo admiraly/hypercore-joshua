@@ -1,5 +1,5 @@
 /* Host-only reference for issue #6. Not shipped, not part of the CPU runtime.
- * Synthesizes text with unmodified CMU Flite 2.2 and the cmu_us_rms voice,
+ * Synthesizes text with unmodified CMU Flite 2.2 and a cmu_us clustergen voice,
  * writes a RIFF WAV and dumps per-segment timing and F0 for golden tests.
  *
  * Usage: joshua_flite_reference "text" out.wav out-segments.tsv
@@ -16,7 +16,10 @@ extern int c99_vsnprintf(char *str, size_t size, const char *format, va_list ap)
 extern int c99_snprintf(char *str, size_t size, const char *format, ...);
 #endif
 
-cst_voice *register_cmu_us_rms(const char *voxdir);
+#ifndef JOSHUA_VOICE_REGISTER
+#define JOSHUA_VOICE_REGISTER register_cmu_us_slt
+#endif
+cst_voice *JOSHUA_VOICE_REGISTER(const char *voxdir);
 void usenglish_init(cst_voice *v);
 cst_lexicon *cmulex_init(void);
 
@@ -34,7 +37,7 @@ int main(int argc, char **argv)
     flite_init();
     flite_add_lang("eng", usenglish_init, cmulex_init);
     flite_add_lang("usenglish", usenglish_init, cmulex_init);
-    voice = register_cmu_us_rms(NULL);
+    voice = JOSHUA_VOICE_REGISTER(NULL);
     if (voice == NULL)
         return 1;
     utterance = flite_synth_text(argv[1], voice);

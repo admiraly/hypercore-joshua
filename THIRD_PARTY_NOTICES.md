@@ -1,6 +1,6 @@
 # Third-party notices
 
-## CMU Flite 2.2 and the cmu_us_rms voice
+## CMU Flite 2.2 and the cmu_us_slt voice
 
 Used by the speech work in issue #6. Flite source and voice data are **not committed**.
 `tools/Get-Toolchain.ps1 -IncludeFlite` fetches the pinned release tarball
@@ -9,8 +9,8 @@ Used by the speech work in issue #6. Flite source and voice data are **not commi
 build from it. Any JOSHUA assembly derived from Flite's algorithms or data is a
 modified work and is marked as such in its source.
 
-The `cmu_us_rms` voice was built by CMU from the CMU ARCTIC speech database
-(speaker "rms"). Voice and lexicon data files carry no header of their own and are
+The `cmu_us_slt` voice (JOSHUA's target; `rms` is a host-only alternative)
+was built by CMU from the CMU ARCTIC speech database (speaker "slt"). Voice and lexicon data files carry no header of their own and are
 distributed under Flite's top-level licence, reproduced below.
 
 ```
