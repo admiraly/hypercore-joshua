@@ -4,6 +4,24 @@ Tracking issue: #4. JOSHUA speaks; it does not listen. The kernel announces the 
 checkpoint ("Joshua, online. HyperCore boot checkpoint reached.") after
 ExitBootServices, then halts as before.
 
+## Next engine: Flite cmu_us_rms (issue #6, in progress)
+
+Phase 1 is a host-only reference:
+
+```powershell
+./tools/Get-Toolchain.ps1 -IncludeFlite
+./tools/Build-FliteReference.ps1 [-Text "..."]
+```
+
+It compiles unmodified Flite 2.2 with the pinned Zig C compiler and writes
+`out/flite-reference/reference.wav` (16 kHz). It also writes a segment dump
+(phone, end time, word, stress) to use as golden data for the assembly port.
+Two runs produce byte-identical WAVs. The boot image still uses the formant
+engine below until the port lands.
+
+`Measure-Speech.ps1` counts Flite's impulse excitation as "clicks" (one per
+pitch period), so its click count is not comparable between engines.
+
 ## Engine (v2, Klatt-style formant synthesis)
 
 `kernel/speech/synth.inc` and `data.inc`, all x86-64 assembly:

@@ -1,4 +1,4 @@
-param([switch]$IncludeQemu)
+param([switch]$IncludeQemu, [switch]$IncludeFlite)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -34,5 +34,18 @@ if ($IncludeQemu) {
     if ($LASTEXITCODE -ne 0) { throw 'QEMU extraction failed.' }
     & (Join-Path $destination 'qemu-system-x86_64.exe') --version
     if ($LASTEXITCODE -ne 0) { throw 'QEMU cannot execute.' }
+}
+if ($IncludeFlite) {
+    # Host-only: Zig's C compiler builds the reference Flite; the tarball is the
+    # source of voice data. Neither is committed or shipped as CPU runtime code.
+    $zigArchive = Join-Path $downloads 'zig-0.13.0.zip'
+    Get-VerifiedFile 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' $zigArchive 'SHA256' 'D859994725EF9402381E557C60BB57497215682E355204D754EE3DF75EE3C158'
+    Expand-Archive -LiteralPath $zigArchive -DestinationPath $tools -Force
+    & (Join-Path $tools 'zig-windows-x86_64-0.13.0/zig.exe') version
+    if ($LASTEXITCODE -ne 0) { throw 'Zig cannot execute.' }
+    $fliteArchive = Join-Path $downloads 'flite-2.2.tar.gz'
+    Get-VerifiedFile 'https://github.com/festvox/flite/archive/refs/tags/v2.2.tar.gz' $fliteArchive 'SHA256' 'AB1555FE5ADC3F99F1D4A1A0EB1596D329FD6D74F1464A0097C81F53C0CF9E5C'
+    & tar -xzf $fliteArchive -C $tools
+    if ($LASTEXITCODE -ne 0) { throw 'Flite extraction failed.' }
 }
 Write-Host 'Project-local toolchain ready. Nothing installed globally; no boot settings changed.'
