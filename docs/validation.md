@@ -87,3 +87,25 @@ On the same Linux host/toolchain and OVMF pair recorded above:
 Linux fixture CI and Windows boot CI are added/configured, not claimed passing
 for this slice here. There is no allocator, reservation ledger, active paging
 inventory or new physical-machine evidence. This does not complete M2a or M2.
+
+## M2a image reservations and candidate ranges
+
+On the previously recorded Linux host, native NASM 2.16.03, PowerShell 7.4.6,
+QEMU 10.2.2 and OVMF pair:
+
+- Build and reproducibility passed with the expanded PE: 20,710 media assertions,
+  exact PE section/image bounds, identical rebuilds and corrupted-PE rejection.
+- Normal ISO/FAT boots passed; both observed ten candidate ranges after image,
+  page-zero and framebuffer exclusions, framebuffer checks and halted ring 0.
+- Both exception fixtures and all 24 map-validation fixtures passed again.
+- Reservation host suite passed 6,425 oracle checks (6,400 seeded randomized cuts),
+  covering range subtraction, image coverage, candidate attributes and failures.
+- Design review before runtime edits and subsequent read-only code review found
+  no actionable issues. Reviewers did not independently rerun tests.
+
+An integration run using attributes exactly 8 produced zero candidates. The
+selection policy was corrected to require WB and accept UC/WC/WT/WB capability
+bits only, rejecting protection/runtime/unknown bits; normal QEMU now requires
+a nonzero count. No memory is allocated. Active page-table inventory/reservation
+is still mandatory before using candidates; M2a remains incomplete. No new
+physical test or remote CI result is claimed for this slice in this record.

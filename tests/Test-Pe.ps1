@@ -8,7 +8,7 @@ function Assert-True([bool]$Condition, [string]$Message) {
 }
 function Read-U16([int]$Offset) { [BitConverter]::ToUInt16($bytes, $Offset) }
 function Read-U32([int]$Offset) { [BitConverter]::ToUInt32($bytes, $Offset) }
-Assert-True ($bytes.Length -eq 0x5000) 'Unexpected file size.'
+Assert-True ($bytes.Length -eq 0x7000) 'Unexpected file size.'
 Assert-True ((Read-U16 0) -eq 0x5a4d) 'Missing MZ signature.'
 $pe = Read-U32 0x3c
 Assert-True ((Read-U32 $pe) -eq 0x4550) 'Missing PE signature.'
@@ -18,13 +18,19 @@ Assert-True ((Read-U32 ($pe + 8)) -eq 0) 'Non-reproducible timestamp.'
 $optional = $pe + 24
 Assert-True ((Read-U16 $optional) -eq 0x20b) 'Not PE32+.'
 Assert-True ((Read-U16 ($optional + 68)) -eq 10) 'Not an EFI application.'
-Assert-True ((Read-U32 ($optional + 56)) -eq 0x46000) 'Wrong image size.'
+Assert-True ((Read-U32 ($optional + 56)) -eq 0x68000) 'Wrong image size.'
 $entry = Read-U32 ($optional + 16)
-Assert-True ($entry -ge 0x1000 -and $entry -lt 0x3000) 'Entry outside code.'
-Assert-True ((Read-U32 ($optional + 152)) -eq 0x45000) 'Missing relocation directory.'
+Assert-True ($entry -ge 0x1000 -and $entry -lt 0x5000) 'Entry outside code.'
+Assert-True ((Read-U32 ($optional + 152)) -eq 0x67000) 'Missing relocation directory.'
 Assert-True ((Read-U32 ($optional + 156)) -eq 12) 'Invalid relocation size.'
-Assert-True ((Read-U32 0x4004) -eq 12) 'Invalid relocation block.'
+Assert-True ((Read-U32 0x6004) -eq 12) 'Invalid relocation block.'
 $sectionTable = $optional + (Read-U16 ($pe + 20))
+$expectedSections = @(
+    @(0x1000, 0x4000, 0x1000, 0x4000),
+    @(0x5000, 0x1000, 0x5000, 0x1000),
+    @(0x6000, 0x61000, 0, 0),
+    @(0x67000, 12, 0x6000, 0x1000)
+)
 $ranges = @()
 for ($section = 0; $section -lt 4; $section++) {
     $offset = $sectionTable + $section * 40
@@ -37,6 +43,9 @@ for ($section = 0; $section -lt 4; $section++) {
     Assert-True (($rva % 0x1000) -eq 0) 'Unaligned section RVA.'
     Assert-True (($rawOffset % 0x200) -eq 0) 'Unaligned raw section.'
     Assert-True (($rawOffset + $rawSize) -le $bytes.Length) 'Section outside file.'
+    $expected = $expectedSections[$section]
+    Assert-True ($rva -eq $expected[0] -and $virtualSize -eq $expected[1] -and $rawOffset -eq $expected[2] -and $rawSize -eq $expected[3]) 'Unexpected section layout.'
+    Assert-True (($rva + $virtualSize) -le (Read-U32 ($optional + 56))) 'Section outside loaded image.'
     foreach ($range in $ranges) {
         Assert-True (($rva -ge $range.End) -or (($rva + $virtualSize) -le $range.Start)) 'Overlapping virtual sections.'
     }

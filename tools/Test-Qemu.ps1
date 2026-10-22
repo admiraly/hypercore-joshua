@@ -58,7 +58,7 @@ try {
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
-    if ($ExpectedFault -eq 'None') { $markers += @('MEMORY_MAP_VALID', 'KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
+    if ($ExpectedFault -eq 'None') { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
@@ -85,6 +85,7 @@ try {
     Invoke-Qmp 'qmp_capabilities' | Out-Null
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
     if ($ExpectedFault -eq 'None') {
+        if ($log -notmatch 'JOSHUA:MEMORY_CANDIDATES_READY COUNT=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Expected nonempty memory candidates on the QEMU profile.' }
         # QEMU writes a simple P6 image; inspect bytes without platform graphics libraries.
         $ppm = Join-Path $OutputDirectory ($tag + '-screen.ppm')
         Invoke-Qmp 'screendump' @{ filename = $ppm } | Out-Null

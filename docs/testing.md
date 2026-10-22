@@ -82,3 +82,9 @@ physical overflow and overlapping/contained/duplicate descriptors. ELF relocatio
 warnings are disabled because the host linker resolves those relocations; other
 warnings remain errors. Linux CI builds a checksum-verified NASM source archive
 and runs this suite; Windows CI exercises the validator through normal QEMU boot.
+
+`tests/Test-Reservations.ps1` builds Linux SysV wrappers around the exact shipped
+firmware-ABI range/candidate routines, then uses a Python ctypes oracle. It checks
+6,425 cases including 6,400 seeded random cuts, plus image coverage and candidate
+selection/exclusion. Python and the ELF wrappers are host-only. The fixed QEMU
+profile additionally requires a nonempty candidate count; no frame is allocated.

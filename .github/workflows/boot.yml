@@ -55,3 +55,6 @@ jobs:
       - name: Exercise shared Assembly map validator
         shell: pwsh
         run: ./tests/Test-MemoryMap.ps1
+      - name: Exercise candidate reservations against host oracle
+        shell: pwsh
+        run: ./tests/Test-Reservations.ps1

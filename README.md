@@ -10,6 +10,9 @@ The unsigned x86-64 UEFI application is authored entirely in NASM Assembly. It
 provides firmware diagnostics, captures the graphics framebuffer and memory map,
 exits boot services, and enters an embedded HyperCore stub with its own stack,
 GDT, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
+It validates the final memory map and records conservative memory candidates
+excluding the loaded image, page zero and framebuffer. Candidates cannot yet be
+allocated: active page-table reservations remain pending.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
