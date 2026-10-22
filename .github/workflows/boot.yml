@@ -24,6 +24,8 @@ jobs:
         run: ./tools/Test-Qemu.ps1
       - name: Boot raw FAT under UEFI
         run: ./tools/Test-Qemu.ps1 -BootMedia Fat
+      - name: Boot without audio hardware
+        run: ./tools/Test-Qemu.ps1 -NoAudio
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -34,3 +36,4 @@ jobs:
             out/*.json
             out/*.log
             out/*.png
+            out/*.wav

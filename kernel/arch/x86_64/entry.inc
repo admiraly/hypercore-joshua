@@ -108,6 +108,7 @@ kernel_entry:
     mov edx,280
     mov r8d,0x00e0e0e0
     call draw_line
+    call speech_checkpoint
     lea rcx,[debug_halted]
     call debug_write
     jmp stop_cpu

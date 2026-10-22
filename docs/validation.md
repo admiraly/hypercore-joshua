@@ -30,6 +30,29 @@ GDT/IDT selector compatibility during transition, physical-machine UART side
 effects, and relative host tool-path resolution. Contracts describe the limits
 of stop-only exception handling and inherited paging.
 
+## Speech output (issue #4)
+
+Completed locally on 22 October 2026, QEMU only:
+
+- ISO and raw-FAT boots with `ich9-intel-hda` + `hda-output` reported
+  `JOSHUA:SPEECH_OK:00` between ExitBootServices and the kernel-halt marker.
+- v1 (first formant engine): the owner listened to the capture and judged it
+  poor on rhythm, intelligibility, buzz and clicks.
+- v2 (Klatt-style rewrite) `wav` capture passed `Test-Qemu.ps1`: 16-bit PCM,
+  4.76 s, RMS about 3,600 (-19.2 dBFS), peak 23,967 (unclipped).
+- `tools/Measure-Speech.ps1` on that capture:
+  - 0 detected clicks; crest factor 16.4 dB.
+  - Measured vowel formants within about 2% of their targets.
+  - Diphthong glides present; pauses and stop closures where expected.
+  - Bursts and fricatives were retuned twice after measurement.
+  - Results are recorded in `docs/speech.md`.
+- `-NoAudio` boot reported `JOSHUA:SPEECH_UNAVAILABLE:01` and still reached the
+  checkpoint halt.
+- Reproducibility passed with the speech code and enlarged PE layout.
+
+Not done: any listening review of v2, a listener intelligibility rating, any
+bare-metal audio, and the Dell's audio topology. See `docs/speech.md`.
+
 ## Owner-reported physical result
 
 On 22 October 2026 the owner confirmed a flawless bare-metal boot through Ventoy

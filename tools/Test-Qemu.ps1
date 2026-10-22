@@ -3,7 +3,8 @@ param(
     [string]$FirmwareDirectory,
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
-    [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso'
+    [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
+    [switch]$NoAudio
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,11 +18,14 @@ if (-not $FirmwareDirectory) { $FirmwareDirectory = Join-Path (Split-Path $QemuP
 $firmware = (Resolve-Path -LiteralPath (Join-Path $FirmwareDirectory 'edk2-x86_64-code.fd')).Path
 $varsTemplate = (Resolve-Path -LiteralPath (Join-Path $FirmwareDirectory 'edk2-i386-vars.fd')).Path
 $tag = 'qemu-' + $BootMedia.ToLowerInvariant()
+if ($NoAudio) { $tag += '-noaudio' }
 $vars = Join-Path $OutputDirectory ($tag + '-vars.fd')
 $serial = Join-Path $OutputDirectory ($tag + '-serial.log')
 $screenshot = Join-Path $OutputDirectory ($tag + '-screen.png')
 $errorLog = Join-Path $OutputDirectory ($tag + '-stderr.log')
 $outputLog = Join-Path $OutputDirectory ($tag + '-stdout.log')
+$speech = Join-Path $OutputDirectory ($tag + '-speech.wav')
+if (Test-Path -LiteralPath $speech) { Remove-Item -LiteralPath $speech -Force }
 Copy-Item -LiteralPath $varsTemplate -Destination $vars -Force
 [IO.File]::WriteAllText($serial, '')
 $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
@@ -29,6 +33,9 @@ $listener.Start()
 $port = $listener.LocalEndpoint.Port
 $listener.Stop()
 $arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', 'qemu64', '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
+if (-not $NoAudio) {
+    $arguments += @('-audiodev', ('wav,id=speech,path=' + $speech), '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=speech')
+}
 if ($BootMedia -eq 'Iso') {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso')).Path
     $arguments += @('-drive', ('media=cdrom,readonly=on,format=raw,file=' + $media))
@@ -36,6 +43,41 @@ if ($BootMedia -eq 'Iso') {
 else {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-uefi.img')).Path
     $arguments += @('-drive', ('if=none,id=bootdisk,readonly=on,format=raw,file=' + $media), '-device', 'qemu-xhci', '-device', 'usb-storage,drive=bootdisk,removable=on', '-boot', 'order=c,menu=off')
+}
+function Test-SpeechCapture([string]$Path) {
+    $wav = [IO.File]::ReadAllBytes($Path)
+    if ($wav.Length -lt 44 -or [Text.Encoding]::ASCII.GetString($wav, 0, 4) -ne 'RIFF' -or [Text.Encoding]::ASCII.GetString($wav, 8, 4) -ne 'WAVE') { throw 'Speech capture is not a RIFF/WAVE file.' }
+    $offset = 12
+    $format = $null
+    $data = $null
+    while ($offset + 8 -le $wav.Length) {
+        $id = [Text.Encoding]::ASCII.GetString($wav, $offset, 4)
+        $size = [BitConverter]::ToUInt32($wav, $offset + 4)
+        if ($id -eq 'fmt ') { $format = $offset + 8 }
+        if ($id -eq 'data') { $data = [pscustomobject]@{ Offset = $offset + 8; Bytes = [Math]::Min([long]$size, [long]$wav.Length - $offset - 8) } }
+        $offset += 8 + $size + ($size % 2)
+    }
+    if ($null -eq $format -or $null -eq $data) { throw 'Speech capture lacks fmt or data chunk.' }
+    $channels = [BitConverter]::ToUInt16($wav, $format + 2)
+    $rate = [BitConverter]::ToUInt32($wav, $format + 4)
+    $bits = [BitConverter]::ToUInt16($wav, $format + 14)
+    if ([BitConverter]::ToUInt16($wav, $format) -ne 1 -or $bits -ne 16 -or $channels -lt 1) { throw 'Speech capture is not 16-bit PCM.' }
+    $frames = [long]($data.Bytes / (2 * $channels))
+    $seconds = $frames / $rate
+    $sum = 0.0
+    $peak = 0
+    $loud = 0
+    for ($frame = 0; $frame -lt $frames; $frame++) {
+        $sample = [Math]::Abs([int][BitConverter]::ToInt16($wav, $data.Offset + $frame * 2 * $channels))
+        $sum += [double]$sample * $sample
+        if ($sample -gt $peak) { $peak = $sample }
+        if ($sample -gt 1000) { $loud++ }
+    }
+    $rms = if ($frames) { [Math]::Sqrt($sum / $frames) } else { 0 }
+    Write-Host ('Speech capture: {0:N2} s at {1} Hz x{2}, RMS {3:N0}, peak {4}, active {5:P0}' -f $seconds, $rate, $channels, $rms, $peak, ($loud / [Math]::Max($frames, 1)))
+    if ($seconds -lt 2.5 -or $seconds -gt 10) { throw 'Speech capture duration is outside 2.5-10 s.' }
+    if ($rms -lt 500) { throw 'Speech capture is silent or nearly silent.' }
+    if ($peak -ge 32767) { throw 'Speech capture is clipped.' }
 }
 $quotedArguments = ($arguments | ForEach-Object { [char]34 + $_ + [char]34 }) -join ' '
 $process = $null
@@ -54,7 +96,9 @@ try {
         if ($log -match 'JOSHUA:(BOOT_FAILURE|KERNEL_FAULT)') { throw ('Boot failed: ' + $log) }
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
-    foreach ($marker in @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK', 'KERNEL_HALTED')) {
+    $speechMarker = 'SPEECH_OK:00'
+    if ($NoAudio) { $speechMarker = 'SPEECH_UNAVAILABLE:01' }
+    foreach ($marker in @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK', $speechMarker, 'KERNEL_HALTED')) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
         $previousIndex = $index
@@ -104,7 +148,10 @@ try {
     }
     Invoke-Qmp 'quit' | Out-Null
     $process.WaitForExit(5000) | Out-Null
-    Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> kernel halt, without AVX requirements.')
+    if (-not $NoAudio) { Test-SpeechCapture $speech }
+    $speechResult = 'spoken checkpoint captured to ' + $speech
+    if ($NoAudio) { $speechResult = 'no HDA controller reported without blocking boot' }
+    Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> ' + $speechResult + ' -> kernel halt, without AVX requirements.')
     Write-Host ('Screenshot: ' + $screenshot)
 }
 finally {

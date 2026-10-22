@@ -8,7 +8,7 @@ function Assert-True([bool]$Condition, [string]$Message) {
 }
 function Read-U16([int]$Offset) { [BitConverter]::ToUInt16($bytes, $Offset) }
 function Read-U32([int]$Offset) { [BitConverter]::ToUInt32($bytes, $Offset) }
-Assert-True ($bytes.Length -eq 0x5000) 'Unexpected file size.'
+Assert-True ($bytes.Length -eq 0x9000) 'Unexpected file size.'
 Assert-True ((Read-U16 0) -eq 0x5a4d) 'Missing MZ signature.'
 $pe = Read-U32 0x3c
 Assert-True ((Read-U32 $pe) -eq 0x4550) 'Missing PE signature.'
@@ -18,12 +18,12 @@ Assert-True ((Read-U32 ($pe + 8)) -eq 0) 'Non-reproducible timestamp.'
 $optional = $pe + 24
 Assert-True ((Read-U16 $optional) -eq 0x20b) 'Not PE32+.'
 Assert-True ((Read-U16 ($optional + 68)) -eq 10) 'Not an EFI application.'
-Assert-True ((Read-U32 ($optional + 56)) -eq 0x46000) 'Wrong image size.'
+Assert-True ((Read-U32 ($optional + 56)) -eq 0x34d000) 'Wrong image size.'
 $entry = Read-U32 ($optional + 16)
-Assert-True ($entry -ge 0x1000 -and $entry -lt 0x3000) 'Entry outside code.'
-Assert-True ((Read-U32 ($optional + 152)) -eq 0x45000) 'Missing relocation directory.'
+Assert-True ($entry -ge 0x1000 -and $entry -lt 0x5000) 'Entry outside code.'
+Assert-True ((Read-U32 ($optional + 152)) -eq 0x34c000) 'Missing relocation directory.'
 Assert-True ((Read-U32 ($optional + 156)) -eq 12) 'Invalid relocation size.'
-Assert-True ((Read-U32 0x4004) -eq 12) 'Invalid relocation block.'
+Assert-True ((Read-U32 0x8004) -eq 12) 'Invalid relocation block.'
 $sectionTable = $optional + (Read-U16 ($pe + 20))
 $ranges = @()
 for ($section = 0; $section -lt 4; $section++) {
