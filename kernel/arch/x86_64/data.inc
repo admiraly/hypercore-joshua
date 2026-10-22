@@ -73,3 +73,4 @@ debug_newline: db 13,10,0
 %ifdef JOSHUA_FAULT_TEST
 debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
 %endif
+debug_map_valid: db 'JOSHUA:MEMORY_MAP_VALID',13,10,0

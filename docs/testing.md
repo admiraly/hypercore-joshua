@@ -73,3 +73,12 @@ code and exact instruction RIP, plus CR2 field formatting and halted ring-0 stat
 It does not inject page faults, NMI, double faults or damaged stacks. Firmware-menu
 and map-retry failures remain unqualified. Fixture images must not be distributed
 as normal boot images.
+
+`tests/Test-MemoryMap.ps1` is a Linux host-only native ELF harness using NASM
+2.16.03 and `ld`. Its 24 fixtures call the exact shipped Assembly validator: normal
+and extended stride, unsorted adjacency, unknown types, physical boundary, empty
+and oversized buffers, invalid stride/width, pointer wrap, zero pages, misalignment,
+physical overflow and overlapping/contained/duplicate descriptors. ELF relocation
+warnings are disabled because the host linker resolves those relocations; other
+warnings remain errors. Linux CI builds a checksum-verified NASM source archive
+and runs this suite; Windows CI exercises the validator through normal QEMU boot.

@@ -4,6 +4,23 @@ Status: proposed implementation contract for issue #3; no allocator or owned
 paging is implemented by this document. Review each stage before runtime changes.
 The existing 88-byte boot-info v0 and RDI entry contract remain unchanged.
 
+## Implemented first validation slice
+
+`kernel/mm/map.inc` validates the final map before the normal checkpoint. The
+caller checks boot-info magic/version/size, descriptor version 1 and exact map
+buffer address. The validator accepts strides of at least 40 bytes divisible by
+8, a nonempty whole-descriptor buffer bounded by 128 KiB, and physical widths
+32 through 52 from CPUID leaf 0x80000008. It rejects zero-page, unaligned,
+out-of-width, overflowing and overlapping ranges, even for reserved/unknown types.
+Unsorted adjacent descriptors and extended strides are accepted. It does not
+interpret type or attribute as permission to allocate. Unknown types remain
+unavailable under the future ownership policy. The routine is read-only and
+requires the caller to own a readable buffer for the declared length.
+
+This is not the M2a ledger: image reservation handoff, paging inventory and usable
+range derivation below remain proposed. No frame becomes free as a result of
+validation. Unsupported physical-width discovery fails closed.
+
 ## Input validation and range accounting (M2a)
 
 Consume the final map only after successful ExitBootServices. Walk its reported

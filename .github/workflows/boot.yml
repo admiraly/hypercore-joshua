@@ -36,3 +36,22 @@ jobs:
             out/*.json
             out/*.log
             out/*.png
+  memory-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build verified native NASM 2.16.03
+        shell: bash
+        run: |
+          mkdir -p .tools
+          curl --fail --location --retry 2 https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.xz --output .tools/nasm.tar.xz
+          echo '1412a1c760bbd05db026b6c0d1657affd6631cd0a63cddb6f73cc6d4aa616148  .tools/nasm.tar.xz' | sha256sum --check
+          tar -xJf .tools/nasm.tar.xz -C .tools
+          cd .tools/nasm-2.16.03
+          ./configure
+          make -j2
+          ln -s nasm nasm.exe
+      - name: Exercise shared Assembly map validator
+        shell: pwsh
+        run: ./tests/Test-MemoryMap.ps1

@@ -69,3 +69,21 @@ These are host-specific results, distinct from the earlier pinned Windows setup.
 Current Windows execution and remote CI are not claimed here. No new physical
 boot evidence was collected. #PF address capture, nested faults, NMI, double
 faults and damaged-stack behavior were not exercised. M0/M1/M2 remain open.
+
+## M2a first slice: final map validation
+
+On the same Linux host/toolchain and OVMF pair recorded above:
+
+- `tests/Test-MemoryMap.ps1` passed 24 fixtures calling the shipped Assembly
+  validator through a native Linux ELF harness.
+- `tools/Build.ps1` passed PE/media checks; `tests/Test-Reproducibility.ps1`
+  passed identical artifacts, relative invocation and corrupted-PE rejection.
+- Normal ISO and FAT QEMU boots passed, including the new ordered
+  `MEMORY_MAP_VALID` marker, framebuffer checks and halted ring-0/IF-clear state.
+- Both Ud2/Gp exception fixtures passed again.
+- `git diff --check` passed. Independent read-only review found no actionable
+  issues; the reviewer did not independently execute the tests.
+
+Linux fixture CI and Windows boot CI are added/configured, not claimed passing
+for this slice here. There is no allocator, reservation ledger, active paging
+inventory or new physical-machine evidence. This does not complete M2a or M2.
