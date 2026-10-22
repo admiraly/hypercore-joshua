@@ -7,6 +7,7 @@
 .\tests\Test-Reproducibility.ps1
 .\tools\Test-Qemu.ps1
 .\tools\Test-Qemu.ps1 -BootMedia Fat
+.\tests\Test-FaultDiagnostics.ps1
 ```
 
 Build runs PE format/permission/range checks and more than 20,000 FAT/ISO assertions,
@@ -57,3 +58,18 @@ Firmware-menu keyboard commands, watchdog failure, invalid map-key retry, oversi
 maps, unsupported GOP formats, and exception/NMI injection are not yet automated.
 Those paths require additional fixtures; do not infer their dynamic correctness
 from the successful default boot path.
+
+## Linux host execution
+
+PowerShell 7 can run the host scripts with native NASM 2.16.03. Supply native QEMU
+with `-QemuPath` and a `-FirmwareDirectory` containing the code/vars pair named
+`edk2-x86_64-code.fd` and `edk2-i386-vars.fd` (local symlinks are sufficient). Use
+a matching, non-Secure-Boot OVMF pair. Record actual versions and hashes; this is
+separate host evidence from the pinned Windows toolchain. The test checks P6
+framebuffer bytes without System.Drawing and retains PNGs for visual inspection.
+
+The fault suite builds separate Ud2 and Gp fixtures and verifies vector, error
+code and exact instruction RIP, plus CR2 field formatting and halted ring-0 state.
+It does not inject page faults, NMI, double faults or damaged stacks. Firmware-menu
+and map-retry failures remain unqualified. Fixture images must not be distributed
+as normal boot images.

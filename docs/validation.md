@@ -42,3 +42,30 @@ Not completed: repeated Latitude qualification, Secure Boot signing, remote USB 
 fault/retry/NMI injection, firmware-menu keyboard automation, source-level crash
 debugging, native memory isolation, or any workload benchmark. The CI workflow
 is added but has not run on a remote runner. M0/M1 are not declared fully qualified.
+
+## M2 preparation: Linux host evidence, 22 October 2026
+
+This change adds diagnostics and proposed contracts, not owned paging or an
+allocator. On Nobara Linux x86-64, PowerShell 7.4.6, locally built NASM 2.16.03
+and QEMU 10.2.2 (TCG qemu64):
+
+- `tools/Build.ps1` passed PE validation and all 20,694 media assertions.
+- `tests/Test-Reproducibility.ps1` passed two identical builds, relative tool-path
+  invocation from outside the checkout, and rejection of a corrupted PE fixture.
+- `tools/Test-Qemu.ps1` passed normal ISO and `-BootMedia Fat` boots, ordered
+  markers, framebuffer pixel checks, halted ring 0 and IF clear. The normal ISO
+  PNG was also visually inspected.
+- `tests/Test-FaultDiagnostics.ps1` passed separate ISO fixtures: #UD vector 6
+  with synthesized zero error; #GP vector 13 with CPU error 0xFFFC. Both reported
+  exact injected instruction RIP, a formatted CR2 field, and halted ring 0/IF clear.
+- Independent read-only agent review reported no actionable findings after
+  inspecting source, emitted stub encoding and logs. It did not independently
+  rerun builds/QEMU.
+
+The local non-Secure-Boot OVMF pair was used through ignored filename symlinks:
+code SHA-256 `904bfa3e0d966372b43b804c4fe323ae63751566687c2bfdf52ca947f47eb13a`;
+vars-template SHA-256 `6ed987af3a3c155be71665f510eae3e007eda9b8b94afd59d45e91c4a11565cc`.
+These are host-specific results, distinct from the earlier pinned Windows setup.
+Current Windows execution and remote CI are not claimed here. No new physical
+boot evidence was collected. #PF address capture, nested faults, NMI, double
+faults and damaged-stack behavior were not exercised. M0/M1/M2 remain open.

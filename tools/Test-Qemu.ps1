@@ -3,7 +3,8 @@ param(
     [string]$FirmwareDirectory,
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
-    [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso'
+    [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
+    [ValidateSet('None', 'Ud2', 'Gp')][string]$ExpectedFault = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,7 +42,9 @@ $quotedArguments = ($arguments | ForEach-Object { [char]34 + $_ + [char]34 }) -j
 $process = $null
 $client = $null
 try {
-    $process = Start-Process -FilePath $QemuPath -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru -RedirectStandardError $errorLog -RedirectStandardOutput $outputLog
+    $startOptions = @{ FilePath = $QemuPath; ArgumentList = $quotedArguments; PassThru = $true; RedirectStandardError = $errorLog; RedirectStandardOutput = $outputLog }
+    if ($env:OS -eq 'Windows_NT') { $startOptions.WindowStyle = 'Hidden' }
+    $process = Start-Process @startOptions
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     $log = ''
     do {
@@ -51,10 +54,12 @@ try {
         $stream = [IO.File]::Open($serial, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
         $reader = New-Object IO.StreamReader($stream)
         try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
-        if ($log -match 'JOSHUA:(BOOT_FAILURE|KERNEL_FAULT)') { throw ('Boot failed: ' + $log) }
-    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or [DateTime]::UtcNow -ge $deadline)
+        if ($log -match 'JOSHUA:BOOT_FAILURE' -or ($ExpectedFault -eq 'None' -and $log -match 'JOSHUA:KERNEL_FAULT')) { throw ('Boot failed: ' + $log) }
+    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
-    foreach ($marker in @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK', 'KERNEL_HALTED')) {
+    $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
+    if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
+    foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
         $previousIndex = $index
@@ -79,18 +84,35 @@ try {
     }
     Invoke-Qmp 'qmp_capabilities' | Out-Null
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
-    Add-Type -AssemblyName System.Drawing
-    $bitmap = New-Object Drawing.Bitmap($screenshot)
-    try {
-        if ($bitmap.Width -lt 640 -or $bitmap.Height -lt 400) { throw 'Framebuffer dimensions below baseline.' }
+    if ($ExpectedFault -eq 'None') {
+        # QEMU writes a simple P6 image; inspect bytes without platform graphics libraries.
+        $ppm = Join-Path $OutputDirectory ($tag + '-screen.ppm')
+        Invoke-Qmp 'screendump' @{ filename = $ppm } | Out-Null
+        $pixels = [IO.File]::ReadAllBytes($ppm)
+        $header = [Text.Encoding]::ASCII.GetString($pixels, 0, [Math]::Min(128, $pixels.Length))
+        if ($header -notmatch '\AP6\n([0-9]+) ([0-9]+)\n255\n') { throw 'Unexpected QEMU PPM header.' }
+        $offset = $Matches[0].Length
+        $width = [int]$Matches[1]
+        $height = [int]$Matches[2]
+        if ($width -lt 640 -or $height -lt 400 -or $pixels.Length -ne $offset + $width * $height * 3) { throw 'Invalid framebuffer dimensions or payload.' }
         foreach ($sample in @(@(0, 0, 8), @(38, 32, 224), @(32, 280, 224))) {
-            $pixel = $bitmap.GetPixel($sample[0], $sample[1])
-            if ($pixel.R -ne $sample[2] -or $pixel.G -ne $sample[2] -or $pixel.B -ne $sample[2]) {
+            $index = $offset + ($sample[1] * $width + $sample[0]) * 3
+            if ($pixels[$index] -ne $sample[2] -or $pixels[$index+1] -ne $sample[2] -or $pixels[$index+2] -ne $sample[2]) {
                 throw ('Native framebuffer rendering mismatch at ' + $sample[0] + ',' + $sample[1])
             }
         }
     }
-    finally { $bitmap.Dispose() }
+    else {
+        if ($log.Contains('JOSHUA:KERNEL_HALTED')) { throw 'Fault fixture reached the normal checkpoint.' }
+        if ($log -notmatch 'JOSHUA:FIXTURE_RIP=([0-9A-F]{16})') { throw 'Missing fixture instruction address.' }
+        $expectedRip = $Matches[1]
+        $vector = '0000000000000006'
+        $errorCode = '0000000000000000'
+        if ($ExpectedFault -eq 'Gp') { $vector = '000000000000000D'; $errorCode = '000000000000FFFC' }
+        if ($log -notmatch ('JOSHUA:FAULT VECTOR=' + $vector + ' ERROR=' + $errorCode + ' RIP=' + $expectedRip + ' CR2=[0-9A-F]{16}\r?\n')) {
+            throw ('Fault frame did not match fixture: ' + $log)
+        }
+    }
     $cpus = @(Invoke-Qmp 'query-cpus-fast')
     if ($cpus.Count -ne 2) { throw 'Expected two configured CPUs.' }
     $registers = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = 'info registers' }
@@ -102,9 +124,10 @@ try {
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {
         throw 'Maskable interrupts unexpectedly enabled in the halted stub.'
     }
-    Invoke-Qmp 'quit' | Out-Null
-    $process.WaitForExit(5000) | Out-Null
-    Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> kernel halt, without AVX requirements.')
+    # Some QEMU versions close QMP before delivering the quit response.
+    $qmpWriter.WriteLine('{"execute":"quit"}')
+    if (-not $process.WaitForExit(5000)) { throw 'QEMU did not exit after quit.' }
+    Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> halted ring 0; expected fault: ' + $ExpectedFault)
     Write-Host ('Screenshot: ' + $screenshot)
 }
 finally {

@@ -43,7 +43,8 @@ Kernel entry never returns. It disables maskable interrupts, selects an owned
 64 KiB stack, clones the active firmware GDT into owned storage, appends its own
 code/data descriptors, installs that table and a 256-entry stop-only IDT, and retains the
 firmware's existing page tables. It does not free/reuse firmware memory. Exceptions
-stop the CPU and emit a bounded serial marker if COM1 exists. There is not yet a
+stop the CPU and emit a bounded serial report only on the recognized QEMU TCG
+serial path. There is not yet a
 TSS, IST stack, page-table ownership, interrupt routing, or recoverable exception
 handling; a stop-only IDT does not constitute production fault containment.
 Retaining all original GDT selectors during the transition keeps the still-active
@@ -78,3 +79,26 @@ are not assigned stable numeric IDs here.
   Services, GetMemoryMap, ExitBootServices, Graphics Output Protocol, ResetSystem.
 - Microsoft PE/COFF specification: PE32+, section flags, base relocation blocks.
 - Intel 64 and IA-32 Software Developer's Manual, Volume 3: GDT, IDT, long mode.
+
+## Stop-only fault diagnostics
+
+All 256 IDT gates target fixed-stride Assembly stubs. CPU exception vectors
+8, 10–14, 17, 21, 29 and 30 already push an error code; other entries synthesize
+zero. Stubs push the vector, yielding vector/error/RIP/CS/RFLAGS at RSP. The common
+non-returning path captures vector, error, RIP and CR2 before resetting the stack,
+then emits `JOSHUA:KERNEL_FAULT` and a `JOSHUA:FAULT` line with fixed-width hex
+fields and halts with maskable interrupts disabled. It never attempts IRET.
+Software invariant failures still use the generic marker, without a CPU frame.
+CR2 is meaningful as a fault address only for #PF. No firmware calls are used.
+
+This is not a safe arbitrary software-INT ABI: do not issue INT to error-code
+exception vectors. No TSS/IST or separate emergency stack exists. Corrupted stacks,
+nested faults and faults before replacement-IDT installation may prevent reporting;
+NMI/double-fault resilience is not claimed. Physical machines still do not touch
+legacy UART ports.
+
+`Build.ps1 -FaultTest Ud2` and `-FaultTest Gp` produce explicitly identified test
+images under `out/fault-*` by default. They fault immediately after the EBS marker.
+Their manifest records the fixture; they are not normal boot artifacts. The tests
+compare reported RIP with the injected instruction address and exercise both CPU
+frame shapes. See `tests/Test-FaultDiagnostics.ps1`.

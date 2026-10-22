@@ -64,3 +64,12 @@ font_rows:
     db 0,0,0,0,0,12,12
     db 0,0,0,31,0,0,0
     db 0,12,12,0,12,12,0
+
+debug_vector: db 'JOSHUA:FAULT VECTOR=',0
+debug_error: db ' ERROR=',0
+debug_rip: db ' RIP=',0
+debug_cr2: db ' CR2=',0
+debug_newline: db 13,10,0
+%ifdef JOSHUA_FAULT_TEST
+debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
+%endif
