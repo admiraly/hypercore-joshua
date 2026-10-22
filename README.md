@@ -46,6 +46,10 @@ The QEMU test needs the optional local emulator and its EDK II firmware. It test
 the actual ISO boot, not a host imitation. See `docs/testing.md` for bare-metal
 instructions and the distinction between static, emulator, and laptop validation.
 
+See [the execution roadmap](docs/roadmap.md) for staged implementation and the
+WOPR/Joshua interface direction, and [the M2 memory contract](docs/memory-contract.md)
+for proposed ownership and paging invariants.
+
 ## Next gates
 
 M0 remains open pending full contract review and exact NVMe/NIC/GPU inventory.

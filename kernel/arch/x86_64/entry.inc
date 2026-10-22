@@ -40,7 +40,7 @@ kernel_entry:
     mov fs,ax
     mov gs,ax
     lea rdi,[kernel_idt]
-    lea rax,[kernel_fault]
+    lea rax,[exception_stubs]
     mov ecx,256
 .gate:
     mov [rdi],ax
@@ -55,6 +55,7 @@ kernel_entry:
     mov [rdi+8],edx
     mov dword [rdi+12],0
     add rdi,16
+    add rax,16
     dec ecx
     jnz .gate
     lea rax,[kernel_idt]
@@ -69,6 +70,23 @@ kernel_entry:
     jne kernel_fault
     cmp dword [r12+BOOT_INFO.size],BOOT_INFO_size
     jne kernel_fault
+%ifdef JOSHUA_FAULT_TEST
+    lea rcx,[debug_fixture_rip]
+    call debug_write
+    lea rcx,[fault_test_instruction]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+%if JOSHUA_FAULT_TEST = 2
+    mov eax,0xffff
+fault_test_instruction:
+    mov ds,ax
+%else
+fault_test_instruction:
+    ud2
+%endif
+    jmp kernel_fault
+%endif
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx
@@ -121,6 +139,74 @@ kernel_fault:
     lea rcx,[debug_fault]
     call debug_write
     jmp stop_cpu
+
+; Each IDT target has a fixed 16-byte stride. Normalize CPU error-code
+; and no-error-code frames to vector/error/RIP/CS/RFLAGS at RSP.
+align 16
+exception_stubs:
+%assign vector 0
+%rep 256
+%assign stub_start ($-$$)
+%if vector != 8 && vector != 10 && vector != 11 && vector != 12 && vector != 13 && vector != 14 && vector != 17 && vector != 21 && vector != 29 && vector != 30
+    push qword 0
+%endif
+    push qword vector
+    jmp exception_stop
+    times 16-(($-$$)-stub_start) db 0x90
+%assign vector vector+1
+%endrep
+
+exception_stop:
+    cli
+    cld
+    mov r12,[rsp]
+    mov r13,[rsp+8]
+    mov r14,[rsp+16]
+    mov r15,cr2
+    lea rsp,[kernel_stack_top]
+    and rsp,-16
+    sub rsp,32
+    lea rcx,[debug_fault]
+    call debug_write
+    lea rcx,[debug_vector]
+    call debug_write
+    mov rcx,r12
+    call debug_hex
+    lea rcx,[debug_error]
+    call debug_write
+    mov rcx,r13
+    call debug_hex
+    lea rcx,[debug_rip]
+    call debug_write
+    mov rcx,r14
+    call debug_hex
+    lea rcx,[debug_cr2]
+    call debug_write
+    mov rcx,r15
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    jmp stop_cpu
+
+; RCX unsigned value; firmware ABI, no firmware calls. Fixed 16 digits.
+debug_hex:
+    sub rsp,56
+    mov r10,rcx
+    mov r11d,16
+    lea rdx,[hex_digits]
+    mov byte [rsp+48],0
+.digit:
+    mov rax,r10
+    and eax,15
+    mov al,[rdx+rax]
+    mov [rsp+r11+31],al
+    shr r10,4
+    dec r11d
+    jnz .digit
+    lea rcx,[rsp+32]
+    call debug_write
+    add rsp,56
+    ret
 
 draw_line:
     push rbx
