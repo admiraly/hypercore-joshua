@@ -13,6 +13,10 @@ GDT, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
+Before halting, the stub speaks the checkpoint through a polled Intel HD Audio
+driver and an assembly formant synthesizer. This is verified in QEMU only; no
+bare-metal audio has been observed. See `docs/speech.md`.
+
 **Bare-metal status:** on 22 October 2026, the owner confirmed a flawless boot
 through Ventoy on the Dell Latitude 7430 (i7-1265U, 16 GB RAM, BIOS 1.35.0),
 reaching the intended checkpoint. This is an owner-reported successful boot,

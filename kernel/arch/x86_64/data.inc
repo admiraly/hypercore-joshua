@@ -20,7 +20,7 @@ screen_exit: db 'UEFI BOOT SERVICES EXITED',0
 screen_stack: db 'OWN STACK / GDT / STOP IDT ACTIVE',0
 screen_memory: db 'MEMORY MAP CAPTURED / FIRMWARE PAGING',0
 screen_disk: db 'NO DISK WRITES / NO INSTALLER',0
-screen_limits: db 'NO SHELL / DRIVERS / AI YET',0
+screen_limits: db 'NO SHELL / STORAGE / AI YET',0
 screen_stop: db 'BOOT CHECKPOINT REACHED. POWER OFF TO EXIT.',0
 font_characters: db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-:',0
 font_rows:
