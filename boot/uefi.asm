@@ -13,32 +13,32 @@ dd 0,0,0
 dw 0xf0, 0x0022
 dw 0x20b
 db 0,0
-dd 0x3000,0x3000,0x242000
+dd 0x4000,0x4000,0x344000
 dd efi_entry,0x1000
 dq 0
 dd 0x1000,0x200
 dw 0,0,0,0,0,0
-dd 0,0x249000,0x1000,0
+dd 0,0x34d000,0x1000,0
 dw 10,0x0140
 dq 0x10000,0x1000,0x10000,0x1000
 dd 0,16
 times 5 dq 0
-dd 0x248000,12
+dd 0x34c000,12
 times 10 dq 0
 db '.text',0,0,0
-dd 0x3000,0x1000,0x3000,0x1000,0,0
+dd 0x4000,0x1000,0x4000,0x1000,0,0
 dw 0,0
 dd 0x60000020
 db '.data',0,0,0
-dd 0x2000,0x4000,0x2000,0x4000,0,0
+dd 0x3000,0x5000,0x3000,0x5000,0,0
 dw 0,0
 dd 0xc0000040
 db '.bss',0,0,0,0
-dd 0x242000,0x6000,0,0,0,0
+dd 0x344000,0x8000,0,0,0,0
 dw 0,0
 dd 0xc0000080
 db '.reloc',0,0
-dd 12,0x248000,0x1000,0x6000,0,0
+dd 12,0x34c000,0x1000,0x8000,0,0
 dw 0,0
 dd 0x42000040
 times 0x1000-($-$$) db 0
@@ -524,9 +524,9 @@ stop_cpu:
 %include 'kernel/drivers/hda.inc'
 %include 'kernel/speech/synth.inc'
 %include 'kernel/speech/announce.inc'
-times 0x3000-($-$$) db 0
+times 0x4000-($-$$) db 0
 
-section .data start=0x4000 vstart=0x4000
+section .data start=0x5000 vstart=0x5000
 align 8
 image_handle: dq 0
 system_table: dq 0
@@ -580,26 +580,27 @@ debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 
 %include 'kernel/arch/x86_64/data.inc'
 %include 'kernel/speech/data.inc'
-times 0x2000-($-$$) db 0
+times 0x3000-($-$$) db 0
 
-section .reloc start=0x6000 vstart=0x248000
+section .reloc start=0x8000 vstart=0x34c000
 dd 0x1000,12
 dw 0,0
 times 0x1000-($-$$) db 0
 
-section .bss nobits vstart=0x6000
+section .bss nobits vstart=0x8000
 memory_map: resb MAP_CAPACITY
 kernel_idt: resb 4096
 kernel_stack: resb 65536
 kernel_stack_top:
 kernel_gdt: resb 65536
 speech_wave: resb SPEECH_MAX_SAMPLES*4
-; DMA buffers below start page-aligned at RVA 0xc7000.
+speech_entries: resb SPEECH_MAX_ENTRIES*ENTRY_size
+; DMA buffers below start page-aligned at RVA 0x1cb000.
 hda_corb: resb 1024
 hda_rirb: resb 2048
 hda_bdl: resb 1024
-speech_pcm: resb SPEECH_MAX_SAMPLES*12
+speech_pcm: resb SPEECH_MAX_SAMPLES*4
 hda_dma_end:
 ; A negative repeat count fails assembly if BSS no longer matches the PE header.
-times (hda_dma_end-memory_map)-0x242000 resb 0
-times 0x242000-(hda_dma_end-memory_map) resb 0
+times (hda_dma_end-memory_map)-0x344000 resb 0
+times 0x344000-(hda_dma_end-memory_map) resb 0

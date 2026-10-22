@@ -1,37 +1,83 @@
 # Speech output
 
 Tracking issue: #4. JOSHUA speaks; it does not listen. The kernel announces the boot
-checkpoint ("Joshua online. HyperCore boot checkpoint reached.") after
+checkpoint ("Joshua, online. HyperCore boot checkpoint reached.") after
 ExitBootServices, then halts as before.
 
-## Pipeline
+## Engine (v2, Klatt-style formant synthesis)
 
-1. `kernel/speech/synth.inc` parses space-separated ARPAbet-style phonemes
-   (`AA`..`ZH`, `1` suffix = stress; `_` word gap, `,` phrase break,
-   `.` sentence end).
-2. A cascade formant synthesizer renders 16 kHz floats in 5 ms frames: impulse
-   glottal source, three formant resonators, a parallel frication resonator,
-   aspiration noise and lip radiation. Targets glide by per-frame smoothing;
-   diphthongs switch target mid-phoneme; plosives use closure, burst and
-   aspiration phases. Pitch declines through each sentence; stress raises it.
-3. The render is peak-normalised and linearly upsampled to 48 kHz, 16-bit stereo.
-4. `kernel/drivers/hda.inc` plays it on an Intel HD Audio controller found by
-   `kernel/drivers/pci.inc` (class 04h/03h): controller reset, CORB/RIRB codec
-   commands, a pin route (speaker, then headphone, then line-out) reaching a
-   DAC directly or through one mixer/selector, and one output stream with a
-   two-entry buffer descriptor list. Everything is polled; interrupts stay masked.
+`kernel/speech/synth.inc` and `data.inc`, all x86-64 assembly:
+
+1. **Input**: space-separated ARPAbet-style phonemes. A `1` suffix marks primary
+   stress and `2` secondary stress. `_` ends a word, `,` is a phrase break and
+   `.` ends a sentence. Up to 255 entries.
+2. **Durations**: Klatt (1979) inherent and minimum durations with multiplicative
+   rules:
+   - unstressed ×0.65
+   - non-final syllable ×0.85
+   - phrase-final ×1.4
+   - vowel before a voiceless consonant ×0.8
+   - consonant cluster ×0.75
+   - final consonant ×1.2
+   - global tempo ×0.875
+3. **Intonation**: a hat pattern over a baseline declining from 118 to 90 Hz in
+   each sentence. Accented vowels rise. The last accent peaks, then falls into a
+   low tail. A comma gets a continuation rise.
+4. **Coarticulation**: parameters glide linearly from the previous values, with
+   40 ms formant and 5-10 ms amplitude transitions. Stops and nasals use F2/F3
+   loci coupled to the nearest vowel in the phrase. Diphthongs glide to a second
+   target. Stops render as closure (voice bar if voiced), then a 10 ms burst,
+   then 50 ms aspiration into the vowel. Affricates add 60 ms frication.
+5. **Source**: a KLGLOTT88 glottal flow pulse (open quotient 0.6) with spectral
+   tilt, about 1% period jitter, about 6% shimmer, and breathiness gated by the
+   glottal open phase.
+6. **Filters at 48 kHz**: the cascade runs nasal zero/pole, then F1-F5. A
+   parallel bank of F2-F5 plus a frication resonance and a bypass shapes noise
+   for fricatives and bursts. Lip radiation is applied at the output.
+7. **Smoothness**: amplitudes and pitch ramp every sample, and filter
+   coefficients update every 5 ms. No upsampling stage is needed.
+8. **Output**: peak-normalised 48 kHz, 16-bit stereo PCM.
 
 All arithmetic is IEEE single precision with fixed operation order, and the
 cosine/exponential are polynomial, not x87 transcendental, so a given phrase
 renders identically on any x86-64 CPU.
 
+`kernel/drivers/hda.inc` plays the PCM on an Intel HD Audio controller found by
+`kernel/drivers/pci.inc` (class 04h/03h). It resets the controller and sends
+codec commands over CORB/RIRB. It routes a speaker, then headphone, then
+line-out pin to a DAC, directly or through one mixer/selector. One output stream
+uses a two-entry buffer descriptor list. Everything is polled, and interrupts
+stay masked.
+
+## Analysis
+
+`tools/Measure-Speech.ps1 <wav> [-Spectrum]` (host-only) prints per-window level,
+zero-crossing rate, the three strongest spectral peaks below 4 kHz and the share
+of energy above 4 kHz. It also counts clicks: sample jumps of at least 6× the
+surrounding 2 ms level.
+
+Measured on the QEMU capture (22 October 2026):
+
+| Check | v1 | v2 |
+| --- | --- | --- |
+| Vowel formants vs target | not checked | AA ≈690/1206 vs 700/1220; IY ≈301/2024 vs 310/2020; EH ≈517/1680 vs 530/1680 |
+| Diphthong glide | none | AY 646/1206 → 388/1895 |
+| Loudness (RMS) | -20.3 dBFS | -19.2 dBFS |
+| Crest factor | 17.0 dB | 16.4 dB |
+| Clicks detected | not measured | 0 |
+| Fricative vs vowel level | not measured after retune | about -8 dB |
+| Stop bursts | single resonator, not measured | below vowel level, after retune |
+
+These numbers are acoustic measurements, not listening results.
+
 ## Limits
 
 - Phoneme input only. There is no English text-to-phoneme rule set yet.
-- The voice is robotic, rule-based and male-pitched. Gains were balanced from an
-  energy/zero-crossing analysis of the QEMU capture; nobody has rated its
-  intelligibility with listeners.
-- Maximum utterance: 8.19 s (131,072 samples at 16 kHz).
+- Still a formant synthesizer, so it will sound synthetic (DECtalk-class at
+  best). Nobody has rated intelligibility with listeners. The owner rated v1
+  poorly (rhythm, intelligibility, buzz, clicks); v2 targets each, but has not
+  been listened to by anyone.
+- Maximum utterance: 8.19 s (393,216 samples at 48 kHz).
 - Speech runs in ring 0 on firmware page tables before M2. The DMA buffers live
   in the image's BSS, identity-mapped by firmware. There is no isolation or IOMMU
   protection.

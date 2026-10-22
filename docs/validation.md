@@ -36,18 +36,22 @@ Completed locally on 22 October 2026, QEMU only:
 
 - ISO and raw-FAT boots with `ich9-intel-hda` + `hda-output` reported
   `JOSHUA:SPEECH_OK:00` between ExitBootServices and the kernel-halt marker.
-- The `wav` capture of the checkpoint phrase passed `Test-Qemu.ps1` checks:
-  16-bit PCM, 4.77 s, RMS about 3,100, peak 21,969 (unclipped), and 43% of
-  samples above 1,000.
-- A 20 ms energy/zero-crossing envelope matched the expected phoneme sequence
-  (vowels, fricatives, plosive closures, sentence pause). Frication gain was
-  raised once after that analysis.
+- v1 (first formant engine): the owner listened to the capture and judged it
+  poor on rhythm, intelligibility, buzz and clicks.
+- v2 (Klatt-style rewrite) `wav` capture passed `Test-Qemu.ps1`: 16-bit PCM,
+  4.76 s, RMS about 3,600 (-19.2 dBFS), peak 23,967 (unclipped).
+- `tools/Measure-Speech.ps1` on that capture:
+  - 0 detected clicks; crest factor 16.4 dB.
+  - Measured vowel formants within about 2% of their targets.
+  - Diphthong glides present; pauses and stop closures where expected.
+  - Bursts and fricatives were retuned twice after measurement.
+  - Results are recorded in `docs/speech.md`.
 - `-NoAudio` boot reported `JOSHUA:SPEECH_UNAVAILABLE:01` and still reached the
   checkpoint halt.
 - Reproducibility passed with the speech code and enlarged PE layout.
 
-Not done: listener intelligibility rating, any bare-metal audio, and the Dell's
-audio topology. See `docs/speech.md`.
+Not done: any listening review of v2, a listener intelligibility rating, any
+bare-metal audio, and the Dell's audio topology. See `docs/speech.md`.
 
 ## Owner-reported physical result
 
