@@ -74,3 +74,6 @@ debug_newline: db 13,10,0
 debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
 %endif
 debug_map_valid: db 'JOSHUA:MEMORY_MAP_VALID',13,10,0
+align 8
+candidate_set: dq 0,0,CANDIDATE_CAPACITY
+debug_candidates: db 'JOSHUA:MEMORY_CANDIDATES_READY COUNT=',0

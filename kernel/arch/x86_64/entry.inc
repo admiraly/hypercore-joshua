@@ -68,7 +68,7 @@ kernel_entry:
     mov rax,BOOT_MAGIC
     cmp [r12+BOOT_INFO.magic],rax
     jne kernel_fault
-    cmp dword [r12+BOOT_INFO.size],BOOT_INFO_size
+    cmp dword [r12+BOOT_INFO.size],BOOT_INFO_V1_size
     jne kernel_fault
 %ifdef JOSHUA_FAULT_TEST
     lea rcx,[debug_fixture_rip]
@@ -87,7 +87,7 @@ fault_test_instruction:
 %endif
     jmp kernel_fault
 %endif
-    cmp dword [r12+BOOT_INFO.version],0
+    cmp dword [r12+BOOT_INFO.version],1
     jne kernel_fault
     cmp dword [r12+BOOT_INFO.descriptor_version],1
     jne kernel_fault
@@ -101,6 +101,7 @@ fault_test_instruction:
     mov eax,0x80000008
     cpuid
     movzx r9d,al
+    mov r15d,r9d
     lea rcx,[memory_map]
     mov rdx,[r12+BOOT_INFO.memory_map_size]
     mov r8,[r12+BOOT_INFO.descriptor_size]
@@ -108,6 +109,25 @@ fault_test_instruction:
     test eax,eax
     jnz kernel_fault
     lea rcx,[debug_map_valid]
+    call debug_write
+    mov rcx,r12
+    mov edx,r15d
+    call memory_image_check
+    test eax,eax
+    jnz kernel_fault
+    lea rax,[candidate_ranges]
+    mov [candidate_set+RANGE_SET.entries],rax
+    mov rcx,r12
+    lea rdx,[candidate_set]
+    mov r8d,r15d
+    call memory_candidates_build
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_candidates]
+    call debug_write
+    mov rcx,[candidate_set+RANGE_SET.count]
+    call debug_hex
+    lea rcx,[debug_newline]
     call debug_write
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]

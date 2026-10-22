@@ -2,7 +2,8 @@
 
 Status: proposed implementation contract for issue #3; no allocator or owned
 paging is implemented by this document. Review each stage before runtime changes.
-The existing 88-byte boot-info v0 and RDI entry contract remain unchanged.
+The 88-byte boot-info v0 definition and RDI register contract remain unchanged;
+the current loader/kernel explicitly exchange the 104-byte v1 extension.
 
 ## Implemented first validation slice
 
@@ -17,9 +18,20 @@ interpret type or attribute as permission to allocate. Unknown types remain
 unavailable under the future ownership policy. The routine is read-only and
 requires the caller to own a readable buffer for the declared length.
 
-This is not the M2a ledger: image reservation handoff, paging inventory and usable
-range derivation below remain proposed. No frame becomes free as a result of
-validation. Unsupported physical-width discovery fails closed.
+This validation alone does not establish allocatable memory. No frame becomes
+free as a result of validation. Unsupported physical-width discovery fails closed.
+
+## Implemented image handoff and candidate accounting
+
+Boot-info v1 adds checked Loaded Image bounds and requires complete coverage by
+loader-code/data map descriptors. `memory_candidates_build` selects conventional
+ranges with WB support and only UC/WC/WT/WB cache-capability bits, then subtracts
+page zero, the complete image and the rounded framebuffer. All candidate metadata
+is BSS inside the reserved image. Split capacity failure invalidates the whole
+result and stops boot. `range_reserve` is shared with a native host oracle suite.
+
+Candidates remain non-allocatable: active page-table inventory and reservation
+are not yet implemented. No memory is reclaimed and M2a remains incomplete.
 
 ## Input validation and range accounting (M2a)
 
@@ -40,10 +52,9 @@ and NVS, runtime services, reserved/unusable memory and every unknown type. Pres
 firmware boot/loader allocations conservatively until their live references are
 inventoried. Absence from the usable ledger means unavailable, never implicitly free.
 
-Boot-info v0 does not carry image allocation bounds or a complete reservation list.
-Before M2a ships, derive and verify the loaded image range while firmware is live
-(e.g. Loaded Image protocol) and hand it over through a reviewed versioned extension
-or an explicitly documented internal symbol contract. Do not silently grow v0.
+Boot-info v0 does not carry image allocation bounds; the versioned v1 extension
+now supplies those bounds through Loaded Image protocol. Do not silently grow v0.
+A complete reservation list remains to be established.
 Capture CR3 and inventory the active page-table hierarchy without freeing it.
 Do not reclaim ACPI or firmware memory based solely on ExitBootServices success.
 

@@ -105,7 +105,7 @@ frame shapes. See `tests/Test-FaultDiagnostics.ps1`.
 
 ## Final map validation
 
-The normal kernel path validates boot-info version 0/size 88, descriptor version
+The normal kernel path validates boot-info version 1/size 104, descriptor version
 1 and the exact image-owned map-buffer pointer, then calls `memory_map_validate`
 with RCX=map, RDX=length, R8=stride and R9D=physical address width. The leaf routine
 preserves firmware-ABI nonvolatile registers and returns EAX=0 valid or 1 invalid.
@@ -113,3 +113,28 @@ It reads only, performs no allocations and rejects ambiguous overlapping ranges.
 A successful normal boot emits `JOSHUA:MEMORY_MAP_VALID` before the halt marker.
 See the memory contract for accepted layouts and limits. Fault fixtures still
 stop before this normal-path validation.
+
+## Boot-info v1 and reservation candidates
+
+The v0 structure stays 88 bytes. v1 preserves that entire prefix and appends
+`image_base` at offset 88 and `image_size` at offset 96, total 104 bytes. The loader
+and embedded kernel now explicitly exchange version 1; version 0 is rejected by
+this kernel rather than guessed. RDI and the firmware helper ABI are unchanged.
+Before final map capture, HandleProtocol obtains the Loaded Image protocol. Its
+base must match the actual PE start, size must cover SizeOfImage, and both must
+be page aligned without wrap. The kernel independently requires complete coverage
+by validated loader-code/data descriptors and CPU-addressable physical bounds.
+
+The image's code reservation is now 16 KiB; image-owned BSS includes an 8,192-entry
+candidate array. Headers and exact PE tests cover the expanded layout. Candidate
+ranges include only conventional memory advertising WB and no attributes beyond
+UC/WC/WT/WB capabilities. Subtract page zero, the full loaded image and the
+page-rounded framebuffer range. `MEMORY_CANDIDATES_READY COUNT=` reports completion
+of this candidate stage, not permission to allocate. Nonconventional and unfamiliar
+attributes/types remain unavailable. Active paging frames are not inventoried yet.
+
+`range_reserve` takes RCX=RANGE_SET, RDX=start, R8=exclusive end; EAX=0 succeeds,
+1 invalidates the whole set. Caller supplies owned capacity and validated disjoint
+page ranges. It preserves nonvolatile registers and uses no firmware or SIMD. A
+failed split can leave prior edits; the builder clears count and aborts on any
+failure. Candidates are not consumable until all reservation stages succeed.

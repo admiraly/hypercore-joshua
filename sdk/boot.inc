@@ -8,6 +8,7 @@
 %define ST_TABLE_COUNT       104
 %define ST_TABLES            112
 %define BS_GET_MEMORY_MAP    56
+%define BS_HANDLE_PROTOCOL   152
 %define BS_EXIT_BOOT         232
 %define BS_STALL             248
 %define BS_SET_WATCHDOG      256
@@ -50,6 +51,31 @@ endstruc
 %if BOOT_INFO_size != 88
  %error Invalid boot-info size
 %endif
+; PE layout constants are shared by the handwritten headers and image checks.
+%define PE_TEXT_SIZE 0x4000
+%define PE_DATA_RVA 0x5000
+%define PE_BSS_RVA 0x6000
+%define PE_BSS_SIZE 0x61000
+%define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
+%define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
+%define CANDIDATE_CAPACITY 8192
+
+; v0 remains frozen at 88 bytes. v1 appends loaded-image bounds.
+struc BOOT_INFO_V1
+ .v0: resb BOOT_INFO_size
+ .image_base: resq 1
+ .image_size: resq 1
+endstruc
+%if BOOT_INFO_V1_size != 104
+ %error Invalid boot-info v1 size
+%endif
+
+struc RANGE_SET
+ .entries: resq 1
+ .count: resq 1
+ .capacity: resq 1
+endstruc
+
 %define BOOT_MAGIC 0x004F464E4948534A
 
 %endif

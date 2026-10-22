@@ -3,6 +3,7 @@ default rel
 %include 'sdk/boot.inc'
 
 section .headers start=0 vstart=0
+image_start:
 db 'MZ'
 times 0x3c-($-$$) db 0
 dd 0x80
@@ -13,32 +14,32 @@ dd 0,0,0
 dw 0xf0, 0x0022
 dw 0x20b
 db 0,0
-dd 0x2000,0x2000,0x41000
+dd PE_TEXT_SIZE,0x2000,PE_BSS_SIZE
 dd efi_entry,0x1000
 dq 0
 dd 0x1000,0x200
 dw 0,0,0,0,0,0
-dd 0,0x46000,0x1000,0
+dd 0,PE_IMAGE_SIZE,0x1000,0
 dw 10,0x0140
 dq 0x10000,0x1000,0x10000,0x1000
 dd 0,16
 times 5 dq 0
-dd 0x45000,12
+dd PE_RELOC_RVA,12
 times 10 dq 0
 db '.text',0,0,0
-dd 0x2000,0x1000,0x2000,0x1000,0,0
+dd PE_TEXT_SIZE,0x1000,PE_TEXT_SIZE,0x1000,0,0
 dw 0,0
 dd 0x60000020
 db '.data',0,0,0
-dd 0x1000,0x3000,0x1000,0x3000,0,0
+dd 0x1000,PE_DATA_RVA,0x1000,PE_DATA_RVA,0,0
 dw 0,0
 dd 0xc0000040
 db '.bss',0,0,0,0
-dd 0x41000,0x4000,0,0,0,0
+dd PE_BSS_SIZE,PE_BSS_RVA,0,0,0,0
 dw 0,0
 dd 0xc0000080
 db '.reloc',0,0
-dd 12,0x45000,0x1000,0x4000,0,0
+dd 12,PE_RELOC_RVA,0x1000,PE_BSS_RVA,0,0
 dw 0,0
 dd 0x42000040
 times 0x1000-($-$$) db 0
@@ -81,6 +82,9 @@ efi_entry:
     call [rax+BS_SET_WATCHDOG]
     test rax,rax
     jnz .watchdog_error
+    call image_info
+    test rax,rax
+    jnz .image_error
     call cpu_info
     call find_acpi
     call graphics_info
@@ -166,6 +170,10 @@ efi_entry:
     mov rax,[rax+ST_RUNTIME]
     call [rax+RT_RESET_SYSTEM]
     jmp stop_cpu
+.image_error:
+    lea rdx,[image_failure]
+    call print
+    jmp .return_error
 .input_error:
     lea rdx,[input_failure]
     call print
@@ -188,6 +196,42 @@ efi_entry:
     pop rsi
     pop rbp
     pop rbx
+    ret
+
+image_info:
+    sub rsp,40
+    mov rcx,[image_handle]
+    lea rdx,[loaded_image_guid]
+    lea r8,[loaded_image]
+    mov rax,[boot_services]
+    call [rax+BS_HANDLE_PROTOCOL]
+    test rax,rax
+    jnz .done
+    mov rax,[loaded_image]
+    test rax,rax
+    jz .bad
+    mov rcx,[rax+64]
+    lea rdx,[image_start]
+    cmp rcx,rdx
+    jne .bad
+    test rcx,0xfff
+    jnz .bad
+    mov rdx,[rax+72]
+    cmp rdx,PE_IMAGE_SIZE
+    jb .bad
+    test rdx,0xfff
+    jnz .bad
+    mov r8,rcx
+    add r8,rdx
+    jc .bad
+    mov [boot_info+BOOT_INFO_V1.image_base],rcx
+    mov [boot_info+BOOT_INFO_V1.image_size],rdx
+    xor eax,eax
+    jmp .done
+.bad:
+    mov eax,1
+.done:
+    add rsp,40
     ret
 
 print:
@@ -521,9 +565,11 @@ stop_cpu:
 
 %include 'kernel/arch/x86_64/entry.inc'
 %include 'kernel/mm/map.inc'
-times 0x2000-($-$$) db 0
+%include 'kernel/mm/ranges.inc'
+%include 'kernel/mm/candidates.inc'
+times PE_TEXT_SIZE-($-$$) db 0
 
-section .data start=0x3000 vstart=0x3000
+section .data start=PE_DATA_RVA vstart=PE_DATA_RVA
 align 8
 image_handle: dq 0
 system_table: dq 0
@@ -543,8 +589,12 @@ cpu_brand: times 49 dw 0
 align 8
 boot_info:
     dq BOOT_MAGIC
-    dd 0,BOOT_INFO_size
-    times BOOT_INFO_size-16 db 0
+    dd 1,BOOT_INFO_V1_size
+    times BOOT_INFO_V1_size-16 db 0
+loaded_image: dq 0
+loaded_image_guid: dd 0x5b1b31a1
+dw 0x9562,0x11d2
+db 0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b
 gop_guid: dd 0x9042a9de
 dw 0x23dc,0x4a38
 db 0x96,0xfb,0x7a,0xde,0xd0,0x80,0x51,0x6a
@@ -569,6 +619,7 @@ wide stride_message, `  Descriptor bytes: `
 wide map_failure, `Memory map unavailable or unsupported.\r\n`
 wide boot_message, `\r\nLeaving firmware. HyperCore will display a status screen and halt.\r\n`
 wide graphics_failure, `Unsupported framebuffer. Need >=640x400 packed RGB/BGR GOP.\r\n`
+wide image_failure, `Loaded image bounds unavailable or unsupported.\r\n`
 wide input_failure, `Firmware input failed. Returning to firmware.\r\n`
 wide watchdog_failure, `Cannot disable firmware watchdog. Aborting diagnostics.\r\n`
 debug_entry: db 'JOSHUA:UEFI_ENTRY',13,10,0
@@ -578,14 +629,19 @@ debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 %include 'kernel/arch/x86_64/data.inc'
 times 0x1000-($-$$) db 0
 
-section .reloc start=0x4000 vstart=0x45000
+section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA
 dd 0x1000,12
 dw 0,0
 times 0x1000-($-$$) db 0
 
-section .bss nobits vstart=0x4000
+section .bss nobits vstart=PE_BSS_RVA
 memory_map: resb MAP_CAPACITY
 kernel_idt: resb 4096
 kernel_stack: resb 65536
 kernel_stack_top:
 kernel_gdt: resb 65536
+
+candidate_ranges: resb CANDIDATE_CAPACITY*16
+%if ($-$$) != PE_BSS_SIZE
+ %error BSS layout mismatch
+%endif
