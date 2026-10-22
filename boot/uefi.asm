@@ -520,6 +520,7 @@ stop_cpu:
     jmp .halt
 
 %include 'kernel/arch/x86_64/entry.inc'
+%include 'kernel/mm/map.inc'
 times 0x2000-($-$$) db 0
 
 section .data start=0x3000 vstart=0x3000

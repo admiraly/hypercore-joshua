@@ -87,6 +87,28 @@ fault_test_instruction:
 %endif
     jmp kernel_fault
 %endif
+    cmp dword [r12+BOOT_INFO.version],0
+    jne kernel_fault
+    cmp dword [r12+BOOT_INFO.descriptor_version],1
+    jne kernel_fault
+    lea rcx,[memory_map]
+    cmp [r12+BOOT_INFO.memory_map],rcx
+    jne kernel_fault
+    mov eax,0x80000000
+    cpuid
+    cmp eax,0x80000008
+    jb kernel_fault
+    mov eax,0x80000008
+    cpuid
+    movzx r9d,al
+    lea rcx,[memory_map]
+    mov rdx,[r12+BOOT_INFO.memory_map_size]
+    mov r8,[r12+BOOT_INFO.descriptor_size]
+    call memory_map_validate
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_map_valid]
+    call debug_write
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx

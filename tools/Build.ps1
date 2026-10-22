@@ -35,7 +35,7 @@ try {
     & (Join-Path $root 'tests/Test-Pe.ps1') -EfiPath $efi
     & (Join-Path $root 'tools/New-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
     & (Join-Path $root 'tests/Test-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
-    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/data.inc', 'sdk/boot.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
+    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/data.inc', 'kernel/mm/map.inc', 'sdk/boot.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
     $manifest = [ordered]@{
         stage = 'M0/M1 boot prototype - unsigned, no installer'
         faultTest = $FaultTest

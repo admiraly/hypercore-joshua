@@ -102,3 +102,14 @@ images under `out/fault-*` by default. They fault immediately after the EBS mark
 Their manifest records the fixture; they are not normal boot artifacts. The tests
 compare reported RIP with the injected instruction address and exercise both CPU
 frame shapes. See `tests/Test-FaultDiagnostics.ps1`.
+
+## Final map validation
+
+The normal kernel path validates boot-info version 0/size 88, descriptor version
+1 and the exact image-owned map-buffer pointer, then calls `memory_map_validate`
+with RCX=map, RDX=length, R8=stride and R9D=physical address width. The leaf routine
+preserves firmware-ABI nonvolatile registers and returns EAX=0 valid or 1 invalid.
+It reads only, performs no allocations and rejects ambiguous overlapping ranges.
+A successful normal boot emits `JOSHUA:MEMORY_MAP_VALID` before the halt marker.
+See the memory contract for accepted layouts and limits. Fault fixtures still
+stop before this normal-path validation.
