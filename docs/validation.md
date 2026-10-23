@@ -1153,3 +1153,29 @@ Features FAT/x2 sessions are claimed. A byte-verified local copy is available as
 `f8e7ab04a5929b4fbb77c6436dce87a4ed32d58d6670f972a72158658e7e5819`.
 The previous23a66e3 preview remains intact. This copy is the separate native
 console profile; it does not incorporate the Piper speech branch.
+
+
+## Handle-gate CI failure response — 2026-10-23
+
+PR #47 push run40011672170 on e1555ba failed the ACPI host fixture: assigning
+checksum byte1 can leave an already-1 checksum unchanged, so expected rejection
+incorrectly observes success depending on mapped pointer bytes. Corruption now
+flips bit0. A deterministic variable-length valid RSDP fixture finds checksum1,
+proves acceptance, flips it and requires checksum rejection. No runtime change.
+The local Assembly ACPI suite passes1,148 cumulative checks, followed by ten
+separate ASLR-enabled process runs at1,148 each. Python syntax/workflow YAML
+parsing and git diff --check pass.
+
+The same run's boot job reached its15-minute aggregate budget while executing
+private-paging mutations, after boot/fault/context/user/ELF checks. Its operation
+was cancelled rather than producing a complete result. The boot job budget is
+now25 minutes; individual fixture deadlines, mutation assertions and failure
+propagation are unchanged. A separate pull-request run40011680038 passed all four
+configured jobs on the prior source, but does not erase either push-run failure.
+New-head CI remains required. No new QEMU, physical qualification or milestone
+claim follows from these host fixture/workflow changes.
+
+Independent source review found no blocking findings in this response. Its
+evidence caveat is confirmed: the ten-process repeat completed with exit0, as
+did Python syntax, YAML/budget and diff checks before this commit. The reviewer
+did not independently execute those checks or inspect generated artifacts.
