@@ -49,72 +49,9 @@ response_build:
     cmp r14,r10
     jbe .bad
 .facts_output:
-    mov rax,COMMAND_MAGIC
-    cmp [r12+CONSOLE_COMMAND.ready],rax
-    jne .bad
-    mov rax,[r12+CONSOLE_COMMAND.command]
-    mov rcx,[r12+CONSOLE_COMMAND.status]
-    mov rdx,[r12+CONSOLE_COMMAND.json]
-    mov r8,[r12+CONSOLE_COMMAND.action]
-    test rax,rax
-    jz .empty
-    cmp rax,8
-    jbe .implemented
-    test rdx,rdx
-    jnz .bad
-    test r8,r8
-    jnz .bad
-    cmp rax,255
-    je .unknown
-    cmp rax,17
-    ja .bad
-    cmp rcx,69
-    je .facts
-    cmp rcx,2
-    jne .bad
-    jmp .facts
-.unknown:
-    cmp rcx,127
-    je .facts
-    cmp rcx,2
-    jne .bad
-    jmp .facts
-.empty:
-    or rcx,rdx
-    or rcx,r8
-    jnz .bad
-    jmp .facts
-.implemented:
-    cmp rcx,2
-    je .error
-    test rcx,rcx
-    jnz .bad
-    cmp rdx,1
-    ja .bad
-    test rdx,rdx
-    jz .action
-    cmp rax,3
-    jb .bad
-    cmp rax,6
-    ja .bad
-.action:
-    cmp rax,7
-    je .clear
-    cmp rax,8
-    je .halt
-    test r8,r8
-    jnz .bad
-    jmp .facts
-.clear:
-    cmp r8,1
-    jne .bad
-    jmp .facts
-.halt:
-    cmp r8,2
-    jne .bad
-    jmp .facts
-.error:
-    or rdx,r8
+    mov rcx,r12
+    call command_check
+    test eax,eax
     jnz .bad
 .facts:
     mov rax,FACTS_MAGIC
@@ -339,4 +276,45 @@ response_append:
     mov r15,r10
     xor eax,eax
 .return:
+    ret
+
+; RCX response -> EAX0/1, EDX0, read-only. Caller proves mapped extent.
+response_check:
+    test rcx,rcx
+    jz .bad
+    test rcx,7
+    jnz .bad
+    mov rax,rcx
+    add rax,CONSOLE_RESPONSE_size-1
+    jc .bad
+    mov rax,RESPONSE_MAGIC
+    cmp [rcx+CONSOLE_RESPONSE.ready],rax
+    jne .bad
+    mov r8,[rcx+CONSOLE_RESPONSE.length]
+    cmp r8,RESPONSE_CAPACITY
+    ja .bad
+    xor r9d,r9d
+.body:
+    movzx eax,byte [rcx+CONSOLE_RESPONSE.body+r9]
+    cmp r9,r8
+    jae .zero
+    cmp eax,10
+    je .next
+    sub eax,32
+    cmp eax,94
+    ja .bad
+    jmp .next
+.zero:
+    test eax,eax
+    jnz .bad
+.next:
+    inc r9d
+    cmp r9d,RESPONSE_CAPACITY+1
+    jb .body
+    xor eax,eax
+    xor edx,edx
+    ret
+.bad:
+    mov eax,1
+    xor edx,edx
     ret

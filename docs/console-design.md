@@ -1,6 +1,6 @@
 # Native BSP development console (issue #40)
 
-Status: editor, renderer, parser and response implementations host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
+Status: editor, renderer, parser, response and screen model host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
 The destination is an interactive, non-installing development preview, not the full
 user-space shell/capability system in the specification. Runtime stays Assembly.
 No speech, storage/network/AI, firmware-after-exit, process restart or merge changes.
@@ -455,3 +455,100 @@ is outside shadow space. No ISR calls this formatter. Actual foreground integrat
 must establish sufficient owned stack reserve and stable source provenance. No
 snapshot adapter or boot call site exists yet, and `CONSOLE CLEARED` must be
 published to the visible transcript only after the model clear succeeds.
+
+## Exact screen-model contract (review before implementation)
+
+`CONSOLE_MODEL` is64 bytes/aligned8, eight qwords: ready, transcript_row,
+transcript_column, completed, command, status, json, action. `MODEL_MAGIC` is
+0x314c444f4d484f4a. Row is2..grid.rows-3 inclusive; column is0..grid.columns
+inclusive. Column==columns is a pending wrap, not an out-of-range cell index.
+Completed saturates at2^64-1. Last command/status/json/action must satisfy the exact
+command-result combination validator; initialized values are all zero. No pointers,
+reserved fields or implicit cursor live in this record. All helpers are BSP/IF0/DF0,
+preserve eight integer nonvolatiles and use aligned shadow space without SIMD.
+
+Public signatures (Microsoft integer ABI):
+- `model_init(RCX model,RDX grid,R8 anchor)` resets inactive exclusive model storage,
+  requiring an already valid grid and anchor. No prior model validity required.
+- `model_check(RCX model,RDX grid,R8 anchor)` is read-only.
+- `model_prompt(RCX model,RDX grid,R8 anchor,R9 editor)` validates all records and
+  updates the prompt with the exact earlier viewport formula. It explicitly enables
+  the cursor at column8+C-S, row rows-2, and dirties both old/new cursor rows and the
+  prompt. Prefix is exactly `JOSHUA> `; remaining prompt cells are spaces.
+- `model_complete(RCX model,RDX grid,R8 anchor,R9 editor,stack+40 command,stack+48 response)`
+  validates all records, appends the submitted command and response, records the
+  command result, and updates the prompt. Stack offsets are at helper entry.
+
+All return EAX0/EDX0 success, EAX1/EDX0 failure. All returning failures preserve
+all metadata and framebuffer bytes. No helper writes pixels or calls port I/O.
+Before any mutation validate complete grid/anchor and model (except init), all
+other record extents, null/alignment/nonwrap and every pairwise direct virtual
+range overlap, including the full framebuffer extent. Caller proves stable mapped
+canonical backing-disjoint storage including aliases for model/grid/anchor/editor/
+command/response/framebuffer and stack, plus ownership/exclusivity. Grid's existing
+surface proof remains authoritative. Invalid arbitrary pointer mapping is outside
+the contract. All source records are read-only. Init publishes model magic last;
+other helpers have no recoverable failure after their first store.
+
+`command_check(RCX command)` will extract the existing response builder's exact
+result-combination validation into a shared read-only helper, EAX0/1/EDX0, including
+magic and pointer extent. Response behavior must remain unchanged. Model_check
+validates its last fields using the same combinations, not magic alone.
+`response_check(RCX response)` validates readiness, length0..4095, printable/LF
+body and all-zero tail through4095, read-only. Complete calls command_parse into
+exclusive local scratch and compares all40 bytes against the provided command
+before mutation. Thus a valid-looking clear/halt result for different submitted
+text is rejected. Caller supplies response_build's output for that same command;
+model_complete validates its bounds/alphabet but does not recompute its text from
+facts. No response byte becomes a control directive.
+
+Init clears active cells to spaces (inactive cells stay zero), puts
+`JOSHUA / HYPERCORE` in row0, `BSP DEVELOPMENT CONSOLE | NO AI EXECUTION` in row1,
+`JOSHUA> ` in row rows-2 and `READY / BSP DEVELOPMENT CONSOLE` in row rows-1.
+It enables cursor at8,rows-2, marks every active row dirty and sets transcript2,0,
+completed0 and last fields0. Strings fit the minimum48 columns. It writes no
+margin pixels, preserving the renderer's separate store contract.
+
+Transcript append is deterministic: a printable character first advances if a
+wrap is pending, then writes at current row/column and increments column. LF
+advances once, including from a pending-wrap column. Advancing at the final
+transcript row copies only transcript rows upward by one and clears the last row
+to spaces; headers/prompt/result/inactive cells are preserved. Every changed row
+is dirty. All copy loops are bounded by the already validated geometry.
+
+Complete first handles successful clear: empty transcript and reset row2,column0;
+only afterward may `CONSOLE CLEARED` become visible. For every other command it
+starts a fresh transcript row if column!=0, appends `JOSHUA> `, the entire submitted
+printable line, and LF. Then append the response body, wrapping/scrolling as above.
+For clear skip command echo and append its response after clearing. Empty Enter
+still echoes an empty command. After appending, saturate completed and copy exact
+command/status/json/action. Clear the result row to spaces and display exactly one
+of `RESULT 0 / OK`, `RESULT 2 / USAGE`, `RESULT 69 / UNAVAILABLE`,
+`RESULT 127 / UNKNOWN`; mark it dirty. Recompose the current editor prompt, enabling
+the cursor. Integration must retire input immediately after a successful action2;
+pure model helpers do not halt. Actual post-retirement cursor disabling and HALTED
+marking remain part of the lifecycle contract before boot integration.
+
+
+## Screen-model implementation checkpoint
+
+The actual Assembly parse/response/model pipeline passed17,279 cumulative checks
+against an independent complete-grid/model oracle. Tests cover all cursor positions
+for selected lengths through127, three geometries,100 seeded command completions
+per geometry, exact-width/newline and scroll behavior, saturation, clear ordering,
+a mismatched valid clear/halt result, all metadata-pair overlaps, corruption and
+inaccessible boundaries for all six record extents. Inputs and the framebuffer
+remain unchanged during composition. The generated host preview uses the actual
+Assembly renderer after composing the model, and has been visually inspected at
+`out/console-model-tests/console-model-preview.png`. Its diagnostic values are
+synthetic host facts, not boot hardware observations. It is not a live console.
+
+The existing editor/grid/parser/response suites passed344,659/5,055/95,317/28,687
+checks again after shared command validation extraction. Independent read-only
+implementation review found no actionable defects. The
+reviewer did not reproduce tests or inspect output artifacts. Static maximum stack
+depth is616 bytes below model entry RSP (624 including the incoming return address).
+A source-only follow-up found no actionable issues in the full4095-byte synthetic
+body fixtures; these exercise defensive composition bounds, not production
+response provenance. Boot-owned facts capture, interactive input and retirement are
+still not integrated; no console ISO is claimed by host composition evidence.

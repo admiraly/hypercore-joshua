@@ -304,3 +304,25 @@ second-refill-timeout and unsupported-port-response mutations. The old8,338 coun
 checkpoint. OverflowPending uses fixture-only bounded refill waits on the real
 PS2 path; it does not qualify natural production timing. See the design's controlled
 fixture section for the failed batch and strict replacement acceptance conditions.
+
+
+## Console component host fixtures (issue #40)
+
+On Linux with pinned NASM2.16.03, ld, Python3 and PowerShell, run:
+
+```powershell
+./tests/Test-ConsoleEditor.ps1
+./tests/Test-ConsoleGrid.ps1
+./tests/Test-ConsoleCommand.ps1
+./tests/Test-ConsoleResponse.ps1
+./tests/Test-ConsoleModel.ps1
+```
+
+These assemble actual Assembly helpers into host libraries, exercising integer ABI
+sentinels and independent state/grammar/pixel/schema/model oracles. Current local
+cumulative counts are344,659/5,055/95,317/28,687/17,279 respectively, not independent
+scenario counts. All suites are in Linux CI; no CI success is asserted here.
+The model runner exports an actual Assembly-rendered host preview with synthetic
+facts. No component test establishes actual keyboard delivery, boot snapshot
+provenance, interactive console operation or physical compatibility. These remain
+explicit target/integration gates. See docs/console-design.md and docs/validation.md.

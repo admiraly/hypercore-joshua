@@ -143,6 +143,9 @@ jobs:
       - name: Validate bounded console diagnostic responses
         shell: pwsh
         run: ./tests/Test-ConsoleResponse.ps1
+      - name: Validate bounded console screen composition
+        shell: pwsh
+        run: ./tests/Test-ConsoleModel.ps1
   keyboard:
     runs-on: windows-latest
     timeout-minutes: 15

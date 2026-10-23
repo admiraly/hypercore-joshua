@@ -744,3 +744,34 @@ is asserted here. No snapshot boot adapter, prompt/transcript model, real keyboa
 console lifecycle or interactive ISO is delivered by these host component tests.
 Windows, physical qualification, full console target/regression campaigns and
 issue/milestone completion remain open. No merge.
+
+## Console screen-model checkpoint (23 October 2026)
+
+Issue #40/PR #41 now composes prompt, transcript and result rows through pure
+Assembly helpers, without a boot call site. `Test-ConsoleModel.ps1` passed17,279
+cumulative checks against an independent complete-grid/model oracle. It invokes
+actual Assembly parse/build/compose helpers, covers viewport positions through127,
+three geometries,100 seeded completions each, exact-width/LF/wrap/scroll, clear
+ordering, saturation, fresh-parse mismatch rejection, all record overlaps and
+inaccessible boundaries around six records. Synthetic4095-byte printable/LF and
+empty bodies test defensive composition bounds beyond current response templates;
+they do not prove production response provenance. No pixels change in composition.
+
+The actual Assembly renderer produced the visually inspected host preview at
+`out/console-model-tests/console-model-preview.png`. Its facts are synthetic and it
+is not a boot screenshot or actual keyboard session. Shared `command_check`
+extraction leaves response behavior unchanged; editor/grid/parser/response suites
+passed344,659/5,055/95,317/28,687 cumulative checks again. Independent design, code
+and maximum-body follow-up reviews found no actionable findings. Static maximum
+model depth is616 bytes below entry RSP (624 with incoming return address).
+Reviewers did not reproduce tests or inspect artifacts. Counts are assertions,
+not independent scenarios.
+
+Current-source reproducibility ran two builds passing20,790 static assertions
+each, with identical EFI/FAT/ISO/manifest hashes and corrupt-PE rejection. Normal
+QEMU ISO and FAT passed private paging/ownership, actual CPL3/continuation and the
+intended ring0 halt. Those images do not exercise unused console helpers. Linux
+CI now includes the model suite; no CI result is claimed. Boot facts/provenance,
+console profile/layout integration, actual IRQ idle/halt, interactive media and
+full console target/regression campaigns remain open, as do Windows and physical
+qualification. No merge, issue closure or milestone completion.

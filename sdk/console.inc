@@ -96,4 +96,18 @@ endstruc
 %if CONSOLE_FACTS_size != 128 || CONSOLE_RESPONSE_size != 4112 || CONSOLE_RESPONSE.body != 16
  %error Console response layout mismatch
 %endif
+%define MODEL_MAGIC 0x314c444f4d484f4a
+struc CONSOLE_MODEL
+ .ready: resq 1
+ .transcript_row: resq 1
+ .transcript_column: resq 1
+ .completed: resq 1
+ .command: resq 1
+ .status: resq 1
+ .json: resq 1
+ .action: resq 1
+endstruc
+%if CONSOLE_MODEL_size != 64
+ %error Console model layout mismatch
+%endif
 %endif

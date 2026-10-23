@@ -200,3 +200,89 @@ command_lookup:
 .found:
     mov eax,r8d
     ret
+
+; Shared read-only exact command-result validator. RCX pointer -> EAX0/1, EDX0.
+command_check:
+    test rcx,rcx
+    jz .bad
+    test rcx,7
+    jnz .bad
+    mov rax,rcx
+    add rax,CONSOLE_COMMAND_size-1
+    jc .bad
+    mov r9,rcx
+    mov rax,COMMAND_MAGIC
+    cmp [r9+CONSOLE_COMMAND.ready],rax
+    jne .bad
+    mov rax,[r9+CONSOLE_COMMAND.command]
+    mov rcx,[r9+CONSOLE_COMMAND.status]
+    mov rdx,[r9+CONSOLE_COMMAND.json]
+    mov r8,[r9+CONSOLE_COMMAND.action]
+    test rax,rax
+    jz .empty
+    cmp rax,8
+    jbe .implemented
+    test rdx,rdx
+    jnz .bad
+    test r8,r8
+    jnz .bad
+    cmp rax,255
+    je .unknown
+    cmp rax,17
+    ja .bad
+    cmp rcx,69
+    je .ok
+    cmp rcx,2
+    jne .bad
+    jmp .ok
+.unknown:
+    cmp rcx,127
+    je .ok
+    cmp rcx,2
+    jne .bad
+    jmp .ok
+.empty:
+    or rcx,rdx
+    or rcx,r8
+    jnz .bad
+    jmp .ok
+.implemented:
+    cmp rcx,2
+    je .error
+    test rcx,rcx
+    jnz .bad
+    cmp rdx,1
+    ja .bad
+    test rdx,rdx
+    jz .action
+    cmp rax,3
+    jb .bad
+    cmp rax,6
+    ja .bad
+.action:
+    cmp rax,7
+    je .clear
+    cmp rax,8
+    je .halt
+    test r8,r8
+    jnz .bad
+    jmp .ok
+.clear:
+    cmp r8,1
+    jne .bad
+    jmp .ok
+.halt:
+    cmp r8,2
+    jne .bad
+    jmp .ok
+.error:
+    or rdx,r8
+    jnz .bad
+.ok:
+    xor eax,eax
+    xor edx,edx
+    ret
+.bad:
+    mov eax,1
+    xor edx,edx
+    ret

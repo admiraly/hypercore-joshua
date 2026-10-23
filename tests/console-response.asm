@@ -64,8 +64,11 @@ host_response_abi:
     pop rbx
     ret
 
+%include 'kernel/console/editor.inc'
+%include 'kernel/console/command.inc'
 %include 'kernel/console/response.inc'
 section .rodata
+%include 'kernel/console/command-data.inc'
 %include 'kernel/console/response-data.inc'
 
 section .text
