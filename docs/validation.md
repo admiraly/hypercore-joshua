@@ -1153,3 +1153,34 @@ Features FAT/x2 sessions are claimed. A byte-verified local copy is available as
 `f8e7ab04a5929b4fbb77c6436dce87a4ed32d58d6670f972a72158658e7e5819`.
 The previous23a66e3 preview remains intact. This copy is the separate native
 console profile; it does not incorporate the Piper speech branch.
+
+## M0 combined source-interface audit — 23 October 2026
+
+Issue #1's technical interface review now has a crosswalk in
+interface-contract-audit.md against runtime `e1555ba` (PR #47). The audit branch
+changes documentation only: boot-contract provenance/status guidance, the new
+crosswalk and readiness/evidence links. No shipped runtime or image bytes changed.
+
+Independent source round1 found an incomplete provenance inventory: architecture,
+scheduler, user/ELF/handle, input and conditional console modules were omitted.
+The corrected statement names the transitive Assembly graph and selected-profile
+Build.ps1 input registry. No new concrete runtime/ABI defect was identified in the
+reviewed boundary paths. Earlier PE checkpoint layouts were not a finding because
+the current console section explicitly supersedes them and matches sdk/boot.inc.
+Round2 found no remaining actionable findings in the fix/crosswalk/readiness.
+Neither review was an exhaustive instruction audit or independent test run.
+
+A newly run literal include traversal found71 Assembly/SDK files across all
+conditional profiles, all represented in the build script's source path registry,
+and no incbin directive in that closure. This checks source registration, not
+selected manifest bytes, every instruction's semantics or malicious-build safety.
+A read-only vendor/model comparison established this execution host is not the
+designated Latitude7430; no unrelated host inventory was emitted or substituted.
+Git diff --check passed. Runtime tests and hashes remain the prior e1555ba evidence;
+Build/reproducibility/QEMU were not rerun for this documentation-only change.
+
+This advances the source-review evidence portion of issue #1. It is not maintainer
+signoff, M0/M1 closure or release completion. Exact reference inventory, firmware
+photos, repeated physical boots/input/halt, Windows/remote qualification and
+maintainer disposition remain open. Known emulator/general-capability limits in
+the implementation record remain unchanged. No merges or speech changes occurred.

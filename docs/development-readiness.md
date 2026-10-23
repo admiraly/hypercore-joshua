@@ -53,3 +53,7 @@ The current handle-adapter console ISO is `out/JOSHUA-Console-Handles-Test.iso`
 (with SHA256 sidecar). Its final20-command Features ISO session passes; only the
 new normal/full kernel profiles have fresh FAT/x2 runs. Do not substitute those
 for new console Features FAT/x2 sessions. The older23a66e3 preview is retained.
+
+The M0 [source-interface audit](interface-contract-audit.md) maps final combined
+interfaces to source and scoped evidence. It addresses technical review evidence,
+not maintainer signoff or the still-missing reference inventory/photos/boots.
