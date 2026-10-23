@@ -263,9 +263,23 @@ f.descriptors[1].attributes=0
 f.descriptors[1].type=7
 f.readable(f.acpi_base+4095,2,1)
 # Layout, signature and independent checksum failures clear a previous ready state.
-for offset,value,status in [(0,0,2),(15,1,2),(8,1,3),(32,1,3)]:
-    f=AcpiFixture();f.build();C.c_ubyte.from_address(f.boot.acpi+offset).value = value
+for offset,value,status in [(0,0,2),(15,1,2),(8,None,3),(32,None,3)]:
+    f=AcpiFixture();f.build()
+    field=C.c_ubyte.from_address(f.boot.acpi+offset)
+    # Checksums depend on mapped addresses: assigning a fixed byte can be a no-op.
+    field.value = field.value ^ 1 if value is None else value
     f.build(status)
+# Reproduce the former no-op deterministically, independently of host ASLR.
+f=AcpiFixture()
+for length in range(36,1025):
+    f.tables(rsdp_length=length)
+    if C.c_ubyte.from_address(f.boot.acpi+32).value == 1:
+        break
+else:
+    raise AssertionError('Could not construct extended checksum byte 1')
+f.build()
+C.c_ubyte.from_address(f.boot.acpi+32).value ^= 1
+f.build(3)
 for length in [0,35,4097,2**32-1]:
     f=AcpiFixture();C.c_uint32.from_address(f.boot.acpi+20).value=length;f.build(4)
 f=AcpiFixture();U64.from_address(f.boot.acpi+24).value=0

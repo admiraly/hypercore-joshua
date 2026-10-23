@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import struct
+from user_handles_oracle import check_handles, PROGRESS
 
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('output',type=Path)
@@ -31,6 +32,9 @@ base=tss-sections['.data'][1]-symbol('kernel_tss')
 seed={'keyboardController':base+sections['.bss'][1]+symbol('keyboard_controller'),
       'keyboardAuthority':base+sections['.bss'][1]+symbol('keyboard_authority'),
       'keyboardDecoder':base+sections['.bss'][1]+symbol('keyboard_decoder'),
+      'handleTables':base+sections['.bss'][1]+symbol('user_handle_tables'),
+      'handleCounters':base+sections['.bss'][1]+symbol('user_handle_counters'),
+      'handlesReady':base+sections['.bss'][1]+symbol('user_handles_ready'),
       'elfPlan':base+sections['.bss'][1]+symbol('user_elf_plan'),
       'processes':base+sections['.bss'][1]+symbol('user_processes'),
       'context':base+sections['.bss'][1]+symbol('user_context'),
@@ -41,6 +45,8 @@ seed={'keyboardController':base+sections['.bss'][1]+symbol('keyboard_controller'
       'kernelRoot':int(re.search(r'JOSHUA:OWNED_PAGING CR3=([0-9A-F]+)',log)[1],16)}
 if args.seed:
     print(json.dumps(seed));raise SystemExit(0)
+manifest=json.loads((args.output/'manifest.json').read_text())
+mode=manifest['userTest']
 snapshot=json.loads((args.output/f'qemu-{args.boot_media}-user-paging.json').read_text())
 assert snapshot['seed']==seed
 pages={int(key,16):value for key,value in snapshot['pages'].items()}
@@ -187,11 +193,22 @@ for index,root in enumerate(seed['roots']):
     source=elf+source_offset
     assert code[:size]==image[source:source+size] and code[size:]==bytes(4096-size)
     data=page(backing+4096)
-    assert data[1]==0x4a53485500000000|index and data[2]==1
+    initial,read_copy,full_copy=check_handles(words(seed['handleTables']+index*1056,132),
+        words(seed['handleCounters']+index*72,9),qword(seed['handlesReady']),index,mode=='HandleFull' and index==0)
+    prefix=[0]*16
+    prefix[1]=(0x4a53485500000000|index);prefix[2]=1
+    if index==0:
+        prefix[3]=base+sections['.text'][1]+symbol('user_smoke')
+        prefix[4]=context[16]
+        prefix[5]=(context[14]&~3)-32
+        if mode=='InheritedLdt':prefix[7:9]=[BASE,7]
+    prefix[6]=initial;prefix[9]=read_copy;prefix[10]=full_copy;prefix[11]=PROGRESS
+    assert data[:16]==prefix,'Private bootstrap/handle data differs from authored writes'
     data_offset,_,_,data_size,_,_=struct.unpack_from('<QQQQQQ',image,elf+128)
     expected_data=image[elf+data_offset+128:elf+data_offset+data_size]
     raw_data=struct.pack('<512Q',*page(backing+4096))
     assert raw_data[128:data_size]==expected_data and raw_data[data_size:]==bytes(4096-data_size)
 assert len(set(private_tables))==8 and seed['kernelRoot'] not in private_tables
 assert len(set(backing_frames))==12 and not set(backing_frames)&set(private_tables)
+print('PASS: QMP exact process-owned handle tables/counters, payload results and termination revocation.')
 print('PASS: QMP private roots/parents/all leaves, effective permissions/PAT/aliases, exact ledger ownership and private code/data.')

@@ -17,7 +17,7 @@ establish Latitude compatibility or a complete general-purpose operating system.
 | Fixed read-only commands and honest errors | Twenty real submissions cover help/about/status/mem/ps/devices/clear/halt, human/JSON, unknown/unavailable/usage results and case/spacing. Independent source/reference bytes constrain reporting/composition. | No storage/network/AI/general task or public capability implementation is inferred. |
 | Failure and corruption evidence | BadEditor/BadFacts/Saturation, timer/drain targets, host malformed-state tests and captured replay/mutations distinguish stops from success. Coordinated facts/JSON/grid/pixel forgery is rejected. | Targeted tests are not exhaustive corruption or malicious-firmware/host protection. |
 | Regression and reproducibility | Frozen-runtime campaigns include24 host suites,40 keyboard targets,24 TCG user profiles and fault/context/ELF/timer checks. Console listing-inclusive reproducibility and source/trace binding passed. See dated validation.md for exact source and scope. | Historical campaigns are not newly run results. Windows execution for the final PR remains unconfirmed in this record. |
-| Clearly named interactive media and instructions | `out/JOSHUA-Console-Test-23a66e3.iso` is the frozen local test copy. Current ordinary ISO bytes remain identical; README and testing.md describe commands and ISO/FAT/x2 profiles. | Local artifacts are ignored, not committed binaries. Public CI artifact availability is separate from local delivery. |
+| Clearly named interactive media and instructions | `out/JOSHUA-Console-Test-23a66e3.iso` is the frozen local test copy. That frozen preview predates the issue #46 diagnostic-handle adapter; the newer source has separate target evidence below. README/testing.md describe profiles. | Local artifacts are ignored, not committed binaries. Public CI artifact availability is separate from local delivery. |
 
 ## First development-release gates
 
@@ -40,3 +40,16 @@ Still open:
 Speech is a separate later roadmap gate. The already delivered Piper announcement
 media belongs to PR #34; it is not silently included in the console or required for
 this first interactive preview. Storage, networking, SMP and AI are also separate.
+
+Issue #46 adds an experimental checked diagnostic-handle adapter before console
+startup, with13 normal calls per process and termination revocation. Its normal/
+full-table xAPIC/x2 ISO/FAT targets,25-profile user campaign and host/regression
+evidence are recorded in validation.md. These new runtime bytes differ from the
+frozen23a66e3 preview; historical full console Features evidence must not be
+reported as newly run validation of the handle adapter. No public capability ABI,
+physical qualification or release/milestone closure follows.
+
+The current handle-adapter console ISO is `out/JOSHUA-Console-Handles-Test.iso`
+(with SHA256 sidecar). Its final20-command Features ISO session passes; only the
+new normal/full kernel profiles have fresh FAT/x2 runs. Do not substitute those
+for new console Features FAT/x2 sessions. The older23a66e3 preview is retained.

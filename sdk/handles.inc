@@ -22,3 +22,24 @@ endstruc
  %error 'Handle layout drift'
 %endif
 %endif
+
+%ifndef JOSHUA_USER_HANDLE_ADAPTER
+%define JOSHUA_USER_HANDLE_ADAPTER
+%define USER_HANDLES_READY 0x3152444c4848534a
+%define USER_HANDLE_VALUE 0x314741494448534a
+%define USER_HANDLE_PROGRESS 0x314b4f4c444e484a
+struc USER_HANDLE_COUNTERS
+ .calls: resq 1
+ .query: resq 1
+ .duplicate: resq 1
+ .close: resq 1
+ .bad_token: resq 1
+ .denied: resq 1
+ .invalid: resq 1
+ .full: resq 1
+ .revoked: resq 1
+endstruc
+%if USER_HANDLE_COUNTERS_size != 72
+ %error Handle counter layout drift
+%endif
+%endif

@@ -27,7 +27,8 @@ preempts two trusted kernel workers on separate guarded stacks and resumes the
 bootstrap context after64 deliveries, then stops the timer and clears IF. These paths are QEMU-tested; the
 new memory implementation has no physical qualification.
 A bounded experimental ring3 path now runs two embedded Assembly programs under
-private roots, with unknown-call/exit gates, contained synchronous faults and an
+private roots, with exit/unknown-call gates and experimental checked diagnostic
+handles (query, rights-attenuated duplicate and close), contained synchronous faults and an
 eight-tick watchdog. Timer/drain rejection fixtures and independent physical page walks extend its
 validation; local campaigns pass and Windows CI qualification remains open. This is not a qualified general process system.
 A strict embedded ELF64 profile now loads one RX code page and one RW/NX data/BSS
@@ -123,3 +124,9 @@ For a local QEMU check, run `./tools/Test-Console.ps1` and then add `-BootMedia 
 On Linux specify `-QemuPath /usr/bin/qemu-system-x86_64 -FirmwareDirectory .tools/firmware`.
 No physical disks are written by these commands. The separate Piper announcement
 media and instructions remain in `docs/piper-test.md` on its speech workstream.
+
+The current local diagnostic-handle console test copy is
+`out/JOSHUA-Console-Handles-Test.iso` with a `.sha256` sidecar. Its20-command
+Features ISO session passes; exact evidence and remaining Windows/physical gates
+are in docs/validation.md. The older23a66e3 copy and separate Piper ISO remain
+intact; this console image does not include the speech branch.

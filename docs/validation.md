@@ -1059,3 +1059,123 @@ table/owner, exact gate frame and nonpointer user results, exit/fault/timeout
 revocation, target positive/negative calls, ISO/FAT regression and reproducibility.
 No Windows, physical, public capabilities, resource lifetime, SMP, milestone or
 merge qualification follows from this foundation. Speech remains separate.
+
+## Experimental ring3 handle adapter — 23 October 2026
+
+Issue #46 integrates the reviewed pure policy into the existing two single-use
+private contexts. Boot assigns exact frame-owner identities/tags1/2 and grants
+only immutable diagnostic object1. Known INT80 IDs1/2/3 query, attenuate duplicate
+and close; status is in RAX and a nonpointer value/token in RDX. Other GPRs and
+permitted user flags remain unchanged. Exit0/unknown behavior, private roots,
+watchdog and timer/retirement ownership remain intact. All user_terminate paths
+revoke/check their derived table before drain windows or bootstrap publication.
+
+The two1056-byte tables, two72-byte counters and ready occupy2264 bytes of the
+existing context metadata padding. All guard/stack/PE/BSS section bounds stay
+unchanged. The fixed boot tags are not a dynamic process-incarnation allocator;
+no arbitrary resource/object authority, pointer syscall, transfer/refcount,
+public ABI, SMP or general capability qualification is claimed.
+
+Both programs execute13 calls covering query, duplicate/attenuation, rights denial,
+stale/double-close/foreign and reserved-argument errors, then leave one live token
+for termination revocation. The typed HandleFull profile additionally performs31
+successful A duplications, checking every reused slot/generation, then requires
+-24/RDX0. QMP independently derives addresses from the compiled image/listing and
+checks both complete terminal tables/counters and every authored bootstrap-prefix
+byte, including tokens/completion/scratch. Ordinary counters are
+[13,3,2,2,4,1,1,0,1]; full A is[45,3,33,2,4,1,1,1,1]. Exact terminal generations
+prove revocation rather than accepting a kernel success marker alone.
+
+Confirmed local final-source results (Linux PS7.4.6/NASM2.16.03/QEMU10.2.2/OVMF):
+
+- Normal and HandleFull, xAPIC and x2APIC, each ISO and FAT: all8 profiles pass
+  exact handle/private-paging/CPL3/B-continuation and halted-state checks. The7-run
+  media script plus the separately completed HandleFull ISO establish this count.
+- Test-UserRuntime.ps1:25 TCG profiles pass, including HandleFull and five expected
+  stops. Existing fault/watchdog, authority, pending exit/fault and bounded drain
+  fixtures remain typed outcomes, not resumed kernel failures.
+- Actual snapshot mutation runs for final normal and Full accept baseline and
+  reject101 permission/ownership/handle/data mutations each; the actual level
+  validator separately rejects49 reserved/cache-policy mutations and accepts PAT.
+- All24 host Assembly suites plus15 actual PowerShell stack-walk fixtures pass;
+  pure handle suite contributes41,585 cumulative model/ABI/guard operations.
+- Nine fault fixtures, three context profiles, two malformed-ELF targets and the
+  APIC timer suite pass. The APIC suite includes x2 ISO/FAT and missing-EOI rejection.
+- Normal, HandleFull and Console reproducibility each pass two Build.ps1 runs,
+ 20,822 static assertions per build, byte-identical media/manifest and corrupt-PE
+  rejection. Fresh fixture/normal builds also pass their static checks.
+- Console2-command ISO smoke passes real input/status/halt,30-second timer-free
+  idle, owned retirement and IF0 halt. An additional full Features session was
+  started after this record; it is not yet counted here.
+- Python compilation, workflow YAML parsing and git diff --check pass. Windows
+  CI now explicitly checks both mutation exit codes and Full reproducibility.
+
+Normal final EFI SHA256:
+`0b39c2ed5117b0c87ba250e33361ddaa9f5c6c7153ed7f11421f83da1d12f6b9`.
+Normal ISO SHA256:
+`5ffcba748ab0871f90c2c39202ae1f32857db58af9a2142dd1b36477f455b9db`.
+Full EFI SHA256:
+`fd04a9878319f4842ce9645ea0c3c246c2169ee33fdfb48d2053ece78a482dea`.
+These identify local bytes, not artifact authenticity or physical qualification.
+
+Failed invocations retained: initial NASM alignb expansion failed under pinned
+warning-as-error settings, replaced by explicit bounded padding; first ISO
+misclassified a handle call because dispatch used internal CS instead of saved
+RAX, corrected and its failed serial log preserved; the first Full build exceeded
+the single code page by320 bytes, resolved by one shared Assembly user checker.
+The final checker verifies expected status at savedRSP+112, all preserved GPRs,
+DF, restored RSP and RDX results. Earlier inline-payload success is distinct from
+final factored normal/full passes; no failed attempt is counted as a pass.
+
+Design review found a missing full-result counter; the ninth qword and actual
+exhaustion target resolved it. Implementation review observed/found dispatch and
+mutation-manifest omissions; both fixed. Subsequent source reviews found no
+remaining actionable findings, including shared checker and CI/repro contracts.
+Reviewers did not run tests or inspect generated evidence. Returning-gate deepest
+stack is280 bytes below saved-frame base (472 below entry top); revocation reaches
+344 below entry top and restores the fixed drain RSP. All fit the4-KiB reserve.
+
+No KVM reruns were made for this adapter: existing TCG SS/AC exact-vector and
+KVM/mixed-media caveats remain. Windows execution, physical Latitude inventory/
+boots/input/halt, malicious firmware/host protection, public capabilities and all
+broader milestone exits remain open. No merges or issue/milestone completion are
+inferred from these local tests. Speech remains separate. The old delivered
+23a66e3 console image remains historical; these runtime bytes are different.
+
+Final evidence response: docs/testing.md now describes configured29 profiles
+(25 TCG plus four optional KVM), without claiming new KVM runs, and101 snapshot
+mutations plus49 separate level-validator mutations. The final Console Features
+ISO session completed successfully with20 submissions, independent state/facts/
+pixel comparisons, per-key editing/history,30-second idle and physical retirement.
+It supersedes the running-status note above for this ISO invocation only; no new
+Features FAT/x2 sessions are claimed. A byte-verified local copy is available as
+`out/JOSHUA-Console-Handles-Test.iso` with SHA256 sidecar:
+`f8e7ab04a5929b4fbb77c6436dce87a4ed32d58d6670f972a72158658e7e5819`.
+The previous23a66e3 preview remains intact. This copy is the separate native
+console profile; it does not incorporate the Piper speech branch.
+
+
+## Handle-gate CI failure response — 2026-10-23
+
+PR #47 push run40011672170 on e1555ba failed the ACPI host fixture: assigning
+checksum byte1 can leave an already-1 checksum unchanged, so expected rejection
+incorrectly observes success depending on mapped pointer bytes. Corruption now
+flips bit0. A deterministic variable-length valid RSDP fixture finds checksum1,
+proves acceptance, flips it and requires checksum rejection. No runtime change.
+The local Assembly ACPI suite passes1,148 cumulative checks, followed by ten
+separate ASLR-enabled process runs at1,148 each. Python syntax/workflow YAML
+parsing and git diff --check pass.
+
+The same run's boot job reached its15-minute aggregate budget while executing
+private-paging mutations, after boot/fault/context/user/ELF checks. Its operation
+was cancelled rather than producing a complete result. The boot job budget is
+now25 minutes; individual fixture deadlines, mutation assertions and failure
+propagation are unchanged. A separate pull-request run40011680038 passed all four
+configured jobs on the prior source, but does not erase either push-run failure.
+New-head CI remains required. No new QEMU, physical qualification or milestone
+claim follows from these host fixture/workflow changes.
+
+Independent source review found no blocking findings in this response. Its
+evidence caveat is confirmed: the ten-process repeat completed with exit0, as
+did Python syntax, YAML/budget and diff checks before this commit. The reviewer
+did not independently execute those checks or inspect generated artifacts.

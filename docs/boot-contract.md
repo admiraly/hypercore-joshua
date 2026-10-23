@@ -583,11 +583,33 @@ bytes below its entry RSP through a leaf lapic_read/write, or96 through nested
 user_timer_stop/console_timer_check (including helper calls), within the bootstrap
 reserve. Normal Console contains neither forcing nor evidence-copy instructions.
 
-## Unlinked process-owned handle policy
+## Process-owned handle policy foundation checkpoint
 
-Issue #44's handle-design.md specifies pure bounded Assembly table helpers and
-host fixtures. They are not included in the boot image and do not alter the
-current exit/unknown INT80 gate or USER_CONTEXT/USER_PROCESS layouts. This is not
+At PR #45, issue #44's handle-design.md specified pure bounded Assembly helpers
+and host fixtures without a boot include or changes to the exit/unknown INT80 gate.
+Issue #46 now wires the adapter below; USER_CONTEXT/USER_PROCESS layouts remain
+unchanged. This is not
 a public handle/syscall ABI freeze. Trusted table backing, per-incarnation tag
 nonreuse and active-process provenance remain caller proof obligations; privileged
 integration, termination revocation and target tests remain separate gates.
+
+## Experimental diagnostic-handle gate
+
+handle-gate-design.md is the exact issue #46 contract. Two single-use process
+incarnations have distinct fixed nonreused tags and kernel-derived frame owners.
+Two1056-byte tables, two72-byte counter records and readiness occupy2264 bytes of
+the existing metadata padding; stack/guard/section boundaries do not move. Trusted
+boot preparation grants only immutable diagnostic object1, never a user-selected
+object or pointer. No dynamic incarnation/tag allocator is implied.
+
+After exact frame/root/active-record proof, INT80 IDs1/2/3 query, attenuate duplicate
+and close. RAX is status and RDX is the nonpointer result; every other saved GPR
+and permitted user flags are unchanged. Exit0 and unknown-call behavior retain
+their prior contracts. All user termination paths revoke/check the exact derived
+table under IF0/kernel CR3 before opening drain windows or resuming bootstrap.
+Normal timer EOI/stop/retirement ownership is unchanged. Malformed privileged
+metadata stops permanently. Returning failures preserve table authority.
+
+This bounded diagnostic interface is not a public ABI freeze, arbitrary resource
+capability system, lifetime/refcount mechanism or general hostile-program claim.
+Target evidence and remaining emulator/Windows/physical limits are in validation.md.

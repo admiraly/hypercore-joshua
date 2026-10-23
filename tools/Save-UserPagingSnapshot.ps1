@@ -37,6 +37,9 @@ function Save-UserPagingSnapshot([string]$Directory, [string]$Media, [string]$Py
     Save-SnapshotRange $seed.keyboardController 56
     Save-SnapshotRange $seed.keyboardAuthority 48
     Save-SnapshotRange $seed.keyboardDecoder 216
+    Save-SnapshotRange $seed.handleTables 2112
+    Save-SnapshotRange $seed.handleCounters 144
+    Save-SnapshotRange $seed.handlesReady 8
     Save-SnapshotRange $seed.elfPlan 64
     Save-SnapshotRange $seed.context 144
     Save-SnapshotRange $seed.builder 120

@@ -121,6 +121,11 @@ user_gate_entry:
 %endif
     cmp qword [r12+144],0
     je user_gate_entry.exit
+    cmp qword [r12+144],3
+    ja .unknown
+    call user_handle_gate
+    irq_restore
+.unknown:
     inc qword [rbx+USER_PROCESS.unknown_calls]
     mov qword [r12+144],-38
     irq_restore
@@ -228,6 +233,7 @@ user_terminate:
     mov ss,ax
     mov rsp,[rbx+USER_PROCESS.kernel_high]
     sub rsp,64                 ;32-byte caller shadow space plus private headroom
+    call user_handles_revoke
     jmp user_drain_continuation
 
 user_timer_stop:
@@ -440,6 +446,9 @@ user_smoke:
     lea rcx,[debug_newline]
     call debug_write
 %endif
+    call user_handles_prepare
+    test eax,eax
+    jnz .bad
     mov r12d,1
 .run:
     mov eax,r12d
@@ -490,7 +499,7 @@ user_smoke:
     lea rcx,[debug_newline]
     call debug_write
     mov ecx,3
-%if JOSHUA_USER_TEST != 0 && JOSHUA_USER_TEST != 18
+%if JOSHUA_USER_TEST != 0 && JOSHUA_USER_TEST != 18 && JOSHUA_USER_TEST != 26
     cmp r12d,1
     jne .expected_state
 %if JOSHUA_USER_TEST = 9

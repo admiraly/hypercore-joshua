@@ -79,11 +79,12 @@ user_payload_start:
     test eax,0x400
     jz user_payload_start.failed
     cld
+%include 'kernel/user/handle-payload.inc'
     inc qword [rdi+16]
 %if JOSHUA_USER_TEST != 0
     test qword [rdi+8],1        ; processB always executes the independent success path
     jnz user_payload_start.exit
-%if JOSHUA_USER_TEST = 18 || JOSHUA_USER_TEST = 20 || JOSHUA_USER_TEST = 21
+%if JOSHUA_USER_TEST = 18 || JOSHUA_USER_TEST = 20 || JOSHUA_USER_TEST = 21 || JOSHUA_USER_TEST = 26
     jmp user_payload_start.exit
 %endif
 %if JOSHUA_USER_TEST = 1 || JOSHUA_USER_TEST = 2
@@ -159,6 +160,8 @@ user_payload_start.failed:
     mov edi,1
     int 0x80
     ud2
+    user_handle_emit_checker
+%unmacro user_handle_emit_checker 0
 user_payload_end:
 %if user_payload_end-user_payload_start > 4096
  %error User payload exceeds one private code page
