@@ -138,7 +138,13 @@ try {
     Reject {Run-Bundle ('test-'+$id+'-outside') $root}
     $link=Join-Path $work 'redirect';$linkType='SymbolicLink';if($env:OS -eq 'Windows_NT'){$linkType='Junction'}
     New-Item -ItemType $linkType -Path $link -Target $fixture|Out-Null
-    try{Reject {Run-Bundle ('test-'+$id+'-redirect') $link}}finally{Remove-Item -LiteralPath $link -Force}
+    try{Reject {Run-Bundle ('test-'+$id+'-redirect') $link}}finally{
+        # Windows PowerShell 5.1 Remove-Item can fail on directory junctions.
+        # Remove only the link entry, never recursively traverse the fixture.
+        if($env:OS -eq 'Windows_NT'){[IO.Directory]::Delete($link)}else{Remove-Item -LiteralPath $link -Force}
+    }
+    Require (-not(Test-Path -LiteralPath $link)) 'Redirect fixture was not removed.'
+    Require ((Test-Path -LiteralPath $fixture) -and (Get-FileHash (Join-Path $fixture 'BOOTX64.EFI')).Hash -eq $before['BOOTX64.EFI']) 'Redirect cleanup changed its target.'
     if($env:OS -ne 'Windows_NT') {
         $path=Join-Path $fixture 'BOOTX64.EFI';Move-Item -LiteralPath $path -Destination ($path+'.saved')
         New-Item -ItemType SymbolicLink -Path $path -Target ($path+'.saved')|Out-Null

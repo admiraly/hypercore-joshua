@@ -1210,3 +1210,24 @@ follow-up reported no actionable findings, without independently running tests.
 Windows PowerShell 5.1/redirect semantics, physical boots and M0 signoff remain
 open. CI adds Linux tests and a Windows test/export step; only the named ZIP and
 sidecar upload after the Console job succeeds. Runtime/image bytes are unchanged.
+
+## Console bundle Windows cleanup response — 2026-10-23
+
+PR #50's Windows console job on7a80223 created and verified two bundles, then
+failed in the redirect fixture's Remove-Item cleanup with NullReferenceException.
+The Windows path now deletes only the junction entry using nonrecursive
+Directory.Delete; Linux symlink cleanup and redirect rejection stay intact.
+Added assertions require link removal and surviving fixture-directory/EFI hash.
+No exporter, runtime or image bytes change. Local Linux checks and independent
+review are recorded below; Windows execution requires a new-head CI run. This
+failure is not evidence of completed Console live sessions in that job.
+
+Linux PowerShell7.4.6 passed140 bundle/profile/hash/archive/rejection checks using
+out/handle-gate-console inputs, including unchanged copied artifact/hash checks.
+Git diff --check passed. These local results do not execute the Windows branch.
+
+Independent source review found no actionable code findings. Its documentation
+request is resolved by this note. The new target check covers the directory and
+EFI hash, not every fixture file; existing source-artifact assertions remain.
+The reviewer ran no tests/builds and did not independently reproduce140 checks.
+New-head Windows execution remains required.
