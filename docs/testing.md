@@ -52,7 +52,7 @@ Static checks prove structure, not firmware behavior. QEMU success does not prov
 Ventoy or Dell compatibility, DMA confinement, memory isolation, SMP correctness,
 or useful workload performance. Bare-metal testing must be performed by the owner.
 The checkpoint now performs a bounded physical allocate/write/free smoke check
-and then halts; it does not yet switch to owned page tables.
+then switches to verified owned page tables and halts.
 The full M0 and M1 exit criteria remain open until review and real-machine results.
 
 Firmware-menu keyboard commands, watchdog failure, invalid map-key retry, oversized
@@ -69,9 +69,10 @@ a matching, non-Secure-Boot OVMF pair. Record actual versions and hashes; this i
 separate host evidence from the pinned Windows toolchain. The test checks P6
 framebuffer bytes without System.Drawing and retains PNGs for visual inspection.
 
-The fault suite builds separate Ud2 and Gp fixtures and verifies vector, error
+The fault suite builds separate Ud2, Gp, ReadOnly, Nx and Guard fixtures and verifies vector, error
 code and exact instruction RIP, plus CR2 field formatting and halted ring-0 state.
-It does not inject page faults, NMI, double faults or damaged stacks. Firmware-menu
+The latter three inject specific write/execute/unmapped page faults after the
+owned switch. It does not inject NMI, double faults or damaged stacks. Firmware-menu
 and map-retry failures remain unqualified. Fixture images must not be distributed
 as normal boot images.
 
@@ -109,3 +110,13 @@ outcomes. Distinct integer-register sentinels check all eight firmware nonvolati
 registers around allocation/free. This does not test SMP or recovery from faults.
 Normal QEMU ISO/FAT boots also allocate, inspect and write RAM, reject wrong/double
 frees and restore counters before the FRAME_ALLOCATOR_OK marker.
+
+`tests/Test-OwnedMap.ps1` independently decodes all parents/leaves of the exact
+Assembly builder. Its 1,061 checks include identity, W^X/supervisor flags, PAT-bit
+conversion, allocation/chunk ownership, poisoned failures, physical single-page
+fallback and metadata exhaustion. Cache fixtures require no promotion across
+inherited 4-KiB leaves, plus retained/subdivided large leaves and selector equality.
+It does not execute privileged activation or the policy orchestration helper.
+Normal ISO/FAT boots and three #PF fixtures exercise those paths in QEMU, checking
+new/final CR3, CR0.WP, EFER.NXE and PCID/global-page policy. Physical compatibility,
+initial-PCID-enabled firmware and unusual PAT/MTRR layouts remain unqualified.

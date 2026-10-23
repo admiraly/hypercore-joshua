@@ -1,7 +1,8 @@
 # M2 memory ownership contract draft
 
 Status: evolving implementation contract for issue #3; map, reservation and
-frame-allocation stages are implemented. Owned paging remains proposed. Review each stage before runtime changes.
+frame-allocation and initial owned-paging stages are implemented. Lifecycle,
+isolation and broader qualification remain open. Review each stage before runtime changes.
 The 88-byte boot-info v0 definition and RDI register contract remain unchanged;
 the current loader/kernel explicitly exchange the 104-byte v1 extension.
 
@@ -73,8 +74,9 @@ page-permission or reserved-bit verifier. Firmware is still a trusted input.
 
 `paging_inventory_reserve` excludes all successful inventory frames from the
 candidate ledger. The normal boot marker records captured CR3 and table count;
-the runtime and QEMU register checks require unchanged CR3. No page-table entry
-is explicitly modified, no table is reclaimed, and inherited paging remains live.
+the runtime requires unchanged CR3 during inventory; after the later transition,
+QEMU requires the distinct owned root as final CR3. The inventory does not modify page entries or reclaim tables. The later owned
+transition leaves every inherited table frame reserved.
 A nonconforming or unreadable firmware mapping may fault; there is no recovery.
 See [the paging inventory design](paging-inventory-design.md) for assumptions.
 
@@ -106,23 +108,40 @@ firmware memory is reclaimed and CR3 remains inherited. No concurrency is suppor
 Future address-space and user-capability APIs must add their own lifetime and
 validation rules. See [the allocator design](frame-allocator-design.md).
 
-## Paging transition (M2c)
+## Initial owned paging transition (M2c)
 
-Require supported paging mode and CPU features; do not assume four-level mode,
-NX or physical width without checking. Document the accepted mode and fail safely
-on unsupported firmware state. Allocate paging frames through the ledger. Preserve
-reachable mappings for current code/data, stack, descriptor tables, boot-info/map,
-new and old page tables, framebuffer and any retained firmware/ACPI dependencies
-through the CR3 switch. No firmware calls after exit. Audit address translation;
-UEFI physical pointers are not a general future direct-map contract.
+The kernel requires four-level IA-32e/NX and constructs an inactive owned root
+from zeroed allocator-owned chunks (64 pages, falling back to one only on physical
+exhaustion/fragmentation). Whole chunks remain tracked, including unused pages.
+Failure poisons the root and halts; no partial root is activated or reclaimed.
 
-Define virtual regions and cache attributes before constructing entries. Kernel
-code is read/execute, constants read-only/NX, data and stacks read/write/NX, with no
-writable executable aliases. Enable CR0.WP and EFER.NXE only after feature checks;
-map framebuffer/device memory with reviewed cache policy. Guard pages are absent
-mappings. Never change PAT or reuse firmware mappings without accounting for aliases.
-Invalidate translations according to an explicit single-core mapping lifecycle.
-Keep old paging frames reserved until no live reference remains.
+Known readable RAM is mapped at physical identity addresses. Eligible conventional
+RAM is RW/NX; other retained RAM is RO/NX. The image uses RX text, RO/NX headers
+and relocation, RW/NX data/BSS, and an absent page below the kernel stack. Page
+zero is absent. Firmware WP/RO/XP attributes are not relaxed for image permissions.
+No user/global mappings or alternate virtual aliases are introduced. Constants
+currently stored in mutable data share its RW/NX page; a separate read-only
+constant region remains a hardening task before broader qualification.
+
+Each mapping is bounded by a policy segment and a covering inherited leaf.
+Retain/subdivide leaves only; never promote across inherited boundaries without
+an MTRR-uniformity proof. Preserve leaf PWT/PCD/PAT selectors and leave PAT/MTRRs
+unchanged, including for framebuffer. This avoids an intentional effective cache
+type transition. PAT entry zero must select WB for new parent walks, and all chunk
+pages must select the same PAT memory type through inherited/new identity leaves.
+MTRRs may override WB: no effective-WB claim is inferred from PAT alone.
+
+Software lookup proves image permissions/identity, guard/page-zero absence, every
+chunk page's writable identity/cache compatibility, and framebuffer mapping before
+activation. Enable EFER.NXE/CR0.WP, select PCID zero if needed, disable PCIDE/PGE to
+flush translations while preserving other CR4 bits, and load the new root. The
+normal QEMU test observes distinct captured/owned CR3, WP/NXE and the final screen.
+Dedicated fixtures exercise text write, NX execution and guard-read page faults.
+
+This is BSP-only bootstrap paging, not process isolation or a complete mapping
+lifecycle. Unmapping, TLB shootdowns, owned TSS/IST and recoverable user faults need
+separate contracts/tests. No inherited firmware memory is reclaimed. See the
+[owned paging design](owned-paging-design.md) for review findings and responses.
 
 ## Failures and qualification
 

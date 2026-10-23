@@ -42,10 +42,11 @@ possibly partially shut-down firmware. This avoids unsafe firmware reuse.
 Kernel entry never returns. It disables maskable interrupts, selects an owned
 64 KiB stack, clones the active firmware GDT into owned storage, appends its own
 code/data descriptors, installs that table and a 256-entry stop-only IDT, and retains the
-firmware's existing page tables. It does not free/reuse firmware memory. Exceptions
+firmware's existing page tables during reservation/allocation bring-up, then
+constructs and activates an owned root. It does not free/reuse firmware memory. Exceptions
 stop the CPU and emit a bounded serial report only on the recognized QEMU TCG
 serial path. There is not yet a
-TSS, IST stack, page-table ownership, interrupt routing, or recoverable exception
+TSS, IST stack, interrupt routing, or recoverable exception
 handling; a stop-only IDT does not constitute production fault containment.
 Retaining all original GDT selectors during the transition keeps the still-active
 firmware IDT's selectors valid until the replacement IDT is loaded. Firmware GDTs
@@ -157,8 +158,9 @@ RANGE_SET. It subtracts each table page. EAX=1 clears candidate count and invali
 the ledger; EAX=0 completes exclusion. It requires a successful inventory rather
 than treating an empty failed queue as permission to use candidates. The runtime
 checks the return at each stage. `JOSHUA:PAGING_RESERVED CR3=... TABLES=...` is
-emitted only after exclusion and a comparison against captured CR3. The QEMU test
-compares this value against the final CPU register state as well.
+emitted only after exclusion and a comparison against captured CR3. The runtime checks this inherited value before construction. The QEMU test
+subsequently requires final CR3 to match the distinct OWNED_PAGING root, not the
+inherited root recorded here.
 
 Tables are bounded to 16,384 entries in 256 KiB of BSS inside the image reservation.
 Only known readable RAM below the low canonical identity boundary is inspected.
@@ -186,5 +188,34 @@ authority. No generation-based public handle ABI is defined here.
 and alignments, check every allocated qword is zero, write/read patterns, reject
 a wrong owner, free, reject a repeated free, and verify counters restored. Only
 then emit `JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=...` and continue to the checkpoint.
-The allocator remains initialized for subsequent owned-paging work. A fault during
+The allocator remains initialized for owned-paging construction. A fault during
 clearing or failed boot self-check halts; it does not recover into usable state.
+
+## Owned root construction and activation
+
+OWNED_PAGING describes the allocator/root/table count, poison flag, physical limit,
+tracked-chunk cursor, inherited root, image/guard/framebuffer bounds, PAT snapshot
+and readiness. `owned_paging_init` takes RCX=zeroed builder, RDX=ready allocator,
+R8=physical limit (power of two, 2^32 through 2^47). EAX=0 succeeds; 1 poisons it.
+Private chunk allocation returns frames from exact paging-owner records, using
+64-page chunks or one-page fallback only for allocator physical-exhaustion status2.
+
+`owned_map_preserved`: RCX=builder, RDX=page start, R8=end, R9=permission flags
+(P/RW/NX, supervisor). It proves inherited physical identity and submits each
+subrange separately, retaining its cache selectors and inherited leaf boundary.
+The private mapper uses 2-MiB/4-KiB leaves without writable execution or replacing
+existing leaves. Any failure poisons the incomplete root. `paging_lookup` accepts
+RCX=root/RDX=address and returns RAX=raw leaf, RDX=physical translation, R8=leaf bytes
+(4KiB/2MiB/1GiB), or zeros when absent. All helpers preserve nonvolatile registers.
+
+`owned_paging_start` verifies transition mappings and whole-chunk cache compatibility,
+then enables NXE/WP, flushes PCID/global translations and loads the root. PAT/MTRRs
+are never programmed; no leaf promotion across old boundaries is allowed. The
+OWNED_PAGING marker is emitted only on successful return under the new root.
+Old table frames remain reserved. Maskable interrupts stay disabled. The guard
+is a deliberately absent page, without an IST/emergency stack or overflow recovery.
+
+ReadOnly/Nx/Guard fixture images fault after this marker: #PF errors 3/0x11/0,
+with exact expected instruction RIP and CR2 target. The NX fixture allocates and
+writes its target under the owned root. Ud2/Gp fixtures remain before memory
+bring-up. Fixture images are isolated test artifacts, not normal boot images.

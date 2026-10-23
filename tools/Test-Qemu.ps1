@@ -4,7 +4,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp')][string]$ExpectedFault = 'None'
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard')][string]$ExpectedFault = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,7 +58,9 @@ try {
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
-    if ($ExpectedFault -eq 'None') { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
+    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard')
+    if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING') }
+    if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
@@ -111,7 +113,15 @@ try {
         $vector = '0000000000000006'
         $errorCode = '0000000000000000'
         if ($ExpectedFault -eq 'Gp') { $vector = '000000000000000D'; $errorCode = '000000000000FFFC' }
-        if ($log -notmatch ('JOSHUA:FAULT VECTOR=' + $vector + ' ERROR=' + $errorCode + ' RIP=' + $expectedRip + ' CR2=[0-9A-F]{16}\r?\n')) {
+        $cr2Pattern = '[0-9A-F]{16}'
+        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard')) {
+            $vector = '000000000000000E'
+            if ($ExpectedFault -eq 'ReadOnly') { $errorCode = '0000000000000003' }
+            if ($ExpectedFault -eq 'Nx') { $errorCode = '0000000000000011' }
+            if ($log -notmatch 'JOSHUA:FIXTURE_TARGET=([0-9A-F]{16})') { throw 'Missing fixture fault target.' }
+            $cr2Pattern = $Matches[1]
+        }
+        if ($log -notmatch ('JOSHUA:FAULT VECTOR=' + $vector + ' ERROR=' + $errorCode + ' RIP=' + $expectedRip + ' CR2=' + $cr2Pattern + '\r?\n')) {
             throw ('Fault frame did not match fixture: ' + $log)
         }
     }
@@ -122,12 +132,18 @@ try {
     if ($registers -notmatch '\bHLT=1\b' -or $registers -notmatch '\bCPL=0\b') {
         throw 'Bootstrap CPU did not remain halted in ring 0.'
     }
-    if ($ExpectedFault -eq 'None') {
+    if ($ownedExpected) {
         if ($log -notmatch 'JOSHUA:PAGING_RESERVED CR3=([0-9A-F]{16}) TABLES=([0-9A-F]{16})') { throw 'Missing paging inventory diagnostics.' }
         $capturedCr3 = [Convert]::ToUInt64($Matches[1], 16)
         $tableCount = [Convert]::ToUInt64($Matches[2], 16)
         if ($tableCount -eq 0 -or $tableCount -gt 16384) { throw 'Paging inventory outside supported capacity.' }
-        if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $capturedCr3) { throw 'CR3 changed after inventory.' }
+        if ($log -notmatch 'JOSHUA:OWNED_PAGING CR3=([0-9A-F]{16})') { throw 'Missing owned paging marker.' }
+        $ownedCr3 = [Convert]::ToUInt64($Matches[1], 16)
+        if ($ownedCr3 -eq $capturedCr3) { throw 'Owned CR3 did not change.' }
+        if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $ownedCr3) { throw 'Final CR3 does not match owned root.' }
+        if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x10000) -eq 0) { throw 'CR0.WP is not enabled.' }
+        if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x800) -eq 0) { throw 'EFER.NXE is not enabled.' }
+        if ($registers -notmatch 'CR4=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x20080) -ne 0) { throw 'PCID/global pages unexpectedly enabled.' }
     }
     if ($registers -notmatch 'RFL=([0-9A-Fa-f]+)') { throw 'Cannot inspect bootstrap CPU flags.' }
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {

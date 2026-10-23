@@ -18,7 +18,7 @@ screen_title: db 'JOSHUA OS / HYPERCORE',0
 screen_subtitle: db 'ASSEMBLY NATIVE BOOT PROTOTYPE',0
 screen_exit: db 'UEFI BOOT SERVICES EXITED',0
 screen_stack: db 'OWN STACK / GDT / STOP IDT ACTIVE',0
-screen_memory: db 'MEMORY MAP CAPTURED / FIRMWARE PAGING',0
+screen_memory: db 'OWNED PAGING / W-X / NX / STACK GUARD',0
 screen_disk: db 'NO DISK WRITES / NO INSTALLER',0
 screen_limits: db 'NO SHELL / DRIVERS / AI YET',0
 screen_stop: db 'BOOT CHECKPOINT REACHED. POWER OFF TO EXIT.',0
@@ -70,8 +70,9 @@ debug_error: db ' ERROR=',0
 debug_rip: db ' RIP=',0
 debug_cr2: db ' CR2=',0
 debug_newline: db 13,10,0
-%ifdef JOSHUA_FAULT_TEST
+%if JOSHUA_FAULT_TEST
 debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
+debug_fixture_target: db 'JOSHUA:FIXTURE_TARGET=',0
 %endif
 debug_map_valid: db 'JOSHUA:MEMORY_MAP_VALID',13,10,0
 align 8
@@ -85,3 +86,6 @@ debug_table_count: db ' TABLES=',0
 align 8
 frame_allocator: times FRAME_ALLOCATOR_size db 0
 debug_frames: db 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=',0
+align 8
+owned_paging: times OWNED_PAGING_size db 0
+debug_owned: db 'JOSHUA:OWNED_PAGING CR3=',0

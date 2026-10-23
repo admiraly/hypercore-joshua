@@ -21,8 +21,12 @@ bugs. A black screen is a failed test, not proof that a driver is working. Altho
 the owner considers the Latitude disk disposable, disk erasure and installation
 are explicitly outside this implementation. Host tools write only project files.
 
-M2 and later must add owned page tables, W^X/NX, stack guards, validated pointers,
-fault diagnostics, physical frame accounting, and audited CPU mitigation policies.
+The experimental M2 path now activates owned supervisor page tables with W^X/NX,
+CR0.WP and a stack guard after frame accounting. QEMU protection fixtures do not
+establish process isolation, full pointer validation, stack-overflow recovery or
+physical qualification. Dedicated read-only constant storage, mapping lifecycle,
+TSS/IST and an audited CPU mitigation policy remain open. Other CR4 mitigations
+are preserved during the switch; PCID/global optimizations are disabled.
 M4 must introduce ring-3 isolation and authenticated handles before agents or
 other untrusted software are allowed. No performance/security equivalence claims
 against Linux can be made from this boot stub.
