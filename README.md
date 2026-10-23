@@ -79,6 +79,9 @@ for proposed ownership and paging invariants.
 
 ## Next gates
 
+See [the development-preview readiness audit](docs/development-readiness.md) for
+console acceptance evidence and the remaining Windows/reference-hardware gates.
+
 M0 remains open pending full contract review and exact NVMe/NIC/GPU inventory.
 MIT licensing is selected and the first Latitude boot is owner-confirmed.
 M1 remains open until repeated Latitude boots and failure-path evidence are
@@ -110,9 +113,10 @@ characters. The ordinary firmware diagnostic menu precedes native boot as before
 
 This is an unsigned BSP development preview with read-only diagnostics. It has no
 installer, filesystem, network, arbitrary program launcher or AI runtime. The local
-QEMU smoke exercises editing/JSON/history/cancellation,30-second timer-free idle and
-halt; broader feature/negative/regression gates are still open. Windows CI and
-physical compatibility remain unqualified. See `docs/console-design.md` and the
+QEMU Features sessions exercise commands/JSON, wrapped history and draft restoration,
+per-key navigation/boundaries,30-second timer-free idle and halt. Local rejection,
+saturation, timer/drain, independent replay and inherited regression campaigns are
+recorded in validation.md. Windows CI and physical compatibility remain unqualified. See `docs/console-design.md` and the
 current evidence in `docs/validation.md`; do not infer completed milestones.
 
 For a local QEMU check, run `./tools/Test-Console.ps1` and then add `-BootMedia Fat`.

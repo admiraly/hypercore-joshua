@@ -423,6 +423,67 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                 # The guest remains idle with no further input between the
                 # physical record capture and display capture.
                 validate_pixels(expected_images['grid'] if reference else values['grid'],(out/(tag+'-feature-'+str(index)+'.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            # Traverse a wrapped ring and restore an edited draft through actual
+            # extended scancodes. Inspect each transition, not just the final text.
+            recent=['status --json']+[text for text,_,_,_ in cases if text]
+            type_text('draft')
+            key('left')
+            assert editor_text(snapshot('draft-left-once')['editor'])==('draft',4),'first Left exact cursor'
+            key('left')
+            draft=snapshot('draft-before-history')
+            assert editor_text(draft['editor'])==('draft',3),'draft cursor before browsing'
+            for position in range(1,9):
+                key('up')
+                browsed=snapshot('history-wrap-up-'+str(position))
+                text=recent[-position]
+                assert editor_text(browsed['editor'])==(text,len(text)),'exact wrapped history order'
+                assert struct.unpack_from('<3Q',browsed['editor'],24)==(8,len(recent)%8,position),'wrapped ring metadata'
+            key('up')
+            oldest=snapshot('history-oldest-boundary')
+            assert oldest['editor']==browsed['editor'],'Up at oldest is an exact no-op'
+            key('left')
+            moved=snapshot('history-cursor-left')
+            assert editor_text(moved['editor'])==(recent[-8],len(recent[-8])-1),'Left moves inside oldest history'
+            assert struct.unpack_from('<Q',moved['editor'],40)[0]==8,'cursor movement keeps browsing'
+            for position in range(7,-1,-1):
+                key('down')
+                restored=snapshot('history-wrap-down-'+str(position))
+                expected=(recent[-position],len(recent[-position])) if position else ('draft',3)
+                assert editor_text(restored['editor'])==expected,'Down order and exact draft restoration'
+                assert struct.unpack_from('<Q',restored['editor'],40)[0]==position,'Down browse position'
+            key('down')
+            assert snapshot('history-live-boundary')['editor']==restored['editor'],'Down in draft is an exact no-op'
+            type_text('X')
+            assert editor_text(snapshot('insert-at-draft-cursor')['editor'])==('draXft',4),'insert at restored cursor'
+            key('right')
+            assert editor_text(snapshot('draft-right-once')['editor'])==('draXft',5),'Right exact cursor'
+            key('delete')
+            assert editor_text(snapshot('draft-delete')['editor'])==('draXf',5),'Delete removes trailing t'
+            key('backspace')
+            assert editor_text(snapshot('right-delete-backspace')['editor'])==('draX',4),'Backspace removes trailing f'
+            key('home')
+            start_boundary=snapshot('draft-home')
+            assert editor_text(start_boundary['editor'])==('draX',0),'Home exact cursor'
+            key('left')
+            assert snapshot('left-start-boundary')['editor']==start_boundary['editor'],'Left at start is an exact no-op'
+            key('backspace')
+            assert snapshot('backspace-start-boundary')['editor']==start_boundary['editor'],'Backspace at start is an exact no-op'
+            key('right')
+            assert editor_text(snapshot('start-right')['editor'])==('draX',1),'Right from start'
+            type_text('z')
+            assert editor_text(snapshot('insert-z')['editor'])==('dzraX',2),'insert at exact cursor'
+            key('end')
+            end_boundary=snapshot('draft-end')
+            assert editor_text(end_boundary['editor'])==('dzraX',5),'End exact cursor'
+            key('right')
+            assert snapshot('right-end-boundary')['editor']==end_boundary['editor'],'Right at end is an exact no-op'
+            key('delete')
+            navigation=snapshot('delete-end-boundary')
+            assert navigation['editor']==end_boundary['editor'],'Delete at end is an exact no-op'
+            qmp('screendump',filename=str(out/(tag+'-navigation.ppm')))
+            validate_pixels(expected_images['grid'] if reference else navigation['grid'],(out/(tag+'-navigation.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            key('c','ctrl')
+            assert editor_text(snapshot('navigation-cancel')['editor'])==('',0),'cancel restored/edited draft'
             # Capacity, viewport and navigation use the same actual key path.
             capacity_text='a'+'b'*125+'c'
             type_text(capacity_text)

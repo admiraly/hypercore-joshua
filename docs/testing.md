@@ -415,7 +415,7 @@ reproved allocator/ACPI data or malicious-firmware protection.
 
 `python tests/test_console_live_mutations.py out/console` replays the completed
 Features ISO session; add `--boot-media fat` for FAT or use `out/console-x2` for its
-ISO. Each current Features profile passes488 cumulative baseline/event/mutation checks.
+ISO. Each current Features profile passes561 cumulative baseline/event/mutation checks.
 It requires the published20-command independent summary and reconstructs facts
 from frozen pre-submit sources, not diagnostic expected-state JSON. Actual Enter
 make/break separation gives an exact predicted interrupt increment. The CPU/LAPIC/
@@ -428,3 +428,10 @@ the older self-consistency predicate and must fail the independent reference. No
 synthetic pixels or responses are substituted into the actual QEMU success campaign.
 CI uploads the listing and captures and runs replay for ISO/FAT/x2APIC with immediate
 native-exit checks. Windows execution and physical qualification remain separate.
+
+The Features path also traverses all eight wrapped history slots, checks oldest/live
+Up/Down no-ops, preserves browsing during cursor movement and restores an edited
+draft at its saved cursor. Each Left/Right/Home/End/Delete/Backspace transition is
+captured separately, including exact whole-editor no-ops at line boundaries. It
+still submits20 commands; the larger replay count includes these added events and
+checkpoints, not additional independent corruption scenarios.

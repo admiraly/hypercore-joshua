@@ -990,3 +990,31 @@ manifest were byte-compared with the separate reproducibility output. Ordinary I
 remains byte-identical to frozen23a66e3. Source reviews found no findings, with
 assumptions retained; one stale pending-status documentation P3 was corrected.
 Reviewers did not run tests or inspect artifacts. No milestone/issue closure or merge.
+
+### Real-key navigation and development-readiness audit
+
+The issue40 audit identified a live-test gap despite host coverage: wrapped history,
+draft cursor restoration and Left/Right extended-key behavior. Features now traverses
+all eight slots in exact order, verifies history/live boundary no-ops against complete
+editor bytes, moves a cursor without detaching browsing, restores `draft` at cursor3,
+and checks every subsequent insertion/navigation/deletion step separately with distinct
+bytes. The final navigation prompt also receives independent visible-pixel comparison.
+There are still20 command submissions.
+
+Final expanded ordinary ISO/FAT/x2APIC ISO and Saturation ISO runs passed, including
+30-second idle and physical halt retirement. Ordinary profiles passed561 cumulative
+replay/source/state/mutation checks each; the count grew through events/checkpoints,
+not new independent corruption scenarios. Pixel24 and readiness255 checks passed.
+An earlier expanded run passed before the final per-key assertions; it is not used
+instead of the final four reruns. Source review found no blocking findings, noted
+possible grouped-key compensation, then cleared the intermediate assertions.
+Reviewers inspected source only and did not reproduce results/artifacts. A minor
+stale README qualification sentence was corrected to distinguish completed local
+campaigns from the remaining Windows/physical gates.
+
+README/roadmap now link development-readiness.md, which maps console acceptance to
+local evidence and keeps Windows, exact reference inventory, repeated physical boots,
+failure-path qualification, milestone exits and maintainer decisions open. No source
+or image runtime changes occurred; the ordinary ISO still matches frozen23a66e3.
+Earlier runtime regression/reproducibility records remain inherited, not newly run
+results for this host-only slice. No release/milestone/issue completion or merge.
