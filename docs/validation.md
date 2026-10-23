@@ -1210,3 +1210,39 @@ follow-up reported no actionable findings, without independently running tests.
 Windows PowerShell 5.1/redirect semantics, physical boots and M0 signoff remain
 open. CI adds Linux tests and a Windows test/export step; only the named ZIP and
 sidecar upload after the Console job succeeds. Runtime/image bytes are unchanged.
+
+
+## Current handle-adapter Console final media — 2026-10-23
+
+Issue #46 follow-up closes the previously explicit current-image Console Features
+FAT/x2 gap. No source or runtime bytes changed. All five artifacts copied from
+`out/handle-gate-console` into separate `out/handle-console-final-fat` and
+`out/handle-console-final-x2` directories match the original manifest sizes and
+SHA256 values (case-normalized hex comparison). An initial ad-hoc case-sensitive
+hex comparison failed on hash letter case; all ten normalized comparisons passed.
+The actual live oracle also checks artifact provenance before launching.
+
+Both actual Linux PowerShell/QEMU invocations exited0:
+
+```powershell
+./tools/Test-Console.ps1 -Features -OutputDirectory out/handle-console-final-fat -QemuPath /usr/bin/qemu-system-x86_64 -FirmwareDirectory .tools/firmware -BootMedia Fat
+./tools/Test-Console.ps1 -Features -OutputDirectory out/handle-console-final-x2 -QemuPath /usr/bin/qemu-system-x86_64 -FirmwareDirectory .tools/firmware -CpuModel qemu64,+x2apic
+```
+
+Each final summary records20 commands, Features=true, fixture=None, independent
+live oracle=true and30-second timer-free idle. Complete state/transcript/source
+facts and pixels, real PS2 editing/history/JSON, owned IRQ checks and actual
+controller/route/LAPIC retirement to CPL0/IF0/HLT passed before clean QEMU exit.
+This uses the unchanged Console ISO SHA256
+`f8e7ab04a5929b4fbb77c6436dce87a4ed32d58d6670f972a72158658e7e5819`.
+The earlier current-image ISO pass remains separate evidence; these are two new
+sessions, not reruns of every negative fixture or a new full regression campaign.
+
+Shared authored font content, trusted host/build/event-trace provenance and facts
+reporting versus underlying-subsystem proof limits remain unchanged. Windows
+execution, reference Latitude input/halt/boots, maintainer signoff and broader
+milestone exits remain open. No physical machine, disk or firmware was changed.
+
+Independent source review found no actionable documentation contradictions in this
+two-file evidence update. The reviewer used supplied run results and did not
+execute tests, inspect captures or independently verify artifact hashes.
