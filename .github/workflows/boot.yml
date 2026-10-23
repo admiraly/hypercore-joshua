@@ -131,6 +131,9 @@ jobs:
       - name: Validate exact keyboard IRQ return frames
         shell: pwsh
         run: ./tests/Test-KeyboardFrame.ps1
+      - name: Validate bounded console editor
+        shell: pwsh
+        run: ./tests/Test-ConsoleEditor.ps1
   keyboard:
     runs-on: windows-latest
     timeout-minutes: 15

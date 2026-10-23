@@ -663,3 +663,24 @@ armed fixture stage2 from window phase1, and the final8,373 mutation count from
 historical counts. Windows CI and physical Latitude/input qualification remain open.
 No issue/milestone completion, full input-stack/shell claim or merge follows. Issue
 #40 owns the next native WOPR/Joshua console; speech branches remain unchanged.
+
+## Console editor checkpoint (23 October 2026)
+
+Issue #40, `feature/console-shell`, based on `32a0bbe`: the reviewed pure
+Assembly editor is host-tested but has no boot call site. The independent model
+and actual Assembly ABI harness passed **344,659 cumulative checks**, including
+all 65,536 input tokens, 20,000 seeded mixed events, fixed-buffer guard pages,
+corruption rejection, history, submitted-buffer lifetime and counter saturation.
+This count includes repeated state/result assertions, not independent scenarios.
+Independent read-only source review found no actionable findings and did not
+reproduce the test run. The prior three editor design findings were resolved
+before implementation (layout/invariants, no-op/browsing semantics, result ABI).
+
+`tools/Build.ps1` passed all 20,790 static media assertions;
+`tests/Test-Reproducibility.ps1` produced identical EFI/FAT/ISO/manifest hashes
+and rejected the corrupt PE. Normal `tools/Test-Qemu.ps1` ISO and `-BootMedia Fat`
+both passed with private-root/ownership evidence and the intended halted ring0
+checkpoint. These image runs exercise the existing boot path, not the unused
+editor. Linux CI includes the new editor suite but has not yet reported results.
+No interactive console, renderer, parser, IRQ lifecycle, Windows or physical
+qualification is established by this checkpoint. No merge or milestone completion.
