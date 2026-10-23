@@ -1,11 +1,18 @@
 # Early boot and Assembly contract v0
 
-Status: proposed internal contract, not a frozen public syscall or application ABI.
+Status: evolving internal contracts, not a frozen public syscall/application ABI.
+This document retains staged checkpoint descriptions; later named sections
+explicitly supersede earlier layouts. The current boundary/evidence crosswalk is
+[interface-contract-audit.md](interface-contract-audit.md), which is a source audit,
+not maintainer signoff or physical qualification.
 
 ## Runtime provenance and executable format
 
-All shipped instructions originate in `boot/uefi.asm`,
-`kernel/arch/x86_64/entry.inc` and `kernel/mm/*.inc`. NASM emits PE32+ directly, with separate RX code,
+All shipped instructions originate in `boot/uefi.asm` and its transitive Assembly
+include graph under `kernel/arch/x86_64`, `kernel/mm`, `kernel/sched`, `kernel/user`,
+`kernel/input` and, for the Console profile, `kernel/console`. `sdk/*.inc` supplies
+shared layouts/constants/macros. `tools/Build.ps1` registers the source inputs for
+the selected profile. NASM emits PE32+ directly, with separate RX code,
 RW data/BSS, and read-only constant/relocation sections. No imported libraries, third-party
 bootloader, generated C startup, or host-language interpreter is shipped.
 Position-independent RIP-relative code needs no pointer fixups; an ABSOLUTE-only
