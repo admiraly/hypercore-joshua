@@ -6,7 +6,7 @@ Status: proposed internal contract, not a frozen public syscall or application A
 
 All shipped instructions originate in `boot/uefi.asm`,
 `kernel/arch/x86_64/entry.inc` and `kernel/mm/*.inc`. NASM emits PE32+ directly, with separate RX code,
-RW data/BSS, and read-only relocation sections. No imported libraries, third-party
+RW data/BSS, and read-only constant/relocation sections. No imported libraries, third-party
 bootloader, generated C startup, or host-language interpreter is shipped.
 Position-independent RIP-relative code needs no pointer fixups; an ABSOLUTE-only
 base relocation block keeps the image relocatable. Its preferred base is zero.
@@ -41,16 +41,16 @@ possibly partially shut-down firmware. This avoids unsafe firmware reuse.
 
 Kernel entry never returns. It disables maskable interrupts, selects an owned
 64 KiB stack, clones the active firmware GDT into owned storage, appends its own
-code/data descriptors, installs that table and a 256-entry stop-only IDT, and retains the
+code/data/TSS descriptors, loads the owned task register and a 256-entry stop-only
+IDT with guarded emergency stacks, and retains the
 firmware's existing page tables during reservation/allocation bring-up, then
 constructs and activates an owned root. It does not free/reuse firmware memory. Exceptions
 stop the CPU and emit a bounded serial report only on the recognized QEMU TCG
-serial path. There is not yet a
-TSS, IST stack, interrupt routing, or recoverable exception
-handling; a stop-only IDT does not constitute production fault containment.
+serial path. Interrupt routing and recoverable exception handling remain absent;
+stop-only IST diagnostics do not constitute production fault containment.
 Retaining all original GDT selectors during the transition keeps the still-active
 firmware IDT's selectors valid until the replacement IDT is loaded. Firmware GDTs
-without room for two appended descriptors, or with a partial entry, stop safely.
+without room for 32 appended descriptor bytes, or with a partial entry, stop safely.
 
 Before interactive diagnostics, the firmware watchdog is disabled. Failure to
 disable it aborts the application rather than silently allowing a timed reset.
@@ -86,17 +86,18 @@ are not assigned stable numeric IDs here.
 
 All 256 IDT gates target fixed-stride Assembly stubs. CPU exception vectors
 8, 10–14, 17, 21, 29 and 30 already push an error code; other entries synthesize
-zero. Stubs push the vector, yielding vector/error/RIP/CS/RFLAGS at RSP. The common
-non-returning path captures vector, error, RIP and CR2 before resetting the stack,
+zero. Stubs push the vector, yielding vector/error/RIP/CS/RFLAGS/oldRSP/oldSS at RSP. The common
+non-returning path captures vector, error, RIP, CR2 and stack evidence while staying
+on the selected IST stack,
 then emits `JOSHUA:KERNEL_FAULT` and a `JOSHUA:FAULT` line with fixed-width hex
 fields and halts with maskable interrupts disabled. It never attempts IRET.
 Software invariant failures still use the generic marker, without a CPU frame.
 CR2 is meaningful as a fault address only for #PF. No firmware calls are used.
 
 This is not a safe arbitrary software-INT ABI: do not issue INT to error-code
-exception vectors. No TSS/IST or separate emergency stack exists. Corrupted stacks,
-nested faults and faults before replacement-IDT installation may prevent reporting;
-NMI/double-fault resilience is not claimed. Physical machines still do not touch
+exception vectors. Four distinct IST stacks have lower unmapped guards. Same-IST
+reentry, bad emergency stacks and faults before replacement-IDT installation may
+prevent reporting; arbitrary nesting/NMI/machine-check resilience is not claimed. Physical machines still do not touch
 legacy UART ports.
 
 `Build.ps1 -FaultTest Ud2` and `-FaultTest Gp` produce explicitly identified test
@@ -213,7 +214,8 @@ then enables NXE/WP, flushes PCID/global translations and loads the root. PAT/MT
 are never programmed; no leaf promotion across old boundaries is allowed. The
 OWNED_PAGING marker is emitted only on successful return under the new root.
 Old table frames remain reserved. Maskable interrupts stay disabled. The guard
-is a deliberately absent page, without an IST/emergency stack or overflow recovery.
+and four emergency-stack guards are deliberately absent pages; stop-only reporting
+is not stack-overflow recovery.
 
 ReadOnly/Nx/Guard fixture images fault after this marker: #PF errors 3/0x11/0,
 with exact expected instruction RIP and CR2 target. The NX fixture allocates and
@@ -249,3 +251,33 @@ A/D updates are accepted. No frame or VA is reusable before those invalidations.
 This contract is BSP-only and must change before enabling interrupts or SMP.
 `JOSHUA:MAPPING_LIFECYCLE_OK` follows actual high-half write/read/release/reallocation
 and zeroing checks, restores allocator accounting, and leaves every arena leaf absent.
+
+
+## Owned TSS and guarded exception stacks
+
+The GDT constructor validates a nonzero multiple-of-eight original size no greater
+than 65,504 before copying; 32 appended bytes contain owned code/data and a 16-byte
+available 64-bit TSS descriptor. Limit103 and base identify the aligned 104-byte
+TSS wholly inside writable data. After LTR, STR must match the owned selector and
+memory descriptor type must be busy (0x8b). Only then is the owned IDT loaded.
+QEMU TR evidence confirms selector/base/limit; its cached attributes may display
+available type, so the busy check uses descriptor memory in the runtime.
+
+RSP0 points to kernel_stack_top. IST1/2/3/4 point to separate 16-KiB double-fault,
+NMI, machine-check and ordinary exception stacks. All other TSS fields are zero
+except I/O bitmap offset104 (beyond limit). Future user entry must also force
+IOPL0; user I/O enforcement is not tested here. Vectors8/2/18 use IST1/2/3;
+all remaining stop gates use IST4. Each stack has a distinct lower 4-KiB guard;
+the owned mapping proof checks all five guards including the normal stack guard.
+
+The common handler captures frame RSP and interrupted RSP before aligning below
+that intact IST frame and reserving shadow space. FAULT_STACK reports FRAME,
+OLD_RSP and IST after the unchanged fault line. StackFault sets normal RSP to the
+main guard upper boundary and reads zero; #PF/error0 must use IST4 and retain the
+expected old RSP. DoubleFault makes IST4 point into its guard, then reads zero;
+failed #PF delivery must produce #DF/error0 on IST1. Saved #DF RIP is not required
+to identify a restart instruction; guard CR2 is profile evidence only.
+
+No handler returns. Same-IST nesting can overwrite earlier frames; independent
+stacks do not establish general reentrancy, NMI/MC recovery, early-transition
+containment or physical qualification. See exception-stacks-design.md.

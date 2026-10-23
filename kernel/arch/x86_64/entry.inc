@@ -5,29 +5,48 @@ kernel_entry:
     and rsp,-16
     mov r12,rdi
     sgdt [firmware_gdtr]
-    movzx ecx,word [firmware_gdtr]
-    inc ecx
-    cmp ecx,65520
-    ja kernel_fault
-    test ecx,7
+    ; Runtime addresses avoid initialized pointer relocations.
+    lea rax,[kernel_stack_guard]
+    mov [stack_guards],rax
+    lea rax,[double_fault_guard]
+    mov [stack_guards+8],rax
+    lea rax,[nmi_guard]
+    mov [stack_guards+16],rax
+    lea rax,[machine_check_guard]
+    mov [stack_guards+24],rax
+    lea rax,[exception_guard]
+    mov [stack_guards+32],rax
+    lea rax,[double_fault_top]
+    mov [ist_tops],rax
+    lea rax,[nmi_top]
+    mov [ist_tops+8],rax
+    lea rax,[machine_check_top]
+    mov [ist_tops+16],rax
+    lea rax,[exception_top]
+    mov [ist_tops+24],rax
+    sub rsp,32
+    lea rcx,[kernel_tss]
+    lea rdx,[kernel_stack_top]
+    lea r8,[ist_tops]
+    call descriptor_tss_init
+    lea rcx,[kernel_gdt]
+    mov rdx,[firmware_gdtr+2]
+    movzx r8d,word [firmware_gdtr]
+    inc r8d
+    lea r9,[kernel_tss]
+    call descriptor_gdt_build
+    test eax,eax
     jnz kernel_fault
-    mov r8d,ecx
-    mov rsi,[firmware_gdtr+2]
-    lea rdi,[kernel_gdt]
-    rep movsb
-    mov rax,0x00af9b000000ffff
-    stosq
-    mov rax,0x00cf93000000ffff
-    stosq
-    mov [kernel_code_selector],r8w
-    lea eax,[r8+8]
-    mov [kernel_data_selector],ax
-    lea eax,[r8+15]
-    mov [kernel_gdtr],ax
+    mov [kernel_code_selector],dx
+    mov [kernel_data_selector],r8w
+    mov [kernel_tss_selector],r9w
+    mov [kernel_gdtr],r10w
     lea rax,[kernel_gdt]
     mov [kernel_gdtr+2],rax
+    add rsp,32
     lgdt [kernel_gdtr]
-    push r8
+    movzx eax,word [kernel_code_selector]
+    push rax
     lea rax,[.segments]
     push rax
     retfq
@@ -39,30 +58,57 @@ kernel_entry:
     xor eax,eax
     mov fs,ax
     mov gs,ax
-    lea rdi,[kernel_idt]
-    lea rax,[exception_stubs]
-    mov ecx,256
-.gate:
-    mov [rdi],ax
-    mov dx,[kernel_code_selector]
-    mov [rdi+2],dx
-    mov byte [rdi+4],0
-    mov byte [rdi+5],0x8e
-    mov rdx,rax
-    shr rdx,16
-    mov [rdi+6],dx
-    shr rdx,16
-    mov [rdi+8],edx
-    mov dword [rdi+12],0
-    add rdi,16
-    add rax,16
-    dec ecx
-    jnz .gate
+    mov ax,[kernel_tss_selector]
+    ltr ax
+    str ax
+    cmp ax,[kernel_tss_selector]
+    jne kernel_fault
+    movzx eax,ax
+    lea rdx,[kernel_gdt]
+    cmp byte [rdx+rax+5],0x8b
+    jne kernel_fault
+    sub rsp,32
+    lea rcx,[kernel_idt]
+    lea rdx,[exception_stubs]
+    movzx r8d,word [kernel_code_selector]
+    call descriptor_idt_build
+    add rsp,32
     lea rax,[kernel_idt]
     mov [kernel_idtr+2],rax
     lidt [kernel_idtr]
     sub rsp,32
     call serial_configure
+    lea rcx,[debug_tss]
+    call debug_write
+    movzx ecx,word [kernel_tss_selector]
+    call debug_hex
+    lea rcx,[debug_base]
+    call debug_write
+    lea rcx,[kernel_tss]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    xor ebx,ebx
+    lea rsi,[ist_tops]
+.stack_marker:
+    lea rcx,[debug_ist]
+    call debug_write
+    lea rcx,[rbx+1]
+    call debug_hex
+    lea rcx,[debug_start]
+    call debug_write
+    mov rcx,[rsi+rbx*8]
+    sub rcx,16384
+    call debug_hex
+    lea rcx,[debug_end]
+    call debug_write
+    mov rcx,[rsi+rbx*8]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    inc ebx
+    cmp ebx,4
+    jb .stack_marker
     lea rcx,[debug_exit]
     call debug_write
     mov rax,BOOT_MAGIC
@@ -223,6 +269,9 @@ fault_test_instruction:
     mov byte [rdx],0xc3
     mov r14,rdx
     mov r15,rdx
+%elif JOSHUA_FAULT_TEST >= 8
+    xor r14d,r14d
+    lea r15,[owned_fault_instruction]
 %elif JOSHUA_FAULT_TEST = 7
     mov r14,MAPPING_ARENA_BASE
     lea r15,[owned_fault_instruction]
@@ -248,8 +297,22 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+%if JOSHUA_FAULT_TEST = 8
+    lea rcx,[debug_fixture_old_rsp]
+    call debug_write
+    lea rcx,[kernel_stack_guard+4096]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    lea rsp,[kernel_stack_guard+4096]
+%elif JOSHUA_FAULT_TEST = 9
+    lea rax,[exception_guard+4096]
+    mov [kernel_tss+60],rax
+%endif
 owned_fault_instruction:
-%if JOSHUA_FAULT_TEST = 4
+%if JOSHUA_FAULT_TEST >= 8
+    mov rax,[r14]
+%elif JOSHUA_FAULT_TEST = 4
     call r14
 %elif JOSHUA_FAULT_TEST = 7
     mov rax,[r14]
@@ -338,7 +401,8 @@ exception_stop:
     mov r13,[rsp+8]
     mov r14,[rsp+16]
     mov r15,cr2
-    lea rsp,[kernel_stack_top]
+    mov rbp,rsp
+    mov rbx,[rsp+40]
     and rsp,-16
     sub rsp,32
     lea rcx,[debug_fault]
@@ -358,6 +422,32 @@ exception_stop:
     lea rcx,[debug_cr2]
     call debug_write
     mov rcx,r15
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    lea rcx,[debug_fault_stack]
+    call debug_write
+    mov rcx,rbp
+    call debug_hex
+    lea rcx,[debug_old_rsp]
+    call debug_write
+    mov rcx,rbx
+    call debug_hex
+    lea rcx,[debug_ist_index]
+    call debug_write
+    mov ecx,4
+    cmp r12,8
+    jne .not_df
+    mov ecx,1
+.not_df:
+    cmp r12,2
+    jne .not_nmi
+    mov ecx,2
+.not_nmi:
+    cmp r12,18
+    jne .stack_report
+    mov ecx,3
+.stack_report:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write

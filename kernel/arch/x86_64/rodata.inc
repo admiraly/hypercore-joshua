@@ -68,3 +68,14 @@ debug_table_count: db ' TABLES=',0
 debug_frames: db 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=',0
 debug_owned: db 'JOSHUA:OWNED_PAGING CR3=',0
 debug_lifecycle: db 'JOSHUA:MAPPING_LIFECYCLE_OK',13,10,0
+debug_tss: db 'JOSHUA:TSS_READY SELECTOR=',0
+debug_ist: db 'JOSHUA:IST INDEX=',0
+debug_start: db ' START=',0
+debug_end: db ' END=',0
+debug_fault_stack: db 'JOSHUA:FAULT_STACK FRAME=',0
+debug_old_rsp: db ' OLD_RSP=',0
+debug_ist_index: db ' IST=',0
+debug_base: db ' BASE=',0
+%if JOSHUA_FAULT_TEST
+debug_fixture_old_rsp: db 'JOSHUA:FIXTURE_OLD_RSP=',0
+%endif

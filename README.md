@@ -10,7 +10,7 @@ not a usable operating system.
 The unsigned x86-64 UEFI application is authored entirely in NASM Assembly. It
 provides firmware diagnostics, captures the graphics framebuffer and memory map,
 exits boot services, and enters an embedded HyperCore stub with its own stack,
-GDT, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
+GDT/TSS, guarded emergency stacks, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
 It validates the final memory map and records conservative memory candidates
 excluding the loaded image, page zero, framebuffer and inventoried active paging
 structures. A bounded physical frame allocator tracks exact ownership, zeroes

@@ -56,7 +56,7 @@ endstruc
 %define PE_DATA_RVA 0x5000
 %define PE_RODATA_RVA 0x6000
 %define PE_BSS_RVA 0x7000
-%define PE_BSS_SIZE 0xba000
+%define PE_BSS_SIZE 0xce000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192

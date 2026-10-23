@@ -251,3 +251,38 @@ No table reclamation, general virtual manager, cross-core shootdown, user isolat
 fault recovery, physical qualification or performance claim follows. Low identity
 aliases and old firmware reservations remain. Windows execution is left to CI for
 this revision. M2 remains incomplete; this is the initial bounded lifecycle stage.
+
+## Owned TSS and guarded emergency stacks — 23 October 2026
+
+Issue #24 appends an owned 64-bit TSS descriptor to the preserved firmware GDT,
+loads/verifies TR before the owned IDT, and assigns separate DF/NMI/MC/ordinary IST
+stacks. Four new lower guards join the normal stack guard. The owned mapping proof
+checks all five guards and image permissions; boot-info layouts are unchanged.
+Stop handlers stay below the hardware IST frame and log frame/interrupted RSP.
+
+Actually run on Linux PowerShell 7.4.6, native NASM 2.16.03, QEMU 10.2.2 and the
+same OVMF profile as prior memory validation:
+
+- Build and two-build reproducibility passed all 20,718 media assertions, identical
+  EFI/FAT/ISO/manifest hashes and corrupted-PE rejection.
+- Normal ISO/FAT boots passed TR selector/base/limit and four distinct stack-bound
+  checks, memory/lifecycle checkpoints and framebuffer checks. The runtime checks
+  the descriptor's busy type after LTR; QEMU's cached TR attributes display avl.
+- All nine fault fixtures passed. Ordinary normalized frames landed at IST4 top-56.
+  StackFault reported exact #PF/error0/RIP/CR2 and interrupted RSP despite a normal
+  stack at its guard boundary. DoubleFault reported vector8/error0 on IST1, with
+  CR2 in the deliberately invalid ordinary-stack guard. Saved #DF RIP was logged
+  without a restart assertion. Every run halted ring0 with IF clear.
+- 1,470 host descriptor/TSS/gate/guard checks passed, including GDT rejection before
+  writes, maximum size, full-width TSS base, reserved bytes, all gates, randomized
+  guard boundaries and eight integer nonvolatile sentinels across all four helpers.
+- Regression suites passed: 24 map, 6,425 reservation, 250 inventory, 6,297 allocator,
+  1,061 owned-map and 6,249 lifecycle checks.
+- Independent design and implementation reviews found no actionable findings.
+  Reviews were source-only and did not independently reproduce reported tests.
+
+These are controlled QEMU/host results. No NMI or machine-check injection, arbitrary
+nesting/reentrancy, early-transition fault containment, recovery, process isolation,
+SMP or physical qualification is established. IF remains clear. The memory exit
+audit keeps M2 open, and keyboard/shell functionality remains future work. Windows
+execution for this revision is left to CI; no merge was performed.

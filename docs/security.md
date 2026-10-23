@@ -25,8 +25,10 @@ The experimental M2 path now activates owned supervisor page tables with W^X/NX,
 CR0.WP and a stack guard after frame accounting. QEMU protection fixtures do not
 establish process isolation, full pointer validation, stack-overflow recovery or
 physical qualification. Immutable assets use dedicated RO/NX storage. Local BSP
-mapping retirement now invalidates before physical free. SMP shootdowns,
-TSS/IST and an audited CPU mitigation policy remain open. Other CR4 mitigations
+mapping retirement now invalidates before physical free. Owned TSS/guarded IST
+stacks support controlled stop-only exception reporting; arbitrary nesting and
+recovery remain unqualified. SMP shootdowns and an audited CPU mitigation policy
+remain open. Other CR4 mitigations
 are preserved during the switch; PCID/global optimizations are disabled.
 M4 must introduce ring-3 isolation and authenticated handles before agents or
 other untrusted software are allowed. No performance/security equivalence claims
