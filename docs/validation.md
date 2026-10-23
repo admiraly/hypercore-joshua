@@ -1231,3 +1231,18 @@ request is resolved by this note. The new target check covers the directory and
 EFI hash, not every fixture file; existing source-artifact assertions remain.
 The reviewer ran no tests/builds and did not independently reproduce140 checks.
 New-head Windows execution remains required.
+
+
+## Console bundle inherited CI budget response — 2026-10-23
+
+PR #50 on690f36f passed memory-map, keyboard and Console jobs in both runs,
+confirming the Windows junction cleanup response under the configured tests.
+Both boot jobs were cancelled at their15-minute aggregate limit during private
+paging mutations. The branch still carried the pre-818a898 host workflow/tests.
+Apply the exact previously reviewed PR #47 delta:25-minute aggregate boot budget
+and guaranteed XOR ACPI checksum corruption with checksum1 regression. Individual
+test deadlines/assertions remain unchanged. The ACPI test source is byte-identical
+to818a898; local suite passes1,148 checks, workflow YAML/budget and diff checks pass.
+No runtime or media bytes change; previous PR #47 review and passing remote rerun
+justify reuse but do not establish PR #50's new-head CI result. New CI is pending.
+No physical qualification, milestone completion or merge is claimed.
