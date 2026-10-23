@@ -34,10 +34,16 @@ jobs:
         run: ./tests/Test-ContextSwitch.ps1
       - name: Validate bounded CPL3 exits, faults and watchdog
         run: ./tests/Test-UserRuntime.ps1
+      - name: Check full handle fixture reproducibility
+        run: ./tests/Test-Reproducibility.ps1 -UserTest HandleFull -OutputDirectory out/user-handlefull-repro
       - name: Reject malformed embedded ELF before private allocation
         run: ./tests/Test-ElfRuntime.ps1
       - name: Reject corrupted private paging snapshots
-        run: python ./tests/test_user_paging_mutations.py out/user-none
+        run: |
+          python ./tests/test_user_paging_mutations.py out/user-none
+          if ($LASTEXITCODE -ne 0) { throw 'Private paging/handle mutations failed.' }
+          python ./tests/test_user_paging_mutations.py out/user-handlefull
+          if ($LASTEXITCODE -ne 0) { throw 'Full handle mutations failed.' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

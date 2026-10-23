@@ -53,6 +53,16 @@ flip('ELF BSS zero',backing[1]+4096+256,1)
 flip('B private sentinel',backing[1]+4096+8,1)
 change('B private progress',backing[1]+4096+16,0)
 flip('terminal metadata differs from captured result',seed['processes']+6*8,1)
+flip('handle adapter readiness',seed['handlesReady'],1)
+for index in range(2):
+    table=seed['handleTables']+index*1056
+    counters=seed['handleCounters']+index*72
+    for offset,label in [(0,'magic'),(8,'owner'),(16,'tag'),(24,'reserved')]:
+        flip(f'handle{index} {label}',table+offset,1)
+    for offset,label in [(32,'live residue'),(40,'generation'),(48,'object'),(56,'rights'),(32+31*32+8,'last generation')]:
+        flip(f'handle{index} {label}',table+offset,1)
+    for offset in range(9):flip(f'handle{index} counter{offset}',counters+offset*8,1)
+    for offset in [48,72,80,88,96]:flip(f'handle{index} private field{offset}',backing[index]+4096+offset,1)
 change('allocator count overflow',seed['allocator']+24,4097)
 count=word(original,seed['allocator']+24)
 paging_done=False
@@ -80,7 +90,7 @@ flip('read-only data identity alias',kernel_leaf(backing[0]+4096),2)
 script=Path(__file__).with_name('test_user_paging.py').resolve()
 with tempfile.TemporaryDirectory(prefix='paging-oracle-',dir=output.parent) as folder:
     target=Path(folder)
-    for file in ['BOOTX64.EFI','boot.lst',f'qemu-{media}-serial.log']:shutil.copyfile(output/file,target/file)
+    for file in ['BOOTX64.EFI','boot.lst','manifest.json',f'qemu-{media}-serial.log']:shutil.copyfile(output/file,target/file)
     def run(snapshot):
         (target/name).write_text(json.dumps(snapshot))
         return subprocess.run([sys.executable,str(script),str(target),'--boot-media',media],capture_output=True,text=True)

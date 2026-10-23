@@ -72,7 +72,7 @@ for index,result in enumerate(results,1):
 a,b=results
 assert b['STATE']==3 and b['VECTOR']==0 and b['ERROR']==0 and b['RIP']==0
 assert b['TICKS']<8 and b['EOIS']<=b['TICKS']+1
-if mode in ['None','PendingExit']:
+if mode in ['None','PendingExit','HandleFull']:
     assert a['STATE']==3 and a['VECTOR']==0 and a['RIP']==0
 elif mode=='Spin':
     assert (a['STATE'],a['TICKS'],a['EOIS'])==(5,8,8)

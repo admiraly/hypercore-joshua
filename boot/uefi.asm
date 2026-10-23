@@ -3,6 +3,7 @@ default rel
 %include 'sdk/boot.inc'
 %include 'sdk/context.inc'
 %include 'sdk/user.inc'
+%include 'sdk/handles.inc'
 %include 'sdk/elf.inc'
 %include 'sdk/keyboard.inc'
 %include 'sdk/console.inc'
@@ -646,6 +647,8 @@ stop_cpu:
 %include 'kernel/user/machine.inc'
 %include 'kernel/user/frame.inc'
 %include 'kernel/user/retire.inc'
+%include 'kernel/user/handles.inc'
+%include 'kernel/user/handle-start.inc'
 %include 'kernel/user/start.inc'
 %include 'kernel/user/fixtures.inc'
 %include 'kernel/input/decoder.inc'
@@ -812,6 +815,10 @@ keyboard_saved_high: resd 1
 keyboard_window: resb KEYBOARD_WINDOW_size
 keyboard_return_flags: resq 1
 keyboard_fixture: resb KEYBOARD_FIXTURE_size
+resb (8-(($-$$) % 8)) % 8
+user_handle_tables: resb USER_PROCESS_COUNT*HANDLE_TABLE_size
+user_handle_counters: resb USER_PROCESS_COUNT*USER_HANDLE_COUNTERS_size
+user_handles_ready: resq 1
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384

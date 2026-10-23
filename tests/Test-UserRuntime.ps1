@@ -7,7 +7,7 @@ if ($NasmPath) { $buildOptions.NasmPath = $NasmPath }
 $qemuOptions = @{}
 if ($QemuPath) { $qemuOptions.QemuPath = $QemuPath }
 if ($FirmwareDirectory) { $qemuOptions.FirmwareDirectory = $FirmwareDirectory }
-$modes = @('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Np','FarTransfer','BadReturn','Ud2','PendingExit','PendingFault','InheritedLdt')
+$modes = @('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Np','FarTransfer','BadReturn','Ud2','PendingExit','PendingFault','InheritedLdt','HandleFull')
 if ($IncludeKvm) { $modes += @('AlignmentKvm','StackKvm','SyscallKvm','SysenterKvm') }
 foreach ($mode in $modes) {
     $output = Join-Path $root ('out/user-' + $mode.ToLowerInvariant())

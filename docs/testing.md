@@ -206,7 +206,7 @@ leaves. Effective stack writability requires RW at every traversed level.
 ## Draft ring3 transition campaign (issue #32)
 
 `Test-Qemu.ps1` now requires host Python3 for the exact user-result oracle on normal
-boots. `tests/Test-UserRuntime.ps1` builds24 separate TCG profiles (including five expected-stop cases) with immutable
+boots. `tests/Test-UserRuntime.ps1` builds25 separate TCG profiles (including five expected-stop cases) with immutable
 fixture identity in each manifest, then verifies actual CPL3/roots, precise fault
 vector/error/RIP/applicable CR2, watchdog8/8 and independent B continuation.
 It uses isolated `out/user-*` folders, including when Build's UserTest is used alone.
@@ -225,14 +225,16 @@ PendingExit/PendingFault force actual IRR pending under IF0 and require drain EO
 plus B progress. DrainExhaust/KernelTimer require bounded stop before EOI. The
 InheritedCode/LiveSelector rejection, InheritedLdt #GP(4) and KernelFault #UD stop
 fixtures exercise descriptor and saved-CS authority. With four Intel KVM profiles,
-the full campaign has28 profiles; TCG's two mismatching SS/AC cases are excluded.
+the configured full campaign has29 profiles (25 TCG plus four optional KVM);
+this is composition, not a claim of new KVM runs. TCG's two mismatching SS/AC
+cases remain excluded.
 
 Normal boots capture physical memory after QMP stop into
 `qemu-<media>-user-paging.json`. `tests/test_user_paging.py` independently checks
 private roots/permissions/cache selectors, complete paging-allocation aliases,
 exact backing ownership, code bytes, padding and terminal metadata. Run
 `python3 tests/test_user_paging_mutations.py out/user-none` after the campaign;
-Windows uses `python`. It requires the baseline to pass, then rejects54 corrupted
+Windows uses `python`. It requires the baseline to pass, then rejects101 corrupted
 snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
 code. These counts describe mutations, not hardware qualification. CI runs the
 same mutation suite. Source review closed parent-cache/reserved-bit findings.
@@ -438,7 +440,7 @@ checkpoints, not additional independent corruption scenarios.
 
 ## Process-owned handle policy foundation
 
-`./tests/Test-Handles.ps1` assembles the currently unlinked pure policy in
+`./tests/Test-Handles.ps1` assembles the pure policy in
 kernel/user/handles.inc and runs a Linux host oracle. The1056-byte table, rights,
 40-bit generations, unique16-bit process-incarnation tag and internal ABI are
 frozen for this slice in handle-design.md. No public syscall ABI is frozen.
@@ -451,7 +453,30 @@ boundaries do not represent a trillion actual close/reuse cycles. Every call che
 eight integer nonvolatile sentinels and complete output/table bytes; guarded tables
 touch inaccessible lower/upper page boundaries in separate passes.
 
-These helpers have no boot include or privileged call site. Host execution does
+At PR #45 these helpers had no boot call site. Issue #46 separately integrates
+the gate described in handle-gate-design.md. Host execution alone does
 not establish CPL3 syscall behavior, active-process provenance, a nonreuse tag
 allocator, resource lifetime, Windows/physical correctness or general capabilities.
-Those remain mandatory before a separately reviewed gate integration.
+Those require the separate privileged integration evidence, not these host fixtures.
+
+### Experimental handle gate targets
+
+Normal payloads execute13 checked calls per process before the existing user
+fixture: query, attenuated duplication, rights denial, stale/double-close/foreign
+rejection and reserved-argument precedence. One live copy remains for termination
+revocation. The new `-UserTest HandleFull` profile (mode26) fills all32 slots in A,
+checks each lowest-free/generation token and requires-24 on the next duplicate;
+B still runs independently. It is included in the25-profile TCG campaign.
+
+Save-UserPagingSnapshot.ps1 captures the complete compiled table/counter records;
+test_user_paging.py derives their addresses from the listing/image and checks
+exact full records plus all authored bootstrap-prefix bytes. The shared oracle
+requires ordinary counters[13,3,2,2,4,1,1,0,1], or A's full-profile
+[45,3,33,2,4,1,1,1,1], and exact post-revocation generations. The mutation driver
+requires a passing captured baseline before corrupting readiness, table metadata,
+live residue, generations, object/rights, every result counter and private tokens/
+completion/scratch. It also retains prior private paging/ownership mutations.
+
+`./tests/Test-Reproducibility.ps1 -UserTest HandleFull` checks two independent full
+fixture builds. These target checks do not freeze a public ABI, prove object
+resource lifetime or replace the documented physical/Windows qualification gates.

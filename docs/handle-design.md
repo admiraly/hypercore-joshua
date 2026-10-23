@@ -1,9 +1,10 @@
 # Bounded process-owned handle authority
 
 Issue #44. This is an internal foundation contract, not a frozen public ABI or
-CPL3 delivery claim. The specification requires kernel-checked handles; current
-INT80 implements only exit and unknown-call rejection. The first implementation
-slice is pure Assembly policy with host fixtures, before privileged integration.
+CPL3 delivery claim. The specification requires kernel-checked handles. At the
+PR #45 foundation checkpoint, INT80 implemented only exit and unknown rejection;
+that slice tested pure Assembly policy before privileged integration. The current
+issue #46 adapter is specified separately in handle-gate-design.md.
 No storage, network, device, pointer transfer or dynamic object lifetime exists.
 
 ## Authority and lifetime
