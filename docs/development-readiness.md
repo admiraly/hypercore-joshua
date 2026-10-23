@@ -40,3 +40,7 @@ Still open:
 Speech is a separate later roadmap gate. The already delivered Piper announcement
 media belongs to PR #34; it is not silently included in the console or required for
 this first interactive preview. Storage, networking, SMP and AI are also separate.
+
+The next inventory step is the host-only [reference evidence workflow](reference-evidence.md).
+It creates an unverified inventory and ISO-bound NotRun template; actual reference
+capture, repeated physical boots and console outcomes remain open.

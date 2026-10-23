@@ -1018,3 +1018,22 @@ failure-path qualification, milestone exits and maintainer decisions open. No so
 or image runtime changes occurred; the ordinary ISO still matches frozen23a66e3.
 Earlier runtime regression/reproducibility records remain inherited, not newly run
 results for this host-only slice. No release/milestone/issue completion or merge.
+
+## Reference evidence tooling — 23 October 2026
+
+Issue #42 adds host-only Windows CIM projection and an ISO-bound manual trial
+record. Linux PowerShell7.4.6 passed45 synthetic projection/privacy/hash-binding
+checks; PowerShell parser checks and workflow YAML parsing passed. These tests
+exercise fabricated inventory and a five-byte synthetic ISO, not boot media or
+physical hardware. The Windows5.1 provider smoke is wired in scoped CI but has
+not run locally. No real Latitude inventory, cold boot, input or halt result was
+collected; every generated trial begins NotRun/Unknown with qualification
+NotEstablished. No runtime/image changes occurred, so earlier runtime build,
+reproducibility and QEMU records remain inherited rather than newly run here.
+
+Independent source review found unrestricted output/network paths and nested
+writer leaf objects could bypass the privacy boundary. The response constrains
+output below ignored out/reference-evidence, rejects network/reparse paths, and
+validates scalar/array leaves and missing-evidence values before serialization.
+Eight added Linux rejection checks passed, including nested private objects and
+symlink redirects. Windows mapped-drive/junction execution remains unverified.

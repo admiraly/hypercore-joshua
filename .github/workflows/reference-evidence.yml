@@ -1,0 +1,17 @@
+name: Reference evidence tooling
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - shell: pwsh
+        run: ./tests/Test-ReferenceEvidence.ps1
+  windows-provider:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - shell: powershell
+        run: ./tests/Test-ReferenceEvidence.ps1 -CollectHost
