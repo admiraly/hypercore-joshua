@@ -57,3 +57,8 @@ for new console Features FAT/x2 sessions. The older23a66e3 preview is retained.
 The M0 [source-interface audit](interface-contract-audit.md) maps final combined
 interfaces to source and scoped evidence. It addresses technical review evidence,
 not maintainer signoff or the still-missing reference inventory/photos/boots.
+
+The host-only [Console bundle exporter](console-test-bundle.md) packages the
+verified normal Console ISO, original manifest, license, checksums and manual
+trial instructions. Trial records start NotRun/Unknown. Packaging is separate
+from Windows execution, physical qualification and maintainer signoff.

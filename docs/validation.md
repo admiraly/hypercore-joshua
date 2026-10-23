@@ -1184,3 +1184,29 @@ signoff, M0/M1 closure or release completion. Exact reference inventory, firmwar
 photos, repeated physical boots/input/halt, Windows/remote qualification and
 maintainer disposition remain open. Known emulator/general-capability limits in
 the implementation record remain unchanged. No merges or speech changes occurred.
+
+
+## Console test bundle — 2026-10-23
+
+Issue #49 adds host-only packaging of existing normal Console artifacts. Linux
+PowerShell 7.4.6 passed 138 bundle/profile/hash/archive/rejection checks with a
+fresh Console build, then passed the same 138 checks against the existing
+`out/handle-gate-console` inputs after the final source fixes. The exporter runs
+the existing PE and boot-image validators with explicit EFI paths; final export
+passed 20,822 static assertions. No new QEMU or physical trial is claimed.
+
+The local final bundle is
+`out/console-test-bundles/console-handles-e1555ba/JOSHUA-Console-Test.zip`.
+ZIP SHA256: `687c26f73df972cf89f55f0f0da3364d6bf748a5499d678c6ef8ef6dfb51c025`.
+The packaged ISO retains the previously tested Console SHA256
+`f8e7ab04a5929b4fbb77c6436dce87a4ed32d58d6670f972a72158658e7e5819`.
+Same-host repeated payload/ZIP identity and extracted membership/hash checks pass;
+this is not a cross-platform ZIP determinism claim. Trial defaults remain
+NotRun/Unknown, with no inventory, private logs, tools or voice assets bundled.
+
+Independent source review found an array-valued stage schema acceptance bug;
+explicit string validation and both array rejection fixtures resolve it. The
+follow-up reported no actionable findings, without independently running tests.
+Windows PowerShell 5.1/redirect semantics, physical boots and M0 signoff remain
+open. CI adds Linux tests and a Windows test/export step; only the named ZIP and
+sidecar upload after the Console job succeeds. Runtime/image bytes are unchanged.
