@@ -61,7 +61,7 @@ memory_image_check:
 
 ; RCX validated boot-info v1, RDX RANGE_SET, R8D validated physical width.
 ; Construct candidates only: they must NOT be allocated until active paging
-; structures are inventoried and reserved in the following stage.
+; structures are inventoried and excluded by paging_inventory_build/reserve.
 memory_candidates_build:
     push rbx
     push rsi

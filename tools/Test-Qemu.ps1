@@ -58,7 +58,7 @@ try {
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
-    if ($ExpectedFault -eq 'None') { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
+    if ($ExpectedFault -eq 'None') { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
@@ -120,6 +120,13 @@ try {
     [IO.File]::WriteAllText((Join-Path $OutputDirectory ($tag + '-registers.log')), $registers)
     if ($registers -notmatch '\bHLT=1\b' -or $registers -notmatch '\bCPL=0\b') {
         throw 'Bootstrap CPU did not remain halted in ring 0.'
+    }
+    if ($ExpectedFault -eq 'None') {
+        if ($log -notmatch 'JOSHUA:PAGING_RESERVED CR3=([0-9A-F]{16}) TABLES=([0-9A-F]{16})') { throw 'Missing paging inventory diagnostics.' }
+        $capturedCr3 = [Convert]::ToUInt64($Matches[1], 16)
+        $tableCount = [Convert]::ToUInt64($Matches[2], 16)
+        if ($tableCount -eq 0 -or $tableCount -gt 16384) { throw 'Paging inventory outside supported capacity.' }
+        if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $capturedCr3) { throw 'CR3 changed after inventory.' }
     }
     if ($registers -notmatch 'RFL=([0-9A-Fa-f]+)') { throw 'Cannot inspect bootstrap CPU flags.' }
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {

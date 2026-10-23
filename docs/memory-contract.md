@@ -30,8 +30,10 @@ page zero, the complete image and the rounded framebuffer. All candidate metadat
 is BSS inside the reserved image. Split capacity failure invalidates the whole
 result and stops boot. `range_reserve` is shared with a native host oracle suite.
 
-Candidates remain non-allocatable: active page-table inventory and reservation
-are not yet implemented. No memory is reclaimed and M2a remains incomplete.
+After candidate construction, the kernel inventories the active four-level
+paging structures and subtracts every discovered table frame. No allocator is
+implemented and no firmware memory is reclaimed. The resulting ledger is input
+to the next ownership-tracking stage, not evidence of process isolation.
 
 ## Input validation and range accounting (M2a)
 
@@ -54,9 +56,27 @@ inventoried. Absence from the usable ledger means unavailable, never implicitly 
 
 Boot-info v0 does not carry image allocation bounds; the versioned v1 extension
 now supplies those bounds through Loaded Image protocol. Do not silently grow v0.
-A complete reservation list remains to be established.
+The active paging inventory now supplies explicit table-frame exclusions.
 Capture CR3 and inventory the active page-table hierarchy without freeing it.
 Do not reclaim ACPI or firmware memory based solely on ExitBootServices success.
+
+## Implemented active paging exclusions
+
+`paging_inventory_build` traverses present entries using a bounded 16,384-frame
+breadth-first queue in reserved image BSS. Four-level IA-32e mode is required;
+LA57 is rejected. Every table target must be nonzero, page aligned, within CPU
+physical width and below 2^47, and wholly covered by a known RAM descriptor
+without read-protection. It relies on retained UEFI identity mappings. It handles
+PT leaves, supported 1-GiB/2-MiB leaves and same-level sharing; cross-level cycles,
+malformed targets and capacity exhaustion fail closed. This is not a complete
+page-permission or reserved-bit verifier. Firmware is still a trusted input.
+
+`paging_inventory_reserve` excludes all successful inventory frames from the
+candidate ledger. The normal boot marker records captured CR3 and table count;
+the runtime and QEMU register checks require unchanged CR3. No page-table entry
+is explicitly modified, no table is reclaimed, and inherited paging remains live.
+A nonconforming or unreadable firmware mapping may fault; there is no recovery.
+See [the paging inventory design](paging-inventory-design.md) for assumptions.
 
 ## Frame allocator (M2b)
 

@@ -77,3 +77,8 @@ debug_map_valid: db 'JOSHUA:MEMORY_MAP_VALID',13,10,0
 align 8
 candidate_set: dq 0,0,CANDIDATE_CAPACITY
 debug_candidates: db 'JOSHUA:MEMORY_CANDIDATES_READY COUNT=',0
+align 8
+paging_inventory: dq 0,0,PAGING_TABLE_CAPACITY,0,0,0,0,0,0
+paging_cr3: dq 0
+debug_paging: db 'JOSHUA:PAGING_RESERVED CR3=',0
+debug_table_count: db ' TABLES=',0
