@@ -140,16 +140,16 @@ Dedicated fixtures exercise text/constant writes, NX execution, guard reads and
 released-arena reads.
 
 This is BSP-only paging, not process isolation or a general mapping lifecycle.
-Local bounded unmapping is described below; cross-core TLB shootdowns, owned TSS/IST
+Local bounded unmapping is described below; cross-core TLB shootdowns
 and recoverable user faults need separate contracts/tests. No inherited firmware memory is reclaimed. See the
 [owned paging design](owned-paging-design.md) for review findings and responses.
 
 ## Failures and qualification
 
 Stop on invalid input or incomplete transition; do not continue with guessed
-ownership. Exception reporting remains best-effort and nonrecovering until TSS/IST
-and independent fault stacks exist. A stack/page-table failure can prevent any
-report. CR2 identifies an address only for page faults; otherwise it is historical.
+ownership. Owned TSS/IST stacks permit controlled damaged-normal-stack and double-
+fault reporting. Reporting remains best-effort and nonrecovering; same-IST nesting,
+bad emergency stacks or page-table failure can still prevent any report. CR2 identifies an address only for page faults; otherwise it is historical.
 
 Required evidence: malformed-map fixtures, reserved-range exclusion, exhaustion
 and ownership stress, observed CR3 switch, inspected page permissions and hardware

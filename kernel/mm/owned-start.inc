@@ -199,17 +199,13 @@ owned_paging_start:
     test qword [rsi+32],0x21000
     jnz .bad
     mov r15,PTE_NX|3
-    cmp rbx,[r12+OWNED_PAGING.guard]
-    jb .before_guard
-    je .skip_guard
-    jmp .bound
-.before_guard:
-    cmp rax,[r12+OWNED_PAGING.guard]
-    jbe .bound
-    mov rax,[r12+OWNED_PAGING.guard]
-    jmp .bound
-.skip_guard:
-    add rbx,4096
+    mov r8,rax
+    lea rcx,[stack_guards]
+    mov rdx,rbx
+    call stack_guard_boundary
+    test r9d,r9d
+    jz .bound
+    mov rbx,rax
     jmp .segment
 .reloc:
     mov rax,[r12+OWNED_PAGING.image_end]
@@ -265,8 +261,12 @@ owned_paging_start:
 .verify_image:
     cmp rbx,[r12+OWNED_PAGING.image_end]
     jae .verify_zero
-    cmp rbx,[r12+OWNED_PAGING.guard]
-    je .verify_absent
+    lea rcx,[stack_guards]
+    mov rdx,rbx
+    lea r8,[rbx+4096]
+    call stack_guard_boundary
+    test r9d,r9d
+    jnz .verify_absent
     mov r8,PTE_NX|1
     mov rax,[r12+OWNED_PAGING.image_base]
     add rax,4096

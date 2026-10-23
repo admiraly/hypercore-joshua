@@ -4,7 +4,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped')][string]$ExpectedFault = 'None'
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$ExpectedFault = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,10 +55,24 @@ try {
         $reader = New-Object IO.StreamReader($stream)
         try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
         if ($log -match 'JOSHUA:BOOT_FAILURE' -or ($ExpectedFault -eq 'None' -and $log -match 'JOSHUA:KERNEL_FAULT')) { throw ('Boot failed: ' + $log) }
-    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
+    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT_STACK[^\r\n]+ IST=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
+    if ($log -notmatch 'JOSHUA:TSS_READY SELECTOR=([0-9A-F]{16}) BASE=([0-9A-F]{16})') { throw 'Missing owned TSS evidence.' }
+    $tssSelector = [Convert]::ToUInt64($Matches[1], 16)
+    $tssBase = [Convert]::ToUInt64($Matches[2], 16)
+    $stackBounds = @{}
+    $previousEnd = [uint64]0
+    foreach ($stack in [regex]::Matches($log, 'JOSHUA:IST INDEX=([0-9A-F]{16}) START=([0-9A-F]{16}) END=([0-9A-F]{16})')) {
+        $index = [Convert]::ToUInt64($stack.Groups[1].Value, 16)
+        $start = [Convert]::ToUInt64($stack.Groups[2].Value, 16)
+        $end = [Convert]::ToUInt64($stack.Groups[3].Value, 16)
+        if ($index -ne ($stackBounds.Count + 1) -or $end - $start -ne 16384 -or ($start % 4096) -ne 0 -or $start -lt ($previousEnd + 4096)) { throw 'Invalid/distinct IST bounds.' }
+        $stackBounds[$index] = @($start, $end)
+        $previousEnd = $end
+    }
+    if ($stackBounds.Count -ne 4) { throw 'Expected four owned IST stacks.' }
     $previousIndex = -1
-    $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
-    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped')
+    $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
+    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK') }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
@@ -114,21 +128,40 @@ try {
         $errorCode = '0000000000000000'
         if ($ExpectedFault -eq 'Gp') { $vector = '000000000000000D'; $errorCode = '000000000000FFFC' }
         $cr2Pattern = '[0-9A-F]{16}'
-        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped')) {
+        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')) {
             $vector = '000000000000000E'
             if ($ExpectedFault -in @('ReadOnly', 'ConstWrite')) { $errorCode = '0000000000000003' }
             if ($ExpectedFault -eq 'Nx') { $errorCode = '0000000000000011' }
             if ($log -notmatch 'JOSHUA:FIXTURE_TARGET=([0-9A-F]{16})') { throw 'Missing fixture fault target.' }
             $cr2Pattern = $Matches[1]
         }
+        if ($ExpectedFault -eq 'DoubleFault') { $vector = '0000000000000008'; $expectedRip = '[0-9A-F]{16}'; $cr2Pattern = '[0-9A-F]{16}' }
         if ($log -notmatch ('JOSHUA:FAULT VECTOR=' + $vector + ' ERROR=' + $errorCode + ' RIP=' + $expectedRip + ' CR2=' + $cr2Pattern + '\r?\n')) {
             throw ('Fault frame did not match fixture: ' + $log)
+        }
+    }
+    if ($ExpectedFault -ne 'None') {
+        if ($log -notmatch 'JOSHUA:FAULT_STACK FRAME=([0-9A-F]{16}) OLD_RSP=([0-9A-F]{16}) IST=([0-9A-F]{16})') { throw 'Missing exception stack evidence.' }
+        $frame = [Convert]::ToUInt64($Matches[1], 16)
+        $oldRsp = [Convert]::ToUInt64($Matches[2], 16)
+        $ist = [Convert]::ToUInt64($Matches[3], 16)
+        $expectedIst = [uint64]4
+        if ($ExpectedFault -eq 'DoubleFault') { $expectedIst = [uint64]1 }
+        if ($ist -ne $expectedIst -or $frame -ne ($stackBounds[$ist][1] - 56)) { throw 'Fault frame did not use selected IST.' }
+        if ($ExpectedFault -eq 'StackFault') {
+            if ($log -notmatch 'JOSHUA:FIXTURE_OLD_RSP=([0-9A-F]{16})' -or $oldRsp -ne [Convert]::ToUInt64($Matches[1], 16)) { throw 'Interrupted unusable RSP not preserved.' }
+        }
+        if ($ExpectedFault -eq 'DoubleFault') {
+            if ($log -notmatch 'JOSHUA:FAULT VECTOR=[^\r\n]+ CR2=([0-9A-F]{16})') { throw 'Missing double-fault CR2.' }
+            $dfCr2 = [Convert]::ToUInt64($Matches[1], 16)
+            if ($dfCr2 -lt ($stackBounds[[uint64]4][0] - 4096) -or $dfCr2 -ge $stackBounds[[uint64]4][0]) { throw 'Double fault did not follow failed ordinary-stack delivery.' }
         }
     }
     $cpus = @(Invoke-Qmp 'query-cpus-fast')
     if ($cpus.Count -ne 2) { throw 'Expected two configured CPUs.' }
     $registers = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = 'info registers' }
     [IO.File]::WriteAllText((Join-Path $OutputDirectory ($tag + '-registers.log')), $registers)
+    if ($registers -notmatch 'TR =([0-9A-Fa-f]+) ([0-9A-Fa-f]+) 00000067' -or [Convert]::ToUInt64($Matches[1], 16) -ne $tssSelector -or [Convert]::ToUInt64($Matches[2], 16) -ne $tssBase) { throw 'TR does not reference the owned TSS.' }
     if ($registers -notmatch '\bHLT=1\b' -or $registers -notmatch '\bCPL=0\b') {
         throw 'Bootstrap CPU did not remain halted in ring 0.'
     }

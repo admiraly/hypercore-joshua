@@ -571,6 +571,7 @@ stop_cpu:
     jmp .halt
 
 %include 'kernel/arch/x86_64/entry.inc'
+%include 'kernel/arch/x86_64/descriptors.inc'
 %include 'kernel/mm/map.inc'
 %include 'kernel/mm/ranges.inc'
 %include 'kernel/mm/candidates.inc'
@@ -664,6 +665,18 @@ kernel_gdt: resb 65536
 candidate_ranges: resb CANDIDATE_CAPACITY*16
 paging_tables: resb PAGING_TABLE_CAPACITY*16
 frame_records: resb FRAME_ALLOCATION_CAPACITY*24
+double_fault_guard: resb 4096
+double_fault_stack: resb 16384
+double_fault_top:
+nmi_guard: resb 4096
+nmi_stack: resb 16384
+nmi_top:
+machine_check_guard: resb 4096
+machine_check_stack: resb 16384
+machine_check_top:
+exception_guard: resb 4096
+exception_stack: resb 16384
+exception_top:
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

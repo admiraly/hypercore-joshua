@@ -69,11 +69,12 @@ a matching, non-Secure-Boot OVMF pair. Record actual versions and hashes; this i
 separate host evidence from the pinned Windows toolchain. The test checks P6
 framebuffer bytes without System.Drawing and retains PNGs for visual inspection.
 
-The fault suite builds separate Ud2, Gp, ReadOnly, Nx and Guard fixtures and verifies vector, error
-code and exact instruction RIP, plus CR2 field formatting and halted ring-0 state.
-The latter three inject specific write/execute/unmapped page faults after the
-owned switch. It does not inject NMI, double faults or damaged stacks. Firmware-menu
-and map-retry failures remain unqualified. Fixture images must not be distributed
+The fault suite builds nine separate fixture images. Normal exceptions require
+exact vector/error/RIP/CR2 and selected IST4 frame evidence. StackFault additionally
+requires the interrupted unusable RSP. DoubleFault requires vector8/error0 and
+IST1 delivery after an ordinary-stack guard fault; saved RIP is logged without a
+restart assertion. No NMI/MC injection or general nesting/recovery is qualified.
+Firmware-menu and map-retry failures remain unqualified. Fixture images must not be distributed
 as normal boot images.
 
 `tests/Test-MemoryMap.ps1` is a Linux host-only native ELF harness using NASM
@@ -139,3 +140,12 @@ Normal ISO/FAT smoke writes real high-half memory, rejects invalid frees, releas
 reallocates zeroed memory and restores accounting. Unmapped reads a released VA and
 requires #PF/error 0 with exact RIP and high-half CR2. This is local BSP evidence;
 no SMP shootdowns, hardware qualification or user isolation are established.
+
+`tests/Test-Descriptors.ps1` runs the exact Assembly GDT/TSS/IDT constructors and
+five-guard boundary helper through host wrappers. Its 1,470 cases check malformed
+GDT sizes before destination writes, maximum size, full-width TSS base/limit/type,
+reserved TSS bytes/I/O offset, all 256 gate targets/selectors/IST indices, randomized
+guard decisions and eight integer nonvolatile sentinels across all four helpers.
+It does not execute LTR or exception delivery: normal ISO/FAT and nine fault QEMU
+runs cover target evidence. TR cached attributes are not used as the memory busy-bit
+check; the kernel checks the descriptor after LTR before announcing TSS_READY.

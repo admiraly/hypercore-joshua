@@ -70,3 +70,6 @@ jobs:
       - name: Exercise active mapping lifecycle and invalidation ordering
         shell: pwsh
         run: ./tests/Test-Lifecycle.ps1
+      - name: Decode descriptor/TSS/IST and guard policy fixtures
+        shell: pwsh
+        run: ./tests/Test-Descriptors.ps1
