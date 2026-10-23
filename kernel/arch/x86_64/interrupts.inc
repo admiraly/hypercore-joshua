@@ -40,6 +40,8 @@
 
 apic_timer_entry:
     irq_save
+    cmp qword [user_context+USER_CONTEXT.phase],0
+    jne user_timer_saved
     cmp qword [kernel_context+KERNEL_CONTEXT.state],1
     je context_timer_saved
     mov rax,APIC_READY_MAGIC

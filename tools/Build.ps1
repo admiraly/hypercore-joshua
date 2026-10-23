@@ -1,10 +1,11 @@
-param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$FaultTest = 'None', [ValidateSet('None', 'X2', 'MissingEoi')][string]$TimerTest = 'None', [ValidateSet('None', 'InheritedId', 'BadFrame', 'WorkerGuard')][string]$ContextTest = 'None')
+param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$FaultTest = 'None', [ValidateSet('None', 'X2', 'MissingEoi')][string]$TimerTest = 'None', [ValidateSet('None', 'InheritedId', 'BadFrame', 'WorkerGuard')][string]$ContextTest = 'None', [ValidateSet('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Stack','Alignment','Np','FarTransfer','BadReturn','Ud2','AlignmentKvm','StackKvm','SyscallKvm','SysenterKvm','PendingExit','PendingFault','DrainExhaust','KernelTimer','InheritedCode','LiveSelector','InheritedLdt','KernelFault')][string]$UserTest = 'None')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $root 'out'
+    if ($UserTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('user-' + $UserTest.ToLowerInvariant()) }
     if ($ContextTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('context-' + $ContextTest.ToLowerInvariant()) }
     if ($TimerTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('timer-' + $TimerTest.ToLowerInvariant()) }
     if ($FaultTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('fault-' + $FaultTest.ToLowerInvariant()) }
@@ -30,6 +31,7 @@ $efi = Join-Path $OutputDirectory 'BOOTX64.EFI'
 Push-Location $root
 try {
     $defines = @()
+    $userTests = @('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Stack','Alignment','Np','FarTransfer','BadReturn','Ud2','PendingExit','PendingFault','DrainExhaust','KernelTimer','InheritedCode','LiveSelector','InheritedLdt','KernelFault')
     if ($FaultTest -eq 'Ud2') { $defines = @('-DJOSHUA_FAULT_TEST=1') }
     if ($FaultTest -eq 'Gp') { $defines = @('-DJOSHUA_FAULT_TEST=2') }
     if ($FaultTest -eq 'ReadOnly') { $defines = @('-DJOSHUA_FAULT_TEST=3') }
@@ -44,17 +46,23 @@ try {
     if ($ContextTest -eq 'InheritedId') { $defines += '-DJOSHUA_CONTEXT_TEST=1' }
     if ($ContextTest -eq 'BadFrame') { $defines += '-DJOSHUA_CONTEXT_TEST=2' }
     if ($ContextTest -eq 'WorkerGuard') { $defines += '-DJOSHUA_CONTEXT_TEST=3' }
+    if ($UserTest -eq 'SyscallKvm') { $defines += @('-DJOSHUA_USER_TEST=10', '-DJOSHUA_QEMU_KVM_TEST=1') }
+    elseif ($UserTest -eq 'SysenterKvm') { $defines += @('-DJOSHUA_USER_TEST=11', '-DJOSHUA_QEMU_KVM_TEST=1') }
+    elseif ($UserTest -eq 'StackKvm') { $defines += @('-DJOSHUA_USER_TEST=12', '-DJOSHUA_QEMU_KVM_TEST=1') }
+    elseif ($UserTest -eq 'AlignmentKvm') { $defines += @('-DJOSHUA_USER_TEST=13', '-DJOSHUA_QEMU_KVM_TEST=1') }
+    else { $defines += ('-DJOSHUA_USER_TEST=' + [Array]::IndexOf($userTests, $UserTest)) }
     & $NasmPath @defines -f bin -Wall -w-reloc-rel-dword -w-reloc-abs-dword -Werror -l (Join-Path $OutputDirectory 'boot.lst') -o $efi boot/uefi.asm
     if ($LASTEXITCODE -ne 0) { throw 'Assembly failed; no image was packaged.' }
     & (Join-Path $root 'tests/Test-Pe.ps1') -EfiPath $efi
     & (Join-Path $root 'tools/New-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
     & (Join-Path $root 'tests/Test-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
-    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/descriptors.inc', 'kernel/arch/x86_64/acpi.inc', 'kernel/arch/x86_64/acpi-start.inc', 'kernel/arch/x86_64/controller-window.inc', 'kernel/arch/x86_64/cache-type.inc', 'kernel/arch/x86_64/cache-snapshot.inc', 'kernel/arch/x86_64/apic-access.inc', 'kernel/arch/x86_64/apic-start.inc', 'kernel/arch/x86_64/apic-policy.inc', 'kernel/arch/x86_64/interrupts.inc', 'kernel/arch/x86_64/data.inc', 'kernel/arch/x86_64/rodata.inc', 'kernel/mm/map.inc', 'kernel/mm/ranges.inc', 'kernel/mm/candidates.inc', 'kernel/mm/paging-inventory.inc', 'kernel/mm/frames.inc', 'kernel/mm/frame-check.inc', 'kernel/mm/owned-map.inc', 'kernel/mm/paging-pat.inc', 'kernel/mm/owned-start.inc', 'kernel/mm/lifecycle.inc', 'kernel/mm/lifecycle-platform.inc', 'kernel/mm/lifecycle-check.inc', 'sdk/boot.inc', 'sdk/context.inc', 'kernel/sched/context.inc', 'kernel/sched/start.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
+    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/descriptors.inc', 'kernel/arch/x86_64/acpi.inc', 'kernel/arch/x86_64/acpi-start.inc', 'kernel/arch/x86_64/controller-window.inc', 'kernel/arch/x86_64/cache-type.inc', 'kernel/arch/x86_64/cache-snapshot.inc', 'kernel/arch/x86_64/apic-access.inc', 'kernel/arch/x86_64/apic-start.inc', 'kernel/arch/x86_64/apic-policy.inc', 'kernel/arch/x86_64/interrupts.inc', 'kernel/arch/x86_64/data.inc', 'kernel/arch/x86_64/rodata.inc', 'kernel/mm/map.inc', 'kernel/mm/ranges.inc', 'kernel/mm/candidates.inc', 'kernel/mm/paging-inventory.inc', 'kernel/mm/frames.inc', 'kernel/mm/frame-check.inc', 'kernel/mm/owned-map.inc', 'kernel/mm/paging-pat.inc', 'kernel/mm/owned-start.inc', 'kernel/mm/lifecycle.inc', 'kernel/mm/lifecycle-platform.inc', 'kernel/mm/lifecycle-check.inc', 'sdk/boot.inc', 'sdk/context.inc', 'sdk/user.inc', 'kernel/user/descriptors.inc', 'kernel/user/storage.inc', 'kernel/user/map.inc', 'kernel/user/proof.inc', 'kernel/user/machine.inc', 'kernel/user/frame.inc', 'kernel/user/start.inc', 'kernel/user/retire.inc', 'kernel/user/fixtures.inc', 'kernel/user/payload.inc', 'kernel/sched/context.inc', 'kernel/sched/start.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
     $manifest = [ordered]@{
         stage = 'M0/M1 boot prototype - unsigned, no installer'
         faultTest = $FaultTest
         timerTest = $TimerTest
         contextTest = $ContextTest
+        userTest = $UserTest
         assembler = $version
         assemblerSha256 = (Get-FileHash -LiteralPath $NasmPath -Algorithm SHA256).Hash
         inputs = @($inputs | ForEach-Object {

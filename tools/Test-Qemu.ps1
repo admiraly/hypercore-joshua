@@ -4,13 +4,17 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')][string]$ExpectedFault = 'None',
-    [ValidateSet('qemu64', 'qemu64,+x2apic')][string]$CpuModel = 'qemu64',
-    [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic'
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard', 'UserKernelFault')][string]$ExpectedFault = 'None',
+    [ValidateSet('qemu64', 'qemu64,+x2apic', 'host')][string]$CpuModel = 'qemu64',
+    [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic',
+    [ValidateSet('Tcg','Kvm')][string]$Acceleration = 'Tcg',
+    [ValidateSet('None','DrainExhaust','KernelTimer','InheritedCode','LiveSelector')][string]$ExpectedUserStop = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($CpuModel -eq 'host' -and $Acceleration -ne 'Kvm') { throw 'The host CPU profile requires explicit KVM acceleration.' }
+if ($ExpectedUserStop -ne 'None' -and $ExpectedFault -ne 'None') { throw 'User-stop and kernel-fault expectations are exclusive.' }
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'out' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
@@ -31,7 +35,7 @@ $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
 $listener.Start()
 $port = $listener.LocalEndpoint.Port
 $listener.Stop()
-$arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', $CpuModel, '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
+$arguments = @('-machine', 'q35', '-accel', $Acceleration.ToLowerInvariant(), '-cpu', $CpuModel, '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
 if ($BootMedia -eq 'Iso') {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso')).Path
     $arguments += @('-drive', ('media=cdrom,readonly=on,format=raw,file=' + $media))
@@ -56,8 +60,8 @@ try {
         $stream = [IO.File]::Open($serial, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
         $reader = New-Object IO.StreamReader($stream)
         try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
-        if ($log -match 'JOSHUA:BOOT_FAILURE' -or ($ExpectedFault -eq 'None' -and $log -match 'JOSHUA:KERNEL_FAULT')) { throw ('Boot failed: ' + $log) }
-    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT_STACK[^\r\n]+ IST=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
+        if ($log -match 'JOSHUA:BOOT_FAILURE' -or ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None' -and $log -match 'JOSHUA:KERNEL_FAULT')) { throw ('Boot failed: ' + $log) }
+    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedUserStop -ne 'None' -and $log.Contains('JOSHUA:KERNEL_FAULT')) -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT_STACK[^\r\n]+ IST=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     if ($log -notmatch 'JOSHUA:TSS_READY SELECTOR=([0-9A-F]{16}) BASE=([0-9A-F]{16})') { throw 'Missing owned TSS evidence.' }
     $tssSelector = [Convert]::ToUInt64($Matches[1], 16)
     $tssBase = [Convert]::ToUInt64($Matches[2], 16)
@@ -74,10 +78,10 @@ try {
     if ($stackBounds.Count -ne 4) { throw 'Expected four owned IST stacks.' }
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
-    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')
+    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard', 'UserKernelFault')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY', 'APIC_READY', 'TIMER_OK') }
-    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += 'CONTEXT_SWITCH_OK' }
-    if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
+    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += @('CONTEXT_SWITCH_OK', 'USER_MACHINE_PREPARED') }
+    if ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }
@@ -112,7 +116,7 @@ try {
         if ($ExpectedFault -ne 'WorkerGuard' -and ($log -notmatch 'JOSHUA:CONTEXT_SWITCH_OK TICKS=0000000000000040 EOIS=0000000000000040 RETURNS=0000000000000040 PROGRESS1=([0-9A-F]{16}) PROGRESS2=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1],16) -eq 0 -or [Convert]::ToUInt64($Matches[2],16) -eq 0)) { throw 'Missing bounded context-switch/progress evidence.' }
         if ($log -notmatch 'JOSHUA:ACPI_TOPOLOGY_READY BSP=0000000000000000 CPUS=0000000000000002 ENABLED=0000000000000002 LAPIC=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Unexpected QEMU BSP/ACPI topology.' }
     }
-    if ($ExpectedFault -eq 'None') {
+    if ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None') {
         if ($log -notmatch 'JOSHUA:MEMORY_CANDIDATES_READY COUNT=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Expected nonempty memory candidates on the QEMU profile.' }
         if ($log -notmatch 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Allocator checkpoint missing or exhausted.' }
         # QEMU writes a simple P6 image; inspect bytes without platform graphics libraries.
@@ -132,7 +136,7 @@ try {
             }
         }
     }
-    else {
+    elseif ($ExpectedFault -ne 'None') {
         if ($log.Contains('JOSHUA:KERNEL_HALTED')) { throw 'Fault fixture reached the normal checkpoint.' }
         if ($log -notmatch 'JOSHUA:FIXTURE_RIP=([0-9A-F]{16})') { throw 'Missing fixture instruction address.' }
         $expectedRip = $Matches[1]
@@ -164,7 +168,7 @@ try {
             if ($log -notmatch 'JOSHUA:FIXTURE_OLD_RSP=([0-9A-F]{16})' -or $oldRsp -ne [Convert]::ToUInt64($Matches[1], 16)) { throw 'Interrupted unusable RSP not preserved.' }
         }
         if ($ExpectedFault -eq 'DoubleFault') {
-            if ($log -notmatch 'JOSHUA:FAULT VECTOR=[^\r\n]+ CR2=([0-9A-F]{16})') { throw 'Missing double-fault CR2.' }
+            if ($log -notmatch '(?m)^JOSHUA:FAULT VECTOR=0000000000000008 ERROR=0000000000000000 RIP=[0-9A-F]{16} CR2=([0-9A-F]{16})') { throw 'Missing double-fault CR2.' }
             $dfCr2 = [Convert]::ToUInt64($Matches[1], 16)
             if ($dfCr2 -lt ($stackBounds[[uint64]4][0] - 4096) -or $dfCr2 -ge $stackBounds[[uint64]4][0]) { throw 'Double fault did not follow failed ordinary-stack delivery.' }
         }
@@ -221,7 +225,20 @@ try {
                 $allStacks += ,@($start,$end)
                 $contextStackCount++
             }
-            if ($contextStackCount -ne 3 -or $allStacks.Count -ne 7) { throw 'Expected seven distinct guarded stacks.' }
+            if ($contextStackCount -ne 3) { throw 'Expected three kernel context stacks.' }
+            $entryStackCount = 0
+            foreach ($stack in [regex]::Matches($log, 'JOSHUA:USER_ENTRY_STACK INDEX=([0-9A-F]{16}) START=([0-9A-F]{16}) END=([0-9A-F]{16})')) {
+                $index = [Convert]::ToUInt64($stack.Groups[1].Value,16)
+                $start = [Convert]::ToUInt64($stack.Groups[2].Value,16)
+                $end = [Convert]::ToUInt64($stack.Groups[3].Value,16)
+                if ($index -ne ($entryStackCount+1) -or $end -le $start -or $end-$start -ne 16384 -or ($start % 4096) -ne 0) { throw 'Invalid user-entry stack bounds.' }
+                foreach ($other in $allStacks) {
+                    if ($start -lt $other[1] -and $end -gt $other[0]) { throw 'User-entry/kernel stack overlap.' }
+                }
+                $allStacks += ,@($start,$end)
+                $entryStackCount++
+            }
+            if ($entryStackCount -ne 2 -or $allStacks.Count -ne 9) { throw 'Expected nine distinct guarded kernel stacks.' }
             $permissionMask = [Convert]::ToUInt64('8000000000000007',16)
             $expectedPermission = [Convert]::ToUInt64('8000000000000003',16)
             foreach ($stack in $allStacks) {
@@ -232,18 +249,49 @@ try {
             }
         }
 
-        if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $ownedCr3) { throw 'Final CR3 does not match owned root.' }
+        $expectedFinalRoot = $ownedCr3
+        if ($ExpectedFault -eq 'UserKernelFault') {
+            if ($log -notmatch 'USER_ROOTS_PROVED ROOT_A=([0-9A-F]{16})') { throw 'Missing active user root.' }
+            $expectedFinalRoot = [Convert]::ToUInt64($Matches[1],16)
+            if ($log.Contains('JOSHUA:USER_RESULT') -or $log.Contains('JOSHUA:USER_PAIR_RETURNED')) { throw 'Kernel-origin fault was resumed as user success.' }
+        }
+        if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $expectedFinalRoot) { throw 'Final CR3 does not match owned root.' }
         if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x10000) -eq 0) { throw 'CR0.WP is not enabled.' }
         if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x800) -eq 0) { throw 'EFER.NXE is not enabled.' }
         if ($registers -notmatch 'CR4=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x20080) -ne 0) { throw 'PCID/global pages unexpectedly enabled.' }
+    }
+    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') {
+        if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1],16) -band 8) -eq 0) { throw 'User preflight did not set CR0.TS.' }
+        if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1],16) -band 1) -ne 0) { throw 'Inherited SYSCALL entry remains enabled.' }
+        if ($registers -notmatch '(?m)^LDT=0000 ') { throw 'Inherited LDTR remains active.' }
+        foreach ($segment in @('FS', 'GS')) {
+            if ($registers -notmatch ('(?m)^' + $segment + ' =[0-9A-Fa-f]{4} 0000000000000000 ')) { throw ('Nonzero ' + $segment + ' base after user preflight.') }
+        }
     }
     if ($registers -notmatch 'RFL=([0-9A-Fa-f]+)') { throw 'Cannot inspect bootstrap CPU flags.' }
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {
         throw 'Maskable interrupts unexpectedly enabled in the halted stub.'
     }
+    if ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None') {
+        $pythonName = 'python3'
+        if ($env:OS -eq 'Windows_NT') { $pythonName = 'python' }
+        $python = Get-Command $pythonName -ErrorAction Stop
+        Invoke-Qmp 'stop' | Out-Null
+        . (Join-Path $root 'tools/Save-UserPagingSnapshot.ps1')
+        Save-UserPagingSnapshot $OutputDirectory $BootMedia.ToLowerInvariant() $python.Source
+        & $python.Source (Join-Path $root 'tests/test_user_paging.py') $OutputDirectory --boot-media $BootMedia.ToLowerInvariant()
+        if ($LASTEXITCODE -ne 0) { throw 'Independent private-paging snapshot oracle failed.' }
+    }
     # Some QEMU versions close QMP before delivering the quit response.
     $qmpWriter.WriteLine('{"execute":"quit"}')
     if (-not $process.WaitForExit(5000)) { throw 'QEMU did not exit after quit.' }
+    if ($ExpectedFault -eq 'None') {
+        $pythonName = 'python3'
+        if ($env:OS -eq 'Windows_NT') { $pythonName = 'python' }
+        $python = Get-Command $pythonName -ErrorAction Stop
+        & $python.Source (Join-Path $root 'tests/test_user_runtime.py') $OutputDirectory --boot-media $BootMedia.ToLowerInvariant() --expected-stop $ExpectedUserStop
+        if ($LASTEXITCODE -ne 0) { throw 'Actual user fault/continuation oracle failed.' }
+    }
     Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> halted ring 0; expected fault: ' + $ExpectedFault)
     Write-Host ('Screenshot: ' + $screenshot)
 }

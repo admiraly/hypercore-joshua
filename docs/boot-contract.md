@@ -385,3 +385,73 @@ and progress; CONTEXT_STACK records expose bounds/counts for independent QEMU wa
 of all seven absent guards and every supervisor RW/NX stack page. A successful
 selection counter alone is not proof of IRETQ execution. The fixed smoke is not a
 fair scheduler, arbitrary kernel preemption API, user isolation or SMP support.
+
+## User memory preparation under development (issue #32)
+
+The preceding issue #30 seven-stack/layout values describe that revision. Current
+preparation extends the kernel guard proof to nine stacks: two additional16-KiB
+user-entry stacks each have an absent lower4-KiB guard. The current PE text capacity
+is9000h bytes, data/rodata/BSS start atA000h/B000h/D000h, rodata spans2000h, BSS is
+E5000h, relocations F2000h and image size F3000h. Versioned boot-info is unchanged.
+
+Two exact six-page backing allocations and distinct user table paths are prepared
+before activation. Code identity aliases are RO/NX with preserved inherited PAT;
+user leaves are RX code and RW/NX private data/stack with an absent user guard.
+The root/ownership proof follows whole-kernel/chunk proof before kernel CR3 activation.
+USER_ROOTS_PROVED is preparation evidence only: privilege entry/fault containment
+remain under implementation and this marker establishes no CPL3 execution.
+
+
+## Bounded user transition bring-up (issue #32, draft)
+
+The reviewed descriptor-retirement refinement now replaces the copied firmware
+prefix with null entries only after proving every live selector/TR/IDT target uses
+the unchanged owned suffix; LDTR/FS/GS selectors must be zero. IF0, exact GDTR/IDTR,
+owned code/data/busy-TSS encoding and all256 gates are checked before the first
+store. Hidden-cache provenance comes from the earlier owned segment reload/LTR.
+NMI/MC entries continue to use the owned suffix throughout. Strict authority audit
+then appends the only present DPL3 code/data descriptors. Firmware tables and owned
+selector indices remain unchanged. There is no later firmware return.
+
+INT43h parks an exact validated bootstrap IRQ frame and constructs a scrubbed
+192-byte private user frame. INT80h supports exit0 and unknown-call -38, preserving
+all other integer registers/RSP/DF; no user pointer is read by the gate. Per-process
+RSP0 and owned roots are selected under IF0 before IRETQ. Live IF/DF/AC and FS/GS
+bases are normalized before helpers; no TLS, SWAPGS or FPU context is supported.
+Hardware CPL3 exceptions are classified from a bounded ordinary IST frame without
+requiring a resumable user RSP. Kernel-origin faults still stop permanently.
+
+The one-shot user watchdog allows eight deliveries. Termination switches to kernel
+CR3, masks/stops the timer and enters an exact owned stack/text DRAINING window;
+only a timer at that window may return to CPL0, without rearm. The drain stack
+reserves64 bytes below its top; its saved IRQ frame is exactly high-256. Up to1024
+STI/NOP/CLI windows may clear pending ISR/IRR, then the separately parked kernel
+frame is revalidated and restored with IF0. Forced PendingExit/PendingFault fixtures require an observed IRR bit under IF0,
+one drain EOI beyond delivered ticks, and independent B continuation. DrainExhaust
+and KernelTimer must stop before EOI or B launch; they test the 1024-window bound
+and rejection outside the exact kernel return window.
+
+USER_RESULT logs saved user CS/private root/state/unknown-call count/ticks/EOIs and
+fault vector/error/RIP/CR2. USER_PAIR_RETURNED is emitted only after actual bootstrap
+resumption and both independent private data/progress checks. The host listing/PE
+oracle checks exact applicable fault identity and timeout8/8; this does not replace
+the independent QMP private-root walk described in docs/testing.md. No full issue/M2/M4, speculative
+isolation, FPU, SMP, DMA or physical qualification is established by this draft.
+
+
+### Independent private-paging evidence
+
+After QMP stop, physical page captures include both private paths, metadata, exact
+allocation records, private code/data and identity walk paths for every whole
+paging allocation. The Python oracle independently decodes permissions, reserved
+bits, per-page PAT selectors, ownership, separate backing, guard absence, payload
+bytes, zero padding and terminal metadata. Private parent PWT/PCD must be zero;
+large kernel leaves retain PAT bit12 while rejecting level-specific reserved bits.
+The oracle checks structural invariants of captured trusted metadata; it is not an
+independent proof of all runtime code, arbitrary-process security or hardware.
+
+InheritedCode and LiveSelector fixtures require rejection before user launch.
+InheritedLdt installs an owned test LDT before machine preflight and requires the
+subsequent user far call to fault #GP(4) after LLDT0, followed by B continuation.
+KernelFault injects kernel-origin UD2 inside INT80: exact #UD/RIP on IST4, no user
+result or B continuation, and permanent stop under A's still-active private root.

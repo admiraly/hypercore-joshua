@@ -201,3 +201,40 @@ FPU context, AP/SMP, user isolation or physical qualification is established.
 PowerShell AST and supplies a read-only physical-memory model. Fifteen fixtures
 reject read-only/user ancestors at every level, handle absent entries and large
 leaves. Effective stack writability requires RW at every traversed level.
+
+
+## Draft ring3 transition campaign (issue #32)
+
+`Test-Qemu.ps1` now requires host Python3 for the exact user-result oracle on normal
+boots. `tests/Test-UserRuntime.ps1` builds24 separate TCG profiles (including five expected-stop cases) with immutable
+fixture identity in each manifest, then verifies actual CPL3/roots, precise fault
+vector/error/RIP/applicable CR2, watchdog8/8 and independent B continuation.
+It uses isolated `out/user-*` folders, including when Build's UserTest is used alone.
+
+On the explicitly tested Intel Linux KVM host, add `-IncludeKvm` (plus native QEMU
+and firmware paths as needed) for AlignmentKvm, StackKvm, SyscallKvm and SysenterKvm.
+These select `-Acceleration Kvm -CpuModel host`; they are not Windows CI or
+bare-metal evidence, and the SYSENTER expectation is Intel-specific. Normal images
+recognize only the TCG emulator UART profile; these explicit KVM fixture builds
+add exact KVM CPUID recognition for serial evidence. No physical UART probe is
+added to normal images. TCG's Alignment and Stack fixtures deliberately fail their
+exact expected-vector oracles; they must not be counted as passes just because B
+continued. Intel KVM supplies the actual #AC/#SS vector evidence.
+
+PendingExit/PendingFault force actual IRR pending under IF0 and require drain EOI
+plus B progress. DrainExhaust/KernelTimer require bounded stop before EOI. The
+InheritedCode/LiveSelector rejection, InheritedLdt #GP(4) and KernelFault #UD stop
+fixtures exercise descriptor and saved-CS authority. With four Intel KVM profiles,
+the full campaign has28 profiles; TCG's two mismatching SS/AC cases are excluded.
+
+Normal boots capture physical memory after QMP stop into
+`qemu-<media>-user-paging.json`. `tests/test_user_paging.py` independently checks
+private roots/permissions/cache selectors, complete paging-allocation aliases,
+exact backing ownership, code bytes, padding and terminal metadata. Run
+`python3 tests/test_user_paging_mutations.py out/user-none` after the campaign;
+Windows uses `python`. It requires the baseline to pass, then rejects47 corrupted
+snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
+code. These counts describe mutations, not hardware qualification. CI runs the
+same mutation suite. Source review closed parent-cache/reserved-bit findings.
+Final local campaigns and regressions pass as recorded in validation.md. Windows
+CI remains pending; PR #35 remains draft.

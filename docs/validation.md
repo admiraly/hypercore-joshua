@@ -413,3 +413,73 @@ Windows execution awaits CI. FPU/SIMD contexts, arbitrary kernel task APIs, fair
 AP/SMP, user isolation, physical qualification and complete milestone exits remain
 open. CET is rejected for this conventional context path; no security/performance
 parity claims are made. No merge performed.
+
+
+## Draft private-context transition evidence (issue #32)
+
+23 October2026, Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: Build passes20,766
+static media assertions. Sixteen TCG/qemu64 ISO profiles pass the independent exact
+serial/PE/listing oracle for real CPL3 roots/CS, fault identity or bounded timeout,
+and actual trusted bootstrap/processB continuation. Payloads check zeroed entry
+registers and preserved non-result GPRs/RSP/DF across unknown INT80 return.
+Normal FAT and actual x2APIC ISO pass; two-build EFI/FAT/ISO/manifest reproducibility
+passes after the current fixture/harness wiring. Whole-issue requalification remains
+due after the remaining runtime changes.
+
+On this host's Intel i7-14700K via explicit KVM/host profiles, actual #AC17/error0,
+#SS12/error0, SCE-disabled SYSCALL #UD6 and null-CS SYSENTER #GP13/error0 all pass the
+same precise fault and independent B oracle. This is hardware-assisted virtualized
+evidence, not physical HyperCore/Dell qualification. TCG Alignment did not deliver
+#AC and TCG noncanonical Stack delivered #GP, so those exact profiles are failures
+and excluded from TCG passing counts. They are not relabeled successful containment.
+
+Descriptor retirement adds host bounds/suffix/ABI cases (2,778 cumulative total).
+Independent design/code review cleared retirement after proof of every live owned
+selector/IDT authority. Transition source review found P2 fixture output collision,
+fixed by isolated default UserTest directories; follow-up review found no actionable
+findings. Reviews did not execute tests. Full pending-timer/drain negatives,
+independent QMP private-root/ownership walks, full host/fault regressions and final
+review remain open; neither issue #32 nor a milestone is complete.
+
+### Issue #32 final qualification delta
+
+Forced pending exit/fault now pass local exact oracles with one drain EOI and B
+continuation. Drain exhaustion and an unexpected CPL0 timer stop before EOI/B.
+Target authority fixtures reject injected callable code/live DS, clear an inherited
+owned LDT before a user #GP(4), and preserve permanent stop for a kernel-origin #UD
+inside INT80. All four authority targets pass locally. Independent source reviews
+found no remaining actionable findings; they did not execute tests.
+
+Physical QMP snapshots pass independent private-root/backing/permission/cache and
+whole paging-allocation alias checks. The actual decoder rejects47 corrupted
+snapshots and49 synthetic reserved/cache-policy mutations. Review findings about
+parent PWT/PCD and large-leaf reserved bits were explicitly fixed and re-reviewed.
+
+Windows CI at bd5ecb5 exposed a DoubleFault parser collision with earlier user-result
+CR2 fields. The parser now selects the standalone vector8/error0 report; the local
+DoubleFault target passes with CR2 inside the intended ordinary-stack guard. Fault
+logs are now uploaded by CI. The final28-profile campaign, complete regressions and
+new-head Windows CI are still running/pending at this checkpoint. No planned test
+is counted as passing, and no issue or milestone completion is claimed here.
+
+### Final local campaign on runtime commit 859225e
+
+The final separate24-profile TCG campaign passes, including19 successful contained/
+exit paths and five intentional kernel-stop cases. All four Intel KVM profiles
+pass exact fault and private-paging oracles. An initial KVM launch exited before
+JOSHUA entry; its #AC retry passed. This failed launch is retained as a reliability
+limit, not counted as successful execution. TCG #SS/#AC exact-vector failures from
+the earlier checkpoint remain excluded; KVM evidence does not erase them.
+
+All15 host suites, nine fault fixtures, x2APIC ISO/FAT plus missing-EOI rejection,
+context launch/bad-frame/worker-guard regressions, normal ISO/FAT, and two-build
+EFI/FAT/ISO/manifest reproducibility pass on the final runtime source. The corrupted
+PE rejection check passes. One extra ad-hoc x2 expectation against the normal
+xAPIC image was correctly rejected; actual x2 evidence uses the X2 fixture in
+Test-ApicTimer.ps1. No product change was made for that invocation mistake.
+
+Independent final source review found no actionable findings, including the #DF
+parser correction, campaign wiring, private-paging oracle and documentation. Reviews
+were read-only and did not independently reproduce the parent-run evidence. Windows
+CI on the final PR head remains pending. PR #35 stays draft; issue #32 and broader
+milestone/physical/speculative/SMP qualification are not declared complete.

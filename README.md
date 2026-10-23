@@ -24,7 +24,11 @@ local-APIC interrupts with EOI and IRETQ. A subsequent bounded timer-driven chec
 preempts two trusted kernel workers on separate guarded stacks and resumes the
 bootstrap context after64 deliveries, then stops the timer and clears IF. These paths are QEMU-tested; the
 new memory implementation has no physical qualification.
-There is no general task scheduler, process isolation, storage driver, network stack, shell,
+A bounded experimental ring3 path now runs two embedded Assembly programs under
+private roots, with unknown-call/exit gates, contained synchronous faults and an
+eight-tick watchdog. Timer/drain rejection fixtures and independent physical page walks extend its
+validation; local campaigns pass and Windows CI qualification remains open. This is not a qualified general process system.
+There is no general task scheduler, program loader, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
 **Bare-metal status:** on 22 October 2026, the owner confirmed a flawless boot
