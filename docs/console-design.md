@@ -671,8 +671,9 @@ ISO/FAT and the original Text keyboard fixture also passed after layout/refactor
 Normal and Console reproducibility passed, including the named console ISO.
 All24 Linux host suites and15 stack-walker fixtures passed. Nine fault fixtures,
 three context profiles, two ELF rejections and x2APIC ISO/FAT plus missing-EOI
-regression passed. The larger input/user batches are still running separately
-and are not counted as passes yet.
+regression passed. The completed follow-up confirms40 keyboard targets (18 positive/22 expected
+stops) and24 TCG user profiles, both script exit0. These inherited fixtures do not
+replace the pending console feature/negative/saturation campaign.
 
 Source-only integration/address-fix/oracle follow-ups have no unresolved findings.
 Reviews did not independently reproduce runs or inspect artifacts. The console

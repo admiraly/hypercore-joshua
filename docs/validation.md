@@ -822,3 +822,21 @@ both tested media plus manifest and captures, but Windows execution is pending.
 Broader native command breadth, negative console fixtures, saturation targets,
 full pixel/snapshot mutation campaigns and physical qualification remain open.
 No merge, issue closure or milestone completion is claimed.
+
+
+### Completed first-integration regression batches
+
+After the preceding checkpoint, the frozen runtime source in23a66e3 completed the
+full40-target keyboard campaign:17 xAPIC profiles on ISO/FAT plus Text/PendingBoth/
+OverflowPending x2APIC on both media,18 positives and22 expected stops. The script
+exited0 and all40 per-target result lines were checked. It includes8,373 shared
+oracle mutations. The24-profile TCG user campaign also exited0 with its final exact
+oracle summary. Nine faults and the timer/context/ELF batches had already passed.
+These preserve the inherited collection/fixture qualifications; controlled refill
+is not natural production timing evidence. No new console negative/saturation or
+full-feature campaign is inferred from the older keyboard fixtures.
+
+A frozen copy for testing is `out/JOSHUA-Console-Test-23a66e3.iso`, with the same
+SHA256 recorded above. All native evidence remains QEMU-only. Native command breadth,
+negative console/mutation coverage, Windows CI and physical qualification remain
+open. Independent reviews were source-only. No issue/milestone closure or merge.
