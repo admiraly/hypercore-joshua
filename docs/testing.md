@@ -232,9 +232,26 @@ Normal boots capture physical memory after QMP stop into
 private roots/permissions/cache selectors, complete paging-allocation aliases,
 exact backing ownership, code bytes, padding and terminal metadata. Run
 `python3 tests/test_user_paging_mutations.py out/user-none` after the campaign;
-Windows uses `python`. It requires the baseline to pass, then rejects47 corrupted
+Windows uses `python`. It requires the baseline to pass, then rejects50 corrupted
 snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
 code. These counts describe mutations, not hardware qualification. CI runs the
 same mutation suite. Source review closed parent-cache/reserved-bit findings.
 Final local campaigns and regressions pass as recorded in validation.md. Windows
 CI remains pending; PR #35 remains draft.
+
+## Embedded ELF loader campaign (issue #36)
+
+`tests/Test-Elf.ps1` executes the actual Assembly parser/copy helper on Linux against
+an independent host profile oracle. It currently passes6,198 cumulative checks,
+including guarded truncation, field/size/entry rejection, plan revalidation,
+page-aligned complete/partial aliases, unchanged rejection buffers, zero-fill and
+eight integer ABI sentinels. It does not execute privileged entry.
+
+`tests/Test-ElfRuntime.ps1` builds isolated `out/elf-badmagic`/`out/elf-badentry`
+images. `Test-Qemu.ps1 -ExpectedFault ElfReject` requires that exact fixture identity,
+preallocation parser rejection, no private-root/execution marker, unchanged QMP
+physical allocation count, and halted CPL0/IF0. It does not compare every ledger byte.
+Normal user campaigns now execute the ELF entry beyond an INT3 prefix and verify
+initialized data/BSS. QMP also compares the actual load plan to independently read
+ELF headers. Mutation coverage adds plan entry, initialized data and BSS corruption;
+final rerun counts/results belong in validation.md, not inferred from this test list.

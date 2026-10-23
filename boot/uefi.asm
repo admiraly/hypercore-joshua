@@ -3,6 +3,10 @@ default rel
 %include 'sdk/boot.inc'
 %include 'sdk/context.inc'
 %include 'sdk/user.inc'
+%include 'sdk/elf.inc'
+%ifndef JOSHUA_ELF_TEST
+ %define JOSHUA_ELF_TEST 0
+%endif
 %ifndef JOSHUA_QEMU_KVM_TEST
  %define JOSHUA_QEMU_KVM_TEST 0
 %endif
@@ -618,6 +622,8 @@ stop_cpu:
 %include 'kernel/mm/paging-pat.inc'
 %include 'kernel/user/descriptors.inc'
 %include 'kernel/user/storage.inc'
+%include 'kernel/user/elf.inc'
+%include 'kernel/user/elf-start.inc'
 %include 'kernel/user/map.inc'
 %include 'kernel/user/proof.inc'
 %include 'kernel/user/machine.inc'
@@ -694,7 +700,7 @@ debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 
 %include 'kernel/arch/x86_64/rodata.inc'
 times 0x1000-($-$$) db 0
-%include 'kernel/user/payload.inc'
+%include 'kernel/user/elf-image.inc'
 times PE_RODATA_SIZE-($-$$) db 0
 
 section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA
@@ -738,6 +744,7 @@ kernel_context: resb KERNEL_CONTEXT_size
 kernel_context_records: resb 3*KERNEL_CONTEXT_RECORD_size
 context_worker_rsp: resq 2
 user_context: resb USER_CONTEXT_size
+user_elf_plan: resb ELF_PLAN_size
 user_processes: resb USER_PROCESS_COUNT*USER_PROCESS_size
 user_transition_step: resq 1
 user_terminal_state: resq 1

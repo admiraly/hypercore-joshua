@@ -208,3 +208,14 @@ image W^X/cache proof covers their RW/NX supervisor pages and absent guards befo
 CR3 activation. Context frame arithmetic is checked only against these pre-proved
 ranges, with4KiB adapter headroom. Memory APIs remain IF-clear and cannot be invoked
 by the trusted workers or switching handler. Shared CR3 is not process isolation.
+
+## Immutable ELF loading boundary (issue #36)
+
+ELF source bytes reside in the image's sealed RO/NX constants. File offsets become
+source pointers only after bounded profile validation. The plan grants no allocation
+or mapping authority; the adapter separately proves exact six-page process ownership.
+Copy preflights source/plan/destination disjointness and compares a freshly validated
+plan before any destination write. It then clears code/data/stack backing and copies
+file bytes; BSS/padding are zero. Existing code alias sealing, private W^X/NX/PAT
+proofs and guard policy remain mandatory. Failed work stays quarantined before roots
+or runnable readiness; no new reclamation, disk access or process lifecycle is added.

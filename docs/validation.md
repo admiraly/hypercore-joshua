@@ -483,3 +483,52 @@ parser correction, campaign wiring, private-paging oracle and documentation. Rev
 were read-only and did not independently reproduce the parent-run evidence. Windows
 CI on the final PR head remains pending. PR #35 stays draft; issue #32 and broader
 milestone/physical/speculative/SMP qualification are not declared complete.
+
+## Embedded ELF loading bring-up (issue #36)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: parser/copy host suite passes6,198
+cumulative checks. Reviewed design fixed the bootstrap reservation at128 bytes;
+reviewed alias fixtures now reach actual overlap checks with page-aligned mappings.
+No runtime defect remained in the component reviews, which were source-only.
+
+The current ELF-backed ISO/FAT boot pair passes actual two-process entry beyond an
+INT3 prefix, initialized-data/BSS checks and the private-paging oracle. Build passes
+20,790 media assertions. BadMagic/BadEntry targets reject before private allocation,
+root publication or CPL3; QMP allocation count stays unchanged and CPU halts CPL0/IF0.
+The count check is not a full ledger snapshot comparison. A prior reservation test
+failed because its synthetic loader coverage retained the old image size; C6 pages
+now cover the larger image and the corrected suite passes6,425 checks.
+
+Full current-source user/KVM, host/fault/APIC/context, snapshot-mutation and
+reproducibility regressions are running or pending. No CI, issue or milestone
+completion is claimed by this checkpoint. Reviews do not independently reproduce
+parent-run tests. Physical/speculative/general-ELF/SMP qualification stays open.
+
+### Issue #36 final local runtime b5f5dbd
+
+The complete24-profile TCG campaign passes. All15 preexisting host suites plus the
+6,198-check ELF suite pass; nine kernel faults, x2APIC ISO/FAT and missing-EOI,
+context launch/rejection/guard, normal ISO/FAT, two-build reproducibility and corrupt
+PE rejection pass. The paging oracle rejects50 snapshot mutations and49 synthetic
+level-policy mutations. No earlier planned test is counted as a result here.
+
+All four Intel KVM instruction cases now have current ELF-backed execution evidence:
+#AC, #SS and disabled SYSCALL pass ISO; null-CS SYSENTER passes FAT with #GP(0) and
+B continuation. KVM ISO attempts can stall before JOSHUA entry: the first #AC attempt
+timed out, and SYSENTER ISO still has a failed180-second firmware attempt. The FAT
+result does not convert that failed ISO launch into a pass; the complete default
+IncludeKvm ISO command remains unqualified at this checkpoint. TCG's earlier exact
+SS/AC vector failures remain explicit. This is virtualized evidence, not physical
+HyperCore compatibility or a general ELF/security qualification.
+
+Final independent source review found no new actionable findings across loader,
+integration, negative targets, contracts, independent oracles and CI. Source-only
+reviewers did not independently reproduce parent-run evidence. PR #37 remains draft
+for final-head CI and the stated KVM ISO reliability limit. No issue/milestone exit
+or merge is claimed.
+
+A subsequent isolated SYSENTER ISO retry also passes exact #GP(0), B continuation
+and the independent physical oracle. Thus all four KVM cases have current ISO
+execution evidence, while the failed first launches and unqualified one-shot full
+IncludeKvm command remain reliability limits. No source change was used to obtain
+that retry result; neither firmware timeout is reclassified as success.

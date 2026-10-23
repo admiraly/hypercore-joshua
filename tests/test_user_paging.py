@@ -28,7 +28,8 @@ for i in range(struct.unpack_from('<H',image,pe+6)[0]):
     sections[image[offset:offset+8].rstrip(b'\0').decode()]=struct.unpack_from('<IIII',image,offset+8)
 tss=int(re.search(r'TSS_READY SELECTOR=[0-9A-F]+ BASE=([0-9A-F]+)',log)[1],16)
 base=tss-sections['.data'][1]-symbol('kernel_tss')
-seed={'processes':base+sections['.bss'][1]+symbol('user_processes'),
+seed={'elfPlan':base+sections['.bss'][1]+symbol('user_elf_plan'),
+      'processes':base+sections['.bss'][1]+symbol('user_processes'),
       'context':base+sections['.bss'][1]+symbol('user_context'),
       'allocator':base+sections['.data'][1]+symbol('frame_allocator'),
       'records':base+sections['.bss'][1]+symbol('frame_records'),
@@ -56,6 +57,12 @@ def qword(address):
 
 def words(address,count):return [qword(address+8*i) for i in range(count)]
 
+elf_file=sections['.rodata'][3]+symbol('user_elf_start')
+elf_source=base+sections['.rodata'][1]+symbol('user_elf_start')
+co,_,_,cz,_,_=struct.unpack_from('<QQQQQQ',image,elf_file+72)
+do,_,_,dz,_,_=struct.unpack_from('<QQQQQQ',image,elf_file+128)
+entry_offset=struct.unpack_from('<Q',image,elf_file+24)[0]-BASE
+assert words(seed['elfPlan'],8)==[elf_source,symbol('user_elf_end')-symbol('user_elf_start'),co,cz,do,dz,entry_offset,0x31464c4548534f4a]
 allocator=words(seed['allocator'],7)
 assert allocator[0]==0x314d41524653484a
 assert allocator[2]==seed['records'] and allocator[4]==4096
@@ -164,11 +171,16 @@ for index,root in enumerate(seed['roots']):
         assert not user and nx and rw==(slot!=0)
         assert selector==((entry>>3)&3)|(((entry>>7)&1)<<2)
     code=b''.join(struct.pack('<Q',x) for x in page(backing))
-    size=symbol('user_payload_end')-symbol('user_payload_start')
-    source=sections['.rodata'][3]+symbol('user_payload_start')
+    elf=sections['.rodata'][3]+symbol('user_elf_start')
+    source_offset,_,_,size,_,_=struct.unpack_from('<QQQQQQ',image,elf+72)
+    source=elf+source_offset
     assert code[:size]==image[source:source+size] and code[size:]==bytes(4096-size)
     data=page(backing+4096)
     assert data[1]==0x4a53485500000000|index and data[2]==1
+    data_offset,_,_,data_size,_,_=struct.unpack_from('<QQQQQQ',image,elf+128)
+    expected_data=image[elf+data_offset+128:elf+data_offset+data_size]
+    raw_data=struct.pack('<512Q',*page(backing+4096))
+    assert raw_data[128:data_size]==expected_data and raw_data[data_size:]==bytes(4096-data_size)
 assert len(set(private_tables))==8 and seed['kernelRoot'] not in private_tables
 assert len(set(backing_frames))==12 and not set(backing_frames)&set(private_tables)
 print('PASS: QMP private roots/parents/all leaves, effective permissions/PAT/aliases, exact ledger ownership and private code/data.')

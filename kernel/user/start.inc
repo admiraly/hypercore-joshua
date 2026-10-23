@@ -59,8 +59,13 @@ user_launch_entry:
     xor eax,eax
     mov ecx,192/8
     rep stosq                  ; scrub every saved user GPR and shadow slot
+    call user_elf_launch_check
+    test eax,eax
+    jnz user_stop
     mov rax,USER_BASE
+    add rax,[user_elf_plan+ELF_PLAN.entry_offset]
     mov [r14+152],rax
+    mov rax,USER_BASE
     add rax,0x1000
     mov [r14+96],rax            ; only public argument: user data VA in RDI
     mov rax,[user_context+USER_CONTEXT.code_selector]
