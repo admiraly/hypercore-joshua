@@ -363,3 +363,53 @@ All nine final fault regressions passed after the version fix: Ud2, Gp, ReadOnly
 Nx, Guard, ConstWrite, Unmapped, StackFault and DoubleFault. Each image passed media
 checks and selected IST/frame assertions; ordinary fault vector/error/RIP/CR2 and
 controlled double-fault guard evidence matched, with final ring0 and IF clear.
+
+## Timer-driven guarded kernel contexts — 23 October 2026
+
+Issue #30 parks the bootstrap continuation and alternates two trusted Assembly
+workers on separate16-KiB stacks for64 real BSP timer deliveries, then restores the
+bootstrap frame. Each worker observes32 interruptions and publishes actual progress
+while checking distinct15-GPR/RSP/DF sentinels. This is a bounded switching mechanism,
+not a general scheduler or isolated process implementation. All seven stack guards
+are absent; metadata/stacks remain image-owned and boot-info layouts are unchanged.
+
+Actually run on Linux PowerShell7.4.6, native NASM2.16.03, QEMU10.2.2 and the same
+OVMF pair documented above:
+
+- Build passed20,742 static media assertions. Two-build EFI/FAT/ISO/manifest hashes
+  matched, including relative assembler invocation and corrupted-PE rejection.
+- Normal xAPIC ISO/FAT and x2APIC ISO/FAT completed64 switching ticks/EOIs/restores,
+ 32 per-worker interrupts and32 progress increments each, then resumed bootstrap,
+  stopped the timer, checked empty ISR/IRR and halted ring0/IF0 with owned CR3.
+  The existing16-delivery APIC self-test remains independently checked first.
+- QMP reads of actual owned page tables checked all seven absent guards and every
+  stack page's supervisor RW/NX permissions. A review found that the first checker
+  ignored read-only ancestors; it now requires RW at every traversed level, with
+ 15 fixtures extracting the actual PowerShell function and mutating RW/US/presence
+  at all four levels, plus large leaves. Four boot profiles reran with the fix.
+- InheritedId confirmed ID was set before explicit bootstrap RFLAGS normalization
+  and then completed switching. BadFrame stopped with state/ticks/EOIs/current all
+  zero before invalid return/publication. WorkerGuard reported exact #PF/error0/
+  RIP/guard CR2 on IST4. These are separate fixture images, not normal artifacts.
+- All nine existing fault fixtures passed after context switching, including their
+  applicable exact vector/error/RIP/CR2 and IST/frame assertions. MissingEoi remained
+  rejected at the bounded timer checkpoint, rather than being counted as a boot pass.
+- Host suites passed:24 map,6,425 reservation,250 inventory,6,297 frames,1,061
+  owned-map,6,249 lifecycle,1,470 descriptor/guard,1,145 ACPI,6,271 cache and1,364
+  APIC policy/staging checks. The new exact Assembly context suite passed8,914
+  frame/schedule/ABI checks, including2,000 seeded interrupted-frame variations,
+ 100 full64-tick reference schedules, failure-state snapshots and eight integer
+  nonvolatile sentinels. Host tests do not execute the privileged adapter or IRETQ.
+
+Independent design review required bootstrap flag normalization; it was addressed
+and re-reviewed. Target bring-up also exposed an indexed absolute-RVA store, fixed
+with a runtime LEA base, and a worker interrupt frame with RF set. Worker frames now
+preserve architectural RF while bootstrap RF remains forbidden, consistent with the
+cited SDM contract. Full runtime review found no actionable findings; final evidence
+review's ancestor-RW finding was fixed and the follow-up found no remaining issues.
+Reviews were source-only and did not independently reproduce parent test results.
+
+Windows execution awaits CI. FPU/SIMD contexts, arbitrary kernel task APIs, fairness,
+AP/SMP, user isolation, physical qualification and complete milestone exits remain
+open. CET is rejected for this conventional context path; no security/performance
+parity claims are made. No merge performed.

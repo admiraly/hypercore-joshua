@@ -20,6 +20,8 @@ jobs:
         run: ./tools/Build.ps1
       - name: Check reproducibility and relative tool paths
         run: ./tests/Test-Reproducibility.ps1
+      - name: Validate QEMU stack permission walker
+        run: ./tests/Test-QemuStackWalk.ps1
       - name: Boot ISO under UEFI
         run: ./tools/Test-Qemu.ps1
       - name: Boot raw FAT under UEFI
@@ -28,6 +30,8 @@ jobs:
         run: ./tests/Test-FaultDiagnostics.ps1
       - name: Validate x2APIC delivery and missing-EOI rejection
         run: ./tests/Test-ApicTimer.ps1
+      - name: Validate context launch, rejection and worker guard
+        run: ./tests/Test-ContextSwitch.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -84,3 +88,6 @@ jobs:
       - name: Validate controller authority and APIC route policy
         shell: pwsh
         run: ./tests/Test-ApicPolicy.ps1
+      - name: Validate guarded kernel context frames and scheduling policy
+        shell: pwsh
+        run: ./tests/Test-KernelContext.ps1

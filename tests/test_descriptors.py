@@ -1,4 +1,4 @@
-"""Decode exact Assembly descriptor constructors and five-guard policy; host only."""
+"""Decode exact Assembly descriptor constructors and seven-guard policy; host only."""
 import ctypes as C
 import random
 import struct
@@ -58,7 +58,7 @@ for vector in range(256):
     assert gate[4] == {8:1,2:2,18:3}.get(vector,4) and gate[5] == 0x8e and gate[12:] == bytes(4)
     checks += 1
 # Independent guard interval model; shuffled starts must not change decisions.
-guards = [0x10000,0x18000,0x28000,0x40000,0x60000]
+guards = [0x10000,0x18000,0x28000,0x40000,0x60000,0x80000,0xa0000]
 for _ in range(1000):
     shuffled = guards[:]
     rng.shuffle(shuffled)
@@ -67,13 +67,13 @@ for _ in range(1000):
     inside = next((g for g in guards if g <= cursor < g+4096),None)
     expected = inside+4096 if inside is not None else min([end]+[g for g in guards if g>cursor])
     skip = U64()
-    boundary = lib.host_guard((U64*5)(*shuffled),cursor,end,C.byref(skip))
+    boundary = lib.host_guard((U64*7)(*shuffled),cursor,end,C.byref(skip))
     assert boundary == expected and skip.value == (inside is not None)
     checks += 1
 # Eight distinct firmware integer nonvolatile sentinels across all four helpers.
 tss = (C.c_ubyte*104)()
 tops = (U64*4)(0x1000,0x2000,0x3000,0x4000)
-g = (U64*5)(*guards)
+g = (U64*7)(*guards)
 args = (U64*8)(C.addressof(dest),C.addressof(source),128,C.addressof(tss),
                C.addressof(tops),C.addressof(idt),stubs,C.addressof(g))
 lib.host_descriptor_abi.argtypes = [C.POINTER(U64)]

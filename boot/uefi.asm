@@ -1,6 +1,10 @@
 bits 64
 default rel
 %include 'sdk/boot.inc'
+%include 'sdk/context.inc'
+%ifndef JOSHUA_CONTEXT_TEST
+ %define JOSHUA_CONTEXT_TEST 0
+%endif
 %ifndef JOSHUA_TIMER_TEST
  %define JOSHUA_TIMER_TEST 0
 %endif
@@ -584,6 +588,8 @@ stop_cpu:
 %include 'kernel/arch/x86_64/apic-start.inc'
 %include 'kernel/arch/x86_64/apic-policy.inc'
 %include 'kernel/arch/x86_64/interrupts.inc'
+%include 'kernel/sched/context.inc'
+%include 'kernel/sched/start.inc'
 %include 'kernel/mm/map.inc'
 %include 'kernel/mm/ranges.inc'
 %include 'kernel/mm/candidates.inc'
@@ -692,6 +698,17 @@ exception_stack: resb 16384
 exception_top:
 acpi_cpu_records: resb 256*16
 mtrr_snapshot: resb 4096
+context_worker1_guard: resb 4096
+context_worker1_stack: resb 16384
+context_worker1_top:
+context_worker2_guard: resb 4096
+context_worker2_stack: resb 16384
+context_worker2_top:
+context_metadata:
+kernel_context: resb KERNEL_CONTEXT_size
+kernel_context_records: resb 3*KERNEL_CONTEXT_RECORD_size
+context_worker_rsp: resq 2
+resb 4096-($-context_metadata)
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

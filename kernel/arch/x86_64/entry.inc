@@ -16,6 +16,10 @@ kernel_entry:
     mov [stack_guards+24],rax
     lea rax,[exception_guard]
     mov [stack_guards+32],rax
+    lea rax,[context_worker1_guard]
+    mov [stack_guards+40],rax
+    lea rax,[context_worker2_guard]
+    mov [stack_guards+48],rax
     lea rax,[double_fault_top]
     mov [ist_tops],rax
     lea rax,[nmi_top]
@@ -309,6 +313,68 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    call context_smoke
+    test eax,eax
+    jz .context_ready
+    lea rcx,[debug_context_failure]
+    call debug_write
+    mov rcx,[kernel_context+KERNEL_CONTEXT.state]
+    call debug_hex
+    lea rcx,[debug_timer_ticks]
+    call debug_write
+    mov rcx,[kernel_context+KERNEL_CONTEXT.ticks]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    jmp kernel_fault
+.context_ready:
+    lea rcx,[debug_context_ok]
+    call debug_write
+    mov rcx,[kernel_context+KERNEL_CONTEXT.ticks]
+    call debug_hex
+    lea rcx,[debug_timer_eois]
+    call debug_write
+    mov rcx,[kernel_context+KERNEL_CONTEXT.eois]
+    call debug_hex
+    lea rcx,[debug_timer_returns]
+    call debug_write
+    mov rcx,[kernel_context+KERNEL_CONTEXT.restores]
+    call debug_hex
+    lea rcx,[debug_context_progress1]
+    call debug_write
+    mov rcx,[kernel_context_records+KERNEL_CONTEXT_RECORD_size+KERNEL_CONTEXT_RECORD.progress]
+    call debug_hex
+    lea rcx,[debug_context_progress2]
+    call debug_write
+    mov rcx,[kernel_context_records+2*KERNEL_CONTEXT_RECORD_size+KERNEL_CONTEXT_RECORD.progress]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    xor ebx,ebx
+    lea rsi,[kernel_context_records]
+.context_stack_marker:
+    lea rcx,[debug_context_stack]
+    call debug_write
+    mov rcx,rbx
+    call debug_hex
+    lea rcx,[debug_start]
+    call debug_write
+    mov rcx,[rsi+KERNEL_CONTEXT_RECORD.stack_low]
+    call debug_hex
+    lea rcx,[debug_end]
+    call debug_write
+    mov rcx,[rsi+KERNEL_CONTEXT_RECORD.stack_high]
+    call debug_hex
+    lea rcx,[debug_timer_ticks]
+    call debug_write
+    mov rcx,[rsi+KERNEL_CONTEXT_RECORD.ticks]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    add rsi,KERNEL_CONTEXT_RECORD_size
+    inc ebx
+    cmp ebx,3
+    jb .context_stack_marker
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]

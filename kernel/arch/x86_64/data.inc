@@ -25,7 +25,7 @@ mapping_context: times MAPPING_CONTEXT_size db 0
 mapping_records: times MAPPING_RECORD_CAPACITY*MAPPING_RECORD_size db 0
 align 8
 kernel_tss: times 104 db 0
-stack_guards: times 5 dq 0
+stack_guards: times STACK_GUARD_COUNT dq 0
 ist_tops: times 4 dq 0
 kernel_tss_selector: dw 0
 align 8
