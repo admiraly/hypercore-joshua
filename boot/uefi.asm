@@ -9,7 +9,7 @@ default rel
 %ifndef JOSHUA_CONSOLE_TEST
  %define JOSHUA_CONSOLE_TEST 0
 %endif
-%if JOSHUA_CONSOLE_TEST < 0 || JOSHUA_CONSOLE_TEST > 3
+%if JOSHUA_CONSOLE_TEST < 0 || JOSHUA_CONSOLE_TEST > 6
  %error Invalid console fixture
 %endif
 %ifndef JOSHUA_CONSOLE

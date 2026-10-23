@@ -915,3 +915,50 @@ reproduce these tests. Windows execution and physical qualification remain open.
 The wider inherited regression results remain the earlier frozen-runtime evidence;
 they were not all rerun for these compile-time-only hooks. Active console timer/
 drain rejection and independent live facts/transcript oracles remain next gates.
+
+### Console timer ownership and bounded drain fixtures
+
+Design/source reviews cleared the controlled UnexpectedTimer/PendingTimer/
+DrainExhaust profiles. Initial xAPIC ISO/FAT runs passed all six targets: actual
+phase1 ISR40 rejection before EOI, one phase2 timer EOI followed by complete halt
+retirement, and exact1025-window rejection with IRR40 still pending. The215 captured
+baseline/mutation checks subsequently passed. The first mutation invocation failed
+its own single-field assertion because LVTT also matched LVTTHMR; a word boundary
+corrected the driver selector, without weakening the actual timer oracle. That
+failed invocation is not counted as a pass. Source follow-up found no findings;
+reviewers did not run tests or inspect artifacts.
+
+Normal/Console reproducibility passed two builds and corrupt-PE rejection; all
+builds passed20,822 static assertions. Frame5,996, editor344,659 and model17,279
+host checks passed. Final regression/reproducibility and optional x2 fixture results
+are still pending here. Controlled injection does not qualify arbitrary timer or
+NMI/MC timing, independent live facts/transcript provenance, hardware or Windows.
+No merge, issue/milestone closure or exhaustive corruption claim is made.
+
+Subsequent checks confirmed normal Test-Qemu and ordinary Console Features ISO/FAT,
+normal/Console/three timer-fixture reproducibility and byte equality between rebuilt
+and tested fixture ISOs. These passed; optional x2 fixture targets remain pending.
+One x2 DrainExhaust ISO invocation failed in the host driver while parsing a partial
+READY address line. Its serial log is preserved separately. The driver now waits
+for the complete strictly formatted line under the existing deadline;255 checks
+extract the actual regex and test every interrupted prefix plus malformed fields.
+No address assertion was relaxed and no target success is inferred from that failed
+invocation. A final x2 rerun is required. The older fixture paragraph's pending
+regression/reproducibility wording describes its earlier checkpoint only.
+
+Final x2APIC reruns under the complete-READY reader passed all six profiles on
+ISO/FAT, including the previously failed DrainExhaust ISO invocation's profile.
+Together with six xAPIC passes this establishes12 timer/drain target profiles;
+the earlier partial-line failure is retained as a failed driver invocation, not
+substituted by another medium. All final commands exited0. The old KeyboardTest
+DrainExhaust ISO also passed after the shared compile-time STI condition change.
+The215 timer mutations and255 readiness cases passed. Source-only follow-up cleared
+the readiness/CI/evidence changes and resolved the earlier stale-status finding.
+
+Five reproducibility profiles passed: normal, Console and the three xAPIC timer
+fixtures. x2 fixture media were built/hashed/tested, but separate x2 reproducibility
+is not claimed. Current ordinary Console ISO remains SHA256
+`3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+No general asynchronous interrupt resilience or complete OS qualification follows.
+Independent live facts/transcript provenance, broader corruption, Windows and
+physical qualification remain open. No issue/milestone closure or merge.

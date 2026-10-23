@@ -17,7 +17,7 @@ console_halted_text_end:
 
 %if JOSHUA_CONSOLE_TEST != 0
 debug_console_fixture: db 'JOSHUA:CONSOLE_FIXTURE ID=',0
-%if JOSHUA_CONSOLE_TEST = 2 || JOSHUA_CONSOLE_TEST = 3
+%if JOSHUA_CONSOLE_TEST >= 2
 debug_console_fixture_source: db ' SOURCE=',0
 %endif
 %endif

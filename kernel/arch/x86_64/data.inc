@@ -39,3 +39,7 @@ apic_context: times APIC_CONTEXT_size db 0
 ; Finite fixture trace only; incremented after frame and actual ISR44 ownership.
 console_fixture_irqs: dq 0
 %endif
+
+%if JOSHUA_CONSOLE_TEST >= 4
+console_timer_fixture: times CONSOLE_TIMER_FIXTURE_size db 0
+%endif

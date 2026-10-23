@@ -151,7 +151,7 @@
 %%drain_open:
     push 2
     popfq
-%if JOSHUA_KEYBOARD_TEST != 7
+%if JOSHUA_KEYBOARD_TEST != 7 && JOSHUA_CONSOLE_TEST != 6
     sti
 %endif
     nop

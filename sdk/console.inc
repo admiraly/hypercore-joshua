@@ -110,4 +110,19 @@ endstruc
 %if CONSOLE_MODEL_size != 64
  %error Console model layout mismatch
 %endif
+
+; Explicit target evidence only, never authority or a public ABI.
+struc CONSOLE_TIMER_FIXTURE
+ .stage: resq 1
+ .pending_irrs: resq 1
+ .timer_eoi_base: resq 1
+ .saved_rip: resq 1
+ .saved_cs: resq 1
+ .saved_flags: resq 1
+ .saved_rsp: resq 1
+ .saved_ss: resq 1
+endstruc
+%if CONSOLE_TIMER_FIXTURE_size != 64
+ %error Console timer fixture layout mismatch
+%endif
 %endif

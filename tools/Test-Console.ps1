@@ -1,4 +1,4 @@
-param([ValidateSet('None','BadEditor','BadFacts','Saturation')][string]$Fixture='None',[switch]$Features,[string]$OutputDirectory,[string]$QemuPath,[string]$FirmwareDirectory,[ValidateSet('Iso','Fat')][string]$BootMedia='Iso',[string]$CpuModel='qemu64',[ValidateRange(60,300)][int]$TimeoutSeconds=120)
+param([ValidateSet('None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')][string]$Fixture='None',[switch]$Features,[string]$OutputDirectory,[string]$QemuPath,[string]$FirmwareDirectory,[ValidateSet('Iso','Fat')][string]$BootMedia='Iso',[string]$CpuModel='qemu64',[ValidateRange(60,300)][int]$TimeoutSeconds=120)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $root=Split-Path $PSScriptRoot -Parent

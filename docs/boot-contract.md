@@ -570,3 +570,15 @@ root and permissions. Its separate finite actual-ISR44 trace is updated only aft
 exact frame and hardware ISR ownership proof. Neither injection nor trace exists
 in normal Console images. No versioned ABI or image bounds change. See the exact
 fixture/source evidence expectations in console-design.md and testing.md.
+
+Console timer fixtures4–6 add only compile-time controlled pending injection and
+64-byte evidence in owned data. Phase1 UnexpectedTimer proves a real ISR40 then
+stops without EOI. PendingTimer proves the exact phase2 drain return and one EOI
+without rearm before successful phase3 retirement. DrainExhaust leaves IF0 in the
+fixture drain windows and stops at1025 with timer still in IRR, not ISR. The existing
+normal wait/drain/frame policy and versioned layouts are unchanged. Saved-field
+copying follows frame and ISR proof, uses only volatile RAX, adds no call/stack
+depth, and does not modify the returning frame. The forcing helper consumes48
+bytes below its entry RSP through a leaf lapic_read/write, or96 through nested
+user_timer_stop/console_timer_check (including helper calls), within the bootstrap
+reserve. Normal Console contains neither forcing nor evidence-copy instructions.

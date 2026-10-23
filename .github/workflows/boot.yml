@@ -188,11 +188,17 @@ jobs:
         run: ./tools/Test-Console.ps1 -Features -BootMedia Fat
       - name: Validate isolated console rejection and saturation on both media
         run: |
-          foreach ($fixture in @('BadEditor','BadFacts','Saturation')) {
+          foreach ($fixture in @('BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')) {
             ./tools/Build.ps1 -Console -ConsoleTest $fixture
             ./tools/Test-Console.ps1 -Fixture $fixture -TimeoutSeconds 180
             ./tools/Test-Console.ps1 -Fixture $fixture -BootMedia Fat -TimeoutSeconds 180
           }
+      - name: Reject partial readiness and corrupted console timer evidence
+        run: |
+          python ./tests/test_console_ready.py
+          if ($LASTEXITCODE -ne 0) { throw 'Console readiness parser checks failed.' }
+          python ./tests/test_console_timer_mutations.py out
+          if ($LASTEXITCODE -ne 0) { throw 'Console timer mutation checks failed.' }
       - name: Build and exercise x2APIC console
         run: |
           ./tools/Build.ps1 -Console -TimerTest X2

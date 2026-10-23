@@ -14,7 +14,10 @@ import subprocess
 import time
 import sys
 from console_pixels import validate_pixels
+from console_timer_oracle import validate_timer_fixture
 from keyboard_runtime_oracle import validate_lapic, validate_output_quiet, validate_queue_indices
+
+READY_PATTERN = r'(?m)^JOSHUA:CONSOLE_READY MODEL=([0-9A-F]{16}) GRID=([0-9A-F]{16}) EDITOR=([0-9A-F]{16}) COMMAND=([0-9A-F]{16}) RESPONSE=([0-9A-F]{16}) FACTS=([0-9A-F]{16}) WINDOW=([0-9A-F]{16}) DECODER=([0-9A-F]{16}) CONTROLLER=([0-9A-F]{16})\r?\n'
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('output',type=Path)
@@ -24,7 +27,7 @@ p.add_argument('--boot-media',choices=['Iso','Fat'],default='Iso')
 p.add_argument('--cpu',default='qemu64')
 p.add_argument('--timeout',type=int,default=120)
 p.add_argument('--idle-seconds',type=int,default=30)
-p.add_argument('--fixture',choices=['None','BadEditor','BadFacts','Saturation'],default='None')
+p.add_argument('--fixture',choices=['None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust'],default='None')
 p.add_argument('--features',action='store_true',help='exercise command grammar through real PS2 input')
 a = p.parse_args()
 MAX=(1<<64)-1
@@ -97,10 +100,13 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert process.poll() is None,'QEMU exited'
             assert 'JOSHUA:KERNEL_FAULT' not in log(),log()
             assert time.monotonic()<deadline,'target deadline: '+log()
-        while 'JOSHUA:CONSOLE_READY MODEL=' not in log():
+        match=None
+        while not match:
+            match=re.search(READY_PATTERN,log())
+            if match:
+                break
             healthy()
             time.sleep(.02)
-        match = re.search(r'CONSOLE_READY MODEL=([0-9A-F]{16}) GRID=([0-9A-F]{16}) EDITOR=([0-9A-F]{16}) COMMAND=([0-9A-F]{16}) RESPONSE=([0-9A-F]{16}) FACTS=([0-9A-F]{16}) WINDOW=([0-9A-F]{16}) DECODER=([0-9A-F]{16}) CONTROLLER=([0-9A-F]{16})',log())
         assert match,'complete evidence addresses'
         addresses = dict(zip(['model','grid','editor','command','response','facts','window','decoder','controller'],[int(x,16) for x in match.groups()]))
         if a.fixture!='None':
@@ -110,7 +116,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                 assert healthy_fixture,'fixture readiness deadline'
                 time.sleep(.02)
             fixture_match=re.search(r'CONSOLE_FIXTURE ID=([0-9A-F]{16})(?: SOURCE=([0-9A-F]{16}))?',log())
-            assert int(fixture_match[1],16)==['None','BadEditor','BadFacts','Saturation'].index(a.fixture),'target fixture identity'
+            assert int(fixture_match[1],16)==['None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust'].index(a.fixture),'target fixture identity'
             if fixture_match[2]:
                 addresses['source']=int(fixture_match[2],16)
         def physical(name,size,suffix):
@@ -137,7 +143,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             values = {name:physical(name,size,suffix) for name,size in
                       [('model',64),('grid',4904),('editor',1568),('command',40),('response',4112),('facts',128),('window',288),('decoder',216),('controller',56)]}
             if 'source' in addresses:
-                values['source']=physical('source',8,suffix)
+                values['source']=physical('source',64 if a.fixture in ('UnexpectedTimer','PendingTimer','DrainExhaust') else 8,suffix)
             regs = registers()
             (out/(tag+'-'+suffix+'-registers.log')).write_text(regs)
             lapic = qmp('human-monitor-command',**{'command-line':'info lapic'})
@@ -148,7 +154,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             validate_queue_indices(d[6],d[7],d[8])
             assert d[0]==0x3144424b48534f4a and d[8:11]==(0,0,0),'empty healthy real decoder'
             assert w[0]==0x3157424b48534f4a and w[1]==(3 if terminal else 1),'exact window ownership phase'
-            assert w[13]==w[16]==w[17]==0,'no timer ticks/EOIs or collection failure'
+            assert w[13]==w[17]==0 and w[16]==(1 if terminal and a.fixture=='PendingTimer' else 0),'exact timer ticks/EOIs and collection state'
             assert w[14]==w[15],'actual IRQ44/EOI accounting'
             assert w[2]==int(re.search(r'OWNED_PAGING CR3=([0-9A-F]+)',log())[1],16),'retained owned root'
             assert 'CR3='+format(w[2],'016x') in regs.lower().replace('cr3=','CR3='),'actual current root'
@@ -161,6 +167,8 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             return values
         baseline = snapshot('ready')
         assert struct.unpack('<8Q',baseline['model'])==(0x314c444f4d484f4a,2,0,seed,0,0,0,0),'initial model'
+        if a.fixture in ('UnexpectedTimer','PendingTimer','DrainExhaust'):
+            assert baseline['source']==bytes(64),'zero timer fixture baseline'
         if a.fixture=='Saturation':
             assert struct.unpack_from('<3Q',baseline['editor'],72)==(seed,seed,seed),'counter seed baseline'
             assert struct.unpack_from('<2Q',baseline['window'],112)==(seed,seed),'IRQ seed baseline'
@@ -189,6 +197,53 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert length<=127 and cursor<=length,'bounded editor'
             assert data[96+length:224]==b'\0'*(128-length),'editor zero tail'
             return data[96:96+length].decode('ascii'),cursor
+        def timer_stop():
+            while not re.search(r'(?m)^JOSHUA:KERNEL_FAULT\r?$',log()):
+                assert process.poll() is None and time.monotonic()<deadline,'exact timer rejection deadline: '+log()
+                time.sleep(.02)
+            # Wait for the terminal HLT, rather than race its preceding diagnostic.
+            while 'HLT=1' not in registers():
+                assert process.poll() is None and time.monotonic()<deadline,'terminal HLT deadline'
+            qmp('stop')
+            values={name:physical(name,len(data),'timer-rejected') for name,data in baseline.items()}
+            regs=registers()
+            (out/(tag+'-timer-rejected-registers.log')).write_text(regs)
+            assert 'HLT=1' in regs and 'CPL=0' in regs and not(int(re.search(r'RFL=([0-9A-Fa-f]+)',regs)[1],16)&0x200),'exact terminal IF0 CPL0 HLT'
+            assert int(re.search(r'CR3=([0-9A-Fa-f]+)',regs)[1],16)==struct.unpack_from('<Q',baseline['window'],16)[0],'same actual owned root'
+            assert struct.unpack_from('<Q',values['window'],16)[0]==struct.unpack_from('<Q',baseline['window'],16)[0],'same window root'
+            assert log().count('JOSHUA:KERNEL_FAULT')==1 and 'JOSHUA:KERNEL_HALTED' not in log() and 'JOSHUA:CONSOLE_HALTED' not in log(),'exact fault without false success'
+            lapic=qmp('human-monitor-command',**{'command-line':'info lapic'})
+            (out/(tag+'-timer-rejected-lapic.log')).write_text(lapic)
+            validate_timer_fixture(a.fixture,values['source'],values['window'],lapic)
+            return values
+        def finish_timer_stop():
+            stream.write(b'{"execute":"quit"}\n')
+            stream.flush()
+            process.wait(timeout=5)
+            assert process.returncode==0,'clean expected-stop shutdown'
+            temporary=summary_path.with_suffix('.json.tmp')
+            temporary.write_text(json.dumps({'fixture':a.fixture,'bootMedia':a.boot_media,'cpu':a.cpu,'expectedStop':True,'checks':'exact timer ownership and physical LAPIC rejection'},indent=2)+'\n')
+            temporary.replace(summary_path)
+            print('PASS: Console '+a.fixture+' '+a.boot_media+' exact hardware timer rejection')
+        if a.fixture=='UnexpectedTimer':
+            key('a')
+            failed=timer_stop()
+            assert 'JOSHUA:CONSOLE_FAILURE' not in log(),'direct ISR ownership rejection'
+            for name in ['model','command','facts','response']:
+                assert failed[name]==baseline[name],'timer rejection preserves '+name
+            assert failed['facts']==bytes(128) and failed['response']==bytes(4112),'unpublished timer rejection outputs'
+            expected=bytearray(baseline['editor'])
+            struct.pack_into('<2Q',expected,8,1,1)
+            expected[96]=ord('a')
+            assert failed['editor']==expected,'exact real input before timer'
+            grid=failed['grid']
+            g=struct.unpack_from('<13Q',grid)
+            assert g[9]==0 and g[10:13]==(9,g[8]-2,1),'rendered actual input'
+            assert grid[104+(g[8]-2)*100:104+(g[8]-2)*100+9]==b'JOSHUA> a','actual input prompt'
+            qmp('screendump',filename=str(out/(tag+'-timer-rejected.ppm')))
+            validate_pixels(grid,(out/(tag+'-timer-rejected.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            finish_timer_stop()
+            sys.exit(0)
         if a.fixture in ('BadEditor','BadFacts'):
             assert baseline['facts']==bytes(128) and baseline['response']==bytes(4112),'unpublished baseline outputs'
             if a.fixture=='BadFacts':
@@ -354,10 +409,31 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert editor_text(snapshot('capacity-cancel')['editor'])==('',0),'capacity cancellation'
         type_text('halt')
         key('ret')
+        if a.fixture=='DrainExhaust':
+            failed=timer_stop()
+            assert log().count('JOSHUA:CONSOLE_FAILURE')==1,'foreground drain rejection'
+            assert struct.unpack('<8Q',failed['model'])[3:]==(min(MAX,completed+1),8,0,0,2),'valid halt before drain limit'
+            assert struct.unpack('<5Q',failed['command'])==(0x31444e4d43484f4a,8,0,0,2),'exact halt command'
+            response=b'HALTING: QUIESCING KEYBOARD\n'
+            assert failed['response']==struct.pack('<2Q',0x3150534552484f4a,len(response))+response.ljust(4096,b'\0'),'halt response without completion'
+            c=struct.unpack('<7Q',failed['controller'])
+            assert c[:3]==(0,0,11) and c[5]==0,'retired controller despite timer pending'
+            selected=qmp('human-monitor-command',**{'command-line':'xp /1wx 0xfec00000'})
+            route=qmp('human-monitor-command',**{'command-line':'xp /1wx 0xfec00010'})
+            assert int(re.findall(r'0x([0-9a-fA-F]{8})\b',selected)[-1],16)==0x12,'keyboard selector'
+            assert int(re.findall(r'0x([0-9a-fA-F]{8})\b',route)[-1],16)&0x1afff==0x10044,'masked route'
+            port=qmp('human-monitor-command',**{'command-line':'i /b 0x64'})
+            validate_output_quiet(port)
+            for name,text in [('ioregsel',selected),('ioapic',route),('i8042',port)]:
+                (out/(tag+'-timer-rejected-'+name+'.log')).write_text(text)
+            finish_timer_stop()
+            sys.exit(0)
         while 'JOSHUA:KERNEL_HALTED' not in log():
             healthy()
             time.sleep(.02)
         terminal = snapshot('halted',True)
+        if a.fixture=='PendingTimer':
+            validate_timer_fixture(a.fixture,terminal['source'],terminal['window'],(out/(tag+'-halted-lapic.log')).read_text())
         if a.fixture=='Saturation':
             assert struct.unpack_from('<3Q',terminal['editor'],72)==(MAX,MAX,MAX),'all editor counters remain saturated'
             assert struct.unpack_from('<Q',terminal['model'],24)[0]==MAX,'completion remains saturated'

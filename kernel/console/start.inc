@@ -74,13 +74,17 @@ console_run:
     call debug_write
     mov ecx,JOSHUA_CONSOLE_TEST
     call debug_hex
-%if JOSHUA_CONSOLE_TEST = 2 || JOSHUA_CONSOLE_TEST = 3
+%if JOSHUA_CONSOLE_TEST >= 2
     lea rcx,[debug_console_fixture_source]
     call debug_write
 %if JOSHUA_CONSOLE_TEST = 2
     lea rcx,[acpi_context+ACPI_CONTEXT.enabled]
 %else
+%if JOSHUA_CONSOLE_TEST = 3
     lea rcx,[console_fixture_irqs]
+%else
+    lea rcx,[console_timer_fixture]
+%endif
 %endif
     call debug_hex
 %endif
@@ -158,6 +162,14 @@ console_run:
     je .halt
     jmp .consume
 .wait:
+%if JOSHUA_CONSOLE_TEST = 4
+    cmp qword [keyboard_window+KEYBOARD_WINDOW.keyboard_irqs],0
+    je .wait_ready
+    call console_fixture_pending
+    test eax,eax
+    jnz .bad
+.wait_ready:
+%endif
     irq_sentinels load
     push 2
     popfq
@@ -175,6 +187,11 @@ console_run:
     jne .bad
     jmp .consume
 .halt:
+%if JOSHUA_CONSOLE_TEST = 5 || JOSHUA_CONSOLE_TEST = 6
+    call console_fixture_pending
+    test eax,eax
+    jnz .bad
+%endif
     keyboard_window_retire .drain_close,.bad
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],0
     jne .bad
@@ -498,3 +515,68 @@ console_finish_screen:
     add rsp,32
     pop rdi
     ret
+
+%if JOSHUA_CONSOLE_TEST >= 4
+; IF0 fixed foreground stack; bounded controlled hardware injection, not normal code.
+console_fixture_pending:
+    push rbx
+    sub rsp,32
+    pushfq
+    pop rax
+    test eax,0x600
+    jnz .bad
+    mov rax,cr3
+    cmp rax,[owned_paging+OWNED_PAGING.root]
+    jne .bad
+    cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],1
+    jne .bad
+    cmp qword [console_timer_fixture+CONSOLE_TIMER_FIXTURE.stage],0
+    jne .bad
+    call user_timer_stop
+    call console_timer_check
+    test eax,eax
+    jnz .bad
+    mov ecx,0x120
+    call lapic_read
+    test eax,1
+    jnz .bad
+    mov ecx,0x220
+    call lapic_read
+    test eax,1
+    jnz .bad
+    mov ecx,0x320
+    mov edx,0x40
+    call lapic_write
+    mov ecx,0x380
+    mov edx,1
+    call lapic_write
+    mov ebx,1000000
+.poll:
+    mov ecx,0x220
+    call lapic_read
+    test eax,1
+    jnz .seen
+    pause
+    dec ebx
+    jnz .poll
+    jmp .bad
+.seen:
+    mov [console_timer_fixture+CONSOLE_TIMER_FIXTURE.pending_irrs],rax
+    mov rax,[keyboard_window+KEYBOARD_WINDOW.timer_eois]
+    mov [console_timer_fixture+CONSOLE_TIMER_FIXTURE.timer_eoi_base],rax
+%if JOSHUA_CONSOLE_TEST != 4
+    call user_timer_stop
+    call console_timer_check
+    test eax,eax
+    jnz .bad
+%endif
+    mov qword [console_timer_fixture+CONSOLE_TIMER_FIXTURE.stage],1
+    xor eax,eax
+    jmp .return
+.bad:
+    mov eax,1
+.return:
+    add rsp,32
+    pop rbx
+    ret
+%endif

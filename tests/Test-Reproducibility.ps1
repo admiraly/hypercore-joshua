@@ -1,4 +1,4 @@
-param([string]$OutputDirectory, [switch]$Console, [ValidateSet('None','BadEditor','BadFacts','Saturation')][string]$ConsoleTest='None')
+param([string]$OutputDirectory, [switch]$Console, [ValidateSet('None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')][string]$ConsoleTest='None')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

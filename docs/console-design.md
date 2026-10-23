@@ -732,3 +732,56 @@ pixel/ownership/idle assertions are retained for Saturation. The first fixture s
 leaves active-timer rejection, forced console drain/exhaustion, broader corruption
 and source/transcript provenance gates open; inherited keyboard fixtures alone do
 not qualify those console-specific paths.
+
+## Console timer ownership and drain fixtures
+
+Extend isolated ConsoleTest IDs with4 UnexpectedTimer,5 PendingTimer and6 DrainExhaust.
+The normal image, versioned layouts and fixed-RSP production paths remain unchanged.
+A fixture-only64-byte record in owned data contains eight qwords: stage, pending_irrs,
+timer_eoi_base, saved_rip, saved_cs, saved_flags, saved_rsp, saved_ss. SOURCE in the
+fixture marker points to this fixed record. Stage0 and all bytes zero are required
+at READY. No external input supplies an address or changes page tables.
+
+A bounded IF0 helper proves phase1, expected owned root and unused stage0, stops/
+checks the timer, and rejects a preexisting ISR40/IRR40. It unmasks one-shot vector40,
+writes initial count1, and polls IRR40 for at most1,000,000 reads. On observation,
+record actual IRR word and current window.timer_eois. PendingTimer/DrainExhaust stop
+and mask the timer again without consuming the pending vector; check stopped counts.
+Publish stage1 last. Timeout/failure stops and cannot qualify as any fixture success.
+This is controlled LAPIC pending injection, not natural asynchronous timing evidence.
+
+UnexpectedTimer invokes that helper at the fixed-RSP wait point only after real
+keyboard IRQ progress and before the normal sentinel/flags/STI/HLT sequence. The
+first actual input is `a`. The inherited frame and real ISR40 ownership checks must
+pass; fixture-only instrumentation then copies the five saved hardware return fields
+and publishes stage2. The existing phase1 timer rejection must stop before EOI.
+Require unchanged model/command/facts/response, exact live editor `a`, phase1,
+ticks0/timer_eois0/failure0, actual ISR={40h}, IRR at most{44h}, unmasked expired
+one-shot count1, owned root/CPL0/IF0/HLT, one KERNEL_FAULT and no CONSOLE_FAILURE or
+HALTED. The copied fields must match exact wait RIP/RSP/selectors and202h with only
+hardware RF tolerated. No source retirement is claimed.
+
+PendingTimer invokes the helper at foreground halt immediately before the shared
+retirement macro, after the valid halt response/model/render. Controller retirement
+then proceeds normally with the vector pending. Phase2 accepts its exact drain
+frame and actual ISR ownership, copies the return fields/stage2, EOIs once and never
+rearms. Require stage1 pending-bit evidence, base timer EOIs0, final timer EOIs1,
+ticks0/failure0, at least1 and at most1024 drain windows, saved drain RIP with exact
+selectors/RSP/flags, phase3 and actual stopped/masked timer, no ISR/IRR, quiet/masked
+PS2 source and visible HALTED. Pre-halt input/result/pixel assertions remain enabled.
+
+DrainExhaust injects the same pending timer before retirement but compile-time skips
+STI only in its drain loop. The production limit must stop at window1025, before a
+1025th enabled window. Require stage1 with five zero saved fields, phase2/flags202h,
+timer EOIs0/ticks0/failure0, actual masked timer with zero counts, ISR empty and
+IRR exactly{40h}, retired controller/route/port, owned root/CPL0/IF0/HLT. Require the
+valid halt command and HALTING response/model but no HALTED success and exactly one
+CONSOLE_FAILURE/KERNEL_FAULT. Earlier keyboard fixture limits are unchanged.
+
+The fixture return-field copy runs only after the existing exact frame check and
+actual ISR40 proof, leaves the saved frame unchanged, preserves call ABI, and must
+fit the4-KiB handler reserve. Capture before stop resets the kernel stack; do not
+claim later stack bytes are intact. Actual QMP LAPIC state independently checks
+pending/EOI outcomes. Manifest hashes, exact fixture IDs, zero baselines, clean
+shutdown and stale-summary rules remain mandatory on all media. Undefined timer
+state, timeout or unrelated failure cannot satisfy an expected-stop oracle.

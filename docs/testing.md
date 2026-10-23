@@ -379,3 +379,26 @@ provides delivery evidence independent of saturated counters. Pixel, idle and sa
 retirement assertions remain enabled. All modes check manifest/media isolation and
 publish final summaries only after clean QEMU exit0. These controlled fixtures do
 not qualify natural lifetime limits, active-timer/drain rejection or physical input.
+
+ConsoleTest also accepts UnexpectedTimer, PendingTimer and DrainExhaust. Use the
+same Build/Test commands and isolated directories on ISO/FAT. UnexpectedTimer
+requires real phase1 timer delivery to stop before EOI, with actual ISR40 retained.
+PendingTimer follows an actual halt submission and requires one phase2 timer EOI,
+no ticks/rearm, matching copied return fields and complete physical retirement.
+DrainExhaust suppresses STI only in its controlled fixture loop: counter1025,
+actual IRR40 with empty ISR, zero EOIs and no HALTED are mandatory. The fixture
+record copies saved fields only after frame/ISR proof and before stack reset.
+These are controlled pending injections, not natural asynchronous timing evidence.
+
+After all three ISO captures, `python tests/test_console_timer_mutations.py out`
+requires215 baseline/mutation checks against the same timer predicates used during
+capture. Mutations include return fields, stage/pending/EOI/limit state, exact LAPIC
+sets/masking/counts and every saved-flags bit. RF has separate accepted cases;
+metadata flags stay strict. This is targeted corruption coverage; complete capture
+provenance and all possible corruptions are not established. Windows CI runs the
+six fixture profiles on both media and propagates mutation failures explicitly.
+
+`python tests/test_console_ready.py` extracts the actual driver regex and checks255
+complete/partial/malformed READY cases. The target driver awaits all nine fixed-width
+addresses and the line terminator under its existing deadline, so interrupted serial
+writes cannot be parsed prematurely. It retains exact address/profile validation.

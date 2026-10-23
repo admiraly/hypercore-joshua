@@ -317,6 +317,16 @@ keyboard_timer_saved:
     call lapic_read
     test eax,1
     jz kernel_fault
+%if JOSHUA_CONSOLE_TEST = 4 || JOSHUA_CONSOLE_TEST = 5
+    ; Frame and real ISR40 ownership already proved. Copy without another call.
+%assign cfield 0
+%rep 5
+    mov rax,[rsp+152+cfield*8]
+    mov [console_timer_fixture+CONSOLE_TIMER_FIXTURE.saved_rip+cfield*8],rax
+%assign cfield cfield+1
+%endrep
+    mov qword [console_timer_fixture+CONSOLE_TIMER_FIXTURE.stage],2
+%endif
 %if JOSHUA_CONSOLE
     cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],2
     jne kernel_fault ; active console owns no timer delivery; never EOI it
