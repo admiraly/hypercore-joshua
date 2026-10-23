@@ -1,4 +1,4 @@
-param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard')][string]$FaultTest = 'None')
+param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite')][string]$FaultTest = 'None')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -32,13 +32,14 @@ try {
     if ($FaultTest -eq 'Gp') { $defines = @('-DJOSHUA_FAULT_TEST=2') }
     if ($FaultTest -eq 'ReadOnly') { $defines = @('-DJOSHUA_FAULT_TEST=3') }
     if ($FaultTest -eq 'Nx') { $defines = @('-DJOSHUA_FAULT_TEST=4') }
+    if ($FaultTest -eq 'ConstWrite') { $defines = @('-DJOSHUA_FAULT_TEST=6') }
     if ($FaultTest -eq 'Guard') { $defines = @('-DJOSHUA_FAULT_TEST=5') }
     & $NasmPath @defines -f bin -Wall -w-reloc-rel-dword -w-reloc-abs-dword -Werror -l (Join-Path $OutputDirectory 'boot.lst') -o $efi boot/uefi.asm
     if ($LASTEXITCODE -ne 0) { throw 'Assembly failed; no image was packaged.' }
     & (Join-Path $root 'tests/Test-Pe.ps1') -EfiPath $efi
     & (Join-Path $root 'tools/New-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
     & (Join-Path $root 'tests/Test-BootImage.ps1') -EfiPath $efi -OutputDirectory $OutputDirectory
-    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/data.inc', 'kernel/mm/map.inc', 'kernel/mm/ranges.inc', 'kernel/mm/candidates.inc', 'kernel/mm/paging-inventory.inc', 'kernel/mm/frames.inc', 'kernel/mm/frame-check.inc', 'kernel/mm/owned-map.inc', 'kernel/mm/owned-start.inc', 'sdk/boot.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
+    $inputs = @('boot/uefi.asm', 'kernel/arch/x86_64/entry.inc', 'kernel/arch/x86_64/data.inc', 'kernel/arch/x86_64/rodata.inc', 'kernel/mm/map.inc', 'kernel/mm/ranges.inc', 'kernel/mm/candidates.inc', 'kernel/mm/paging-inventory.inc', 'kernel/mm/frames.inc', 'kernel/mm/frame-check.inc', 'kernel/mm/owned-map.inc', 'kernel/mm/owned-start.inc', 'sdk/boot.inc', 'tools/Build.ps1', 'tools/New-BootImage.ps1')
     $manifest = [ordered]@{
         stage = 'M0/M1 boot prototype - unsigned, no installer'
         faultTest = $FaultTest

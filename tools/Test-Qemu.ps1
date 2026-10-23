@@ -4,7 +4,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard')][string]$ExpectedFault = 'None'
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite')][string]$ExpectedFault = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,7 +58,7 @@ try {
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT[^\r\n]+ CR2=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'EBS_OK')
-    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard')
+    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING') }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
@@ -114,9 +114,9 @@ try {
         $errorCode = '0000000000000000'
         if ($ExpectedFault -eq 'Gp') { $vector = '000000000000000D'; $errorCode = '000000000000FFFC' }
         $cr2Pattern = '[0-9A-F]{16}'
-        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard')) {
+        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard', 'ConstWrite')) {
             $vector = '000000000000000E'
-            if ($ExpectedFault -eq 'ReadOnly') { $errorCode = '0000000000000003' }
+            if ($ExpectedFault -in @('ReadOnly', 'ConstWrite')) { $errorCode = '0000000000000003' }
             if ($ExpectedFault -eq 'Nx') { $errorCode = '0000000000000011' }
             if ($log -notmatch 'JOSHUA:FIXTURE_TARGET=([0-9A-F]{16})') { throw 'Missing fixture fault target.' }
             $cr2Pattern = $Matches[1]

@@ -8,33 +8,39 @@ function Assert-True([bool]$Condition, [string]$Message) {
 }
 function Read-U16([int]$Offset) { [BitConverter]::ToUInt16($bytes, $Offset) }
 function Read-U32([int]$Offset) { [BitConverter]::ToUInt32($bytes, $Offset) }
-Assert-True ($bytes.Length -eq 0x7000) 'Unexpected file size.'
+Assert-True ($bytes.Length -eq 0x8000) 'Unexpected file size.'
 Assert-True ((Read-U16 0) -eq 0x5a4d) 'Missing MZ signature.'
 $pe = Read-U32 0x3c
 Assert-True ((Read-U32 $pe) -eq 0x4550) 'Missing PE signature.'
 Assert-True ((Read-U16 ($pe + 4)) -eq 0x8664) 'Not AMD64.'
-Assert-True ((Read-U16 ($pe + 6)) -eq 4) 'Expected four sections.'
+Assert-True ((Read-U16 ($pe + 6)) -eq 5) 'Expected five sections.'
 Assert-True ((Read-U32 ($pe + 8)) -eq 0) 'Non-reproducible timestamp.'
 $optional = $pe + 24
 Assert-True ((Read-U16 $optional) -eq 0x20b) 'Not PE32+.'
 Assert-True ((Read-U16 ($optional + 68)) -eq 10) 'Not an EFI application.'
-Assert-True ((Read-U32 ($optional + 56)) -eq 0xc1000) 'Wrong image size.'
+Assert-True ((Read-U32 ($optional + 56)) -eq 0xc2000) 'Wrong image size.'
 $entry = Read-U32 ($optional + 16)
 Assert-True ($entry -ge 0x1000 -and $entry -lt 0x5000) 'Entry outside code.'
-Assert-True ((Read-U32 ($optional + 152)) -eq 0xc0000) 'Missing relocation directory.'
+Assert-True ((Read-U32 ($optional + 152)) -eq 0xc1000) 'Missing relocation directory.'
 Assert-True ((Read-U32 ($optional + 156)) -eq 12) 'Invalid relocation size.'
-Assert-True ((Read-U32 0x6004) -eq 12) 'Invalid relocation block.'
+Assert-True ((Read-U32 0x7004) -eq 12) 'Invalid relocation block.'
 $sectionTable = $optional + (Read-U16 ($pe + 20))
 $expectedSections = @(
     @(0x1000, 0x4000, 0x1000, 0x4000),
     @(0x5000, 0x1000, 0x5000, 0x1000),
-    @(0x6000, 0xba000, 0, 0),
-    @(0xc0000, 12, 0x6000, 0x1000)
+    @(0x6000, 0x1000, 0x6000, 0x1000),
+    @(0x7000, 0xba000, 0, 0),
+    @(0xc1000, 12, 0x7000, 0x1000)
 )
+$expectedFlags = @(0x60000020L, 0xc0000040L, 0x40000040L, 0xc0000080L, 0x42000040L)
+$expectedNames = @('.text', '.data', '.rodata', '.bss', '.reloc')
 $ranges = @()
-for ($section = 0; $section -lt 4; $section++) {
+for ($section = 0; $section -lt 5; $section++) {
     $offset = $sectionTable + $section * 40
     $flags = Read-U32 ($offset + 36)
+    $name = [Text.Encoding]::ASCII.GetString($bytes, $offset, 8).TrimEnd([char]0)
+    Assert-True ($name -eq $expectedNames[$section]) 'Unexpected section name.'
+    Assert-True ($flags -eq $expectedFlags[$section]) 'Unexpected section permissions.'
     $virtualSize = Read-U32 ($offset + 8)
     $rva = Read-U32 ($offset + 12)
     $rawSize = Read-U32 ($offset + 16)

@@ -194,3 +194,26 @@ initial-PCID-enabled firmware, unusual PAT/MTRR layouts, SMP, TSS/IST, damaged-s
 recovery or process isolation is established. Immutable assets still share RW/NX
 data storage; dedicated read-only constants and mapping lifecycle remain open.
 Old firmware memory/tables remain reserved. CI for this revision is pending.
+
+## Dedicated immutable storage — 23 October 2026
+
+Issue #20 adds a dedicated `.rodata` PE page with exact RO/non-executable flags,
+separate from writable boot buffers, descriptor state and memory metadata. The
+owned policy and whole-image proof enforce RO/NX for constants. Boot-info layouts,
+inherited cache selectors and inherited-leaf boundaries remain unchanged.
+
+On Linux PowerShell 7.4.6/NASM 2.16.03/QEMU 10.2.2 with the same OVMF profile:
+
+- Build and two-build reproducibility passed, including all 20,718 media assertions
+  and identical EFI/FAT/ISO/manifest hashes; corrupted PE rejection passed.
+- Normal ISO and FAT boots reached the intended halt with owned CR3, WP/NXE,
+  guarded stack and the existing framebuffer checks.
+- Host suites passed: 6,425 reservation, 1,061 owned-map, 6,297 allocator,
+  250 paging-inventory and 24 memory-map checks.
+
+All six controlled faults passed: Ud2, Gp, code write, NX execution, stack guard
+and constant write. ConstWrite reported #PF/error 3 with exact RIP and CR2.
+Independent design and implementation reviews found no actionable findings.
+Reviews were read-only and did not independently reproduce test results.
+This slice does not establish mapping lifecycle, process isolation,
+fault recovery, SMP or physical qualification. Windows execution remains CI work.

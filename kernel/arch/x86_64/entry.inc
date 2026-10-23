@@ -218,6 +218,9 @@ fault_test_instruction:
     mov byte [rdx],0xc3
     mov r14,rdx
     mov r15,rdx
+%elif JOSHUA_FAULT_TEST = 6
+    lea r14,[screen_title]
+    lea r15,[owned_fault_instruction]
 %elif JOSHUA_FAULT_TEST = 5
     lea r14,[kernel_stack_guard]
     lea r15,[owned_fault_instruction]
@@ -240,6 +243,8 @@ fault_test_instruction:
 owned_fault_instruction:
 %if JOSHUA_FAULT_TEST = 4
     call r14
+%elif JOSHUA_FAULT_TEST = 6
+    mov byte [screen_title],0x58
 %elif JOSHUA_FAULT_TEST = 5
     mov rax,[kernel_stack_guard]
 %else

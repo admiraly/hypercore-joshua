@@ -12,12 +12,12 @@ times 0x3c-($-$$) db 0
 dd 0x80
 times 0x80-($-$$) db 0
 db 'PE',0,0
-dw 0x8664, 4
+dw 0x8664, 5
 dd 0,0,0
 dw 0xf0, 0x0022
 dw 0x20b
 db 0,0
-dd PE_TEXT_SIZE,0x2000,PE_BSS_SIZE
+dd PE_TEXT_SIZE,0x3000,PE_BSS_SIZE
 dd efi_entry,0x1000
 dq 0
 dd 0x1000,0x200
@@ -37,6 +37,10 @@ db '.data',0,0,0
 dd 0x1000,PE_DATA_RVA,0x1000,PE_DATA_RVA,0,0
 dw 0,0
 dd 0xc0000040
+db '.rodata',0
+dd 0x1000,PE_RODATA_RVA,0x1000,PE_RODATA_RVA,0,0
+dw 0,0
+dd 0x40000040
 db '.bss',0,0,0,0
 dd PE_BSS_SIZE,PE_BSS_RVA,0,0,0,0
 dw 0,0
@@ -588,7 +592,6 @@ gop: dq 0
 map_key: dq 0
 serial_present: db 0
 key_data: dd 0
-hex_digits: db '0123456789ABCDEF'
 hex_buffer: dw '0','x'
 times 16 dw '0'
 dw 0
@@ -600,6 +603,11 @@ boot_info:
     dd 1,BOOT_INFO_V1_size
     times BOOT_INFO_V1_size-16 db 0
 loaded_image: dq 0
+%include 'kernel/arch/x86_64/data.inc'
+times 0x1000-($-$$) db 0
+
+section .rodata start=PE_RODATA_RVA vstart=PE_RODATA_RVA
+hex_digits: db '0123456789ABCDEF'
 loaded_image_guid: dd 0x5b1b31a1
 dw 0x9562,0x11d2
 db 0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b
@@ -634,7 +642,7 @@ debug_entry: db 'JOSHUA:UEFI_ENTRY',13,10,0
 debug_gop: db 'JOSHUA:GOP_OK',13,10,0
 debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 
-%include 'kernel/arch/x86_64/data.inc'
+%include 'kernel/arch/x86_64/rodata.inc'
 times 0x1000-($-$$) db 0
 
 section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA

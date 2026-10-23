@@ -54,7 +54,8 @@ endstruc
 ; PE layout constants are shared by the handwritten headers and image checks.
 %define PE_TEXT_SIZE 0x4000
 %define PE_DATA_RVA 0x5000
-%define PE_BSS_RVA 0x6000
+%define PE_RODATA_RVA 0x6000
+%define PE_BSS_RVA 0x7000
 %define PE_BSS_SIZE 0xba000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
