@@ -140,6 +140,9 @@ jobs:
       - name: Validate bounded console command grammar
         shell: pwsh
         run: ./tests/Test-ConsoleCommand.ps1
+      - name: Exercise process-owned handle policy
+        shell: pwsh
+        run: ./tests/Test-Handles.ps1
       - name: Validate bounded console diagnostic responses
         shell: pwsh
         run: ./tests/Test-ConsoleResponse.ps1

@@ -582,3 +582,12 @@ depth, and does not modify the returning frame. The forcing helper consumes48
 bytes below its entry RSP through a leaf lapic_read/write, or96 through nested
 user_timer_stop/console_timer_check (including helper calls), within the bootstrap
 reserve. Normal Console contains neither forcing nor evidence-copy instructions.
+
+## Unlinked process-owned handle policy
+
+Issue #44's handle-design.md specifies pure bounded Assembly table helpers and
+host fixtures. They are not included in the boot image and do not alter the
+current exit/unknown INT80 gate or USER_CONTEXT/USER_PROCESS layouts. This is not
+a public handle/syscall ABI freeze. Trusted table backing, per-incarnation tag
+nonreuse and active-process provenance remain caller proof obligations; privileged
+integration, termination revocation and target tests remain separate gates.

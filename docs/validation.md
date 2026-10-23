@@ -1018,3 +1018,44 @@ failure-path qualification, milestone exits and maintainer decisions open. No so
 or image runtime changes occurred; the ordinary ISO still matches frozen23a66e3.
 Earlier runtime regression/reproducibility records remain inherited, not newly run
 results for this host-only slice. No release/milestone/issue completion or merge.
+
+## Pure process-owned handle policy — 23 October 2026
+
+Issue #44 adds an unlinked Assembly policy foundation:32 slots per table, trusted
+process owner and unique16-bit incarnation tag,40-bit generations with permanent
+retirement at exhaustion, explicit READ/DUP rights, attenuated duplication, lookup,
+close and whole-process table revocation. This does not change INT80, boot image,
+USER_CONTEXT/USER_PROCESS or console behavior; no public handle ABI is frozen.
+
+Actual Linux PowerShell7.4.6/NASM2.16.03/ld/Python fixtures passed41,585 cumulative
+helper/model/ABI/guard checks. These include40 seeded1000-operation model histories,
+all-slot capacity, stale/foreign/rights/failure precedence, seeded generation-MAX
+retirement, every dirty init qword, malformed whole-state and exact lower/upper
+inaccessible extent boundaries. Every call checks eight integer nonvolatiles and
+complete table/output bytes. Seeded boundaries do not establish trillion-cycle
+lifetime endurance. An initial host-wrapper label collision failed assembly;
+renaming the local verification label resolved it before any passing run.
+
+Independent design round1 found contradictory init reserved-argument wording;
+explicit R9=0 fixed it and round2 found no actionable design issue. Code round1
+found inclusive-end validation allowed init's exclusive loop end to wrap at
+0xfffffffffffffbe0. The shared address check now rejects exclusive-end overflow
+before reads; that exact pointer is a rejection fixture. Code round2 found no
+remaining actionable findings. Reviews inspected source only, without independent
+execution. Static helper depth is112 bytes below entry RSP,120 including the
+incoming return address; host-wrapper maximum is288 below wrapper entry.
+
+Fresh baseline validation in out/handles-baseline passed two Build.ps1 invocations
+with20,822 static assertions each, exact reproducibility/corrupt-PE rejection, and
+normal Test-Qemu.ps1 ISO and FAT. Both target runs passed private-root/permission/
+PAT/ownership/code/data checks, actual CPL3 and independent B continuation, then
+halted ring0. These runs regress the unchanged shipped image; they do not execute
+the new unlinked helpers or prove privileged handle behavior. Python compilation,
+workflow YAML parsing and git diff --check also passed. Linux CI runs the new host
+suite with immediate assembly/link/Python failure propagation.
+
+Next mandatory integration gates: nonreuse tag assignment, active-process-derived
+table/owner, exact gate frame and nonpointer user results, exit/fault/timeout
+revocation, target positive/negative calls, ISO/FAT regression and reproducibility.
+No Windows, physical, public capabilities, resource lifetime, SMP, milestone or
+merge qualification follows from this foundation. Speech remains separate.
