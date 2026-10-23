@@ -88,3 +88,12 @@ firmware-ABI range/candidate routines, then uses a Python ctypes oracle. It chec
 6,425 cases including 6,400 seeded random cuts, plus image coverage and candidate
 selection/exclusion. Python and the ELF wrappers are host-only. The fixed QEMU
 profile additionally requires a nonempty candidate count; no frame is allocated.
+
+`tests/Test-PagingInventory.ps1` runs the exact Assembly paging walker and table
+exclusion routines through Linux host wrappers. Its 250 checks include 100 seeded
+shared-table graphs; fixtures cover 4-KiB/large-page leaves, PAT/NX interpretation,
+ignored non-present entries, bad classifications/addresses, cross-level cycles,
+capacity failure and range exclusion. Host snapshots assert the walker does not
+write synthetic tables. This does not emulate privileged CR3/CR4/EFER reads: normal
+ISO/FAT QEMU boots exercise those and compare captured/final CR3. No LA57 or
+malformed real-firmware injection is claimed; unsupported modes stop.

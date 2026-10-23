@@ -4,8 +4,8 @@ Status: proposed internal contract, not a frozen public syscall or application A
 
 ## Runtime provenance and executable format
 
-All shipped instructions originate in `boot/uefi.asm` and
-`kernel/arch/x86_64/entry.inc`. NASM emits PE32+ directly, with separate RX code,
+All shipped instructions originate in `boot/uefi.asm`,
+`kernel/arch/x86_64/entry.inc` and `kernel/mm/*.inc`. NASM emits PE32+ directly, with separate RX code,
 RW data/BSS, and read-only relocation sections. No imported libraries, third-party
 bootloader, generated C startup, or host-language interpreter is shipped.
 Position-independent RIP-relative code needs no pointer fixups; an ABSOLUTE-only
@@ -131,10 +131,35 @@ ranges include only conventional memory advertising WB and no attributes beyond
 UC/WC/WT/WB capabilities. Subtract page zero, the full loaded image and the
 page-rounded framebuffer range. `MEMORY_CANDIDATES_READY COUNT=` reports completion
 of this candidate stage, not permission to allocate. Nonconventional and unfamiliar
-attributes/types remain unavailable. Active paging frames are not inventoried yet.
+attributes/types remain unavailable. The subsequent paging inventory excludes
+active table frames before the normal halt checkpoint.
 
 `range_reserve` takes RCX=RANGE_SET, RDX=start, R8=exclusive end; EAX=0 succeeds,
 1 invalidates the whole set. Caller supplies owned capacity and validated disjoint
 page ranges. It preserves nonvolatile registers and uses no firmware or SIMD. A
 failed split can leave prior edits; the builder clears count and aborts on any
 failure. Candidates are not consumable until all reservation stages succeed.
+
+## Active paging inventory ABI
+
+`paging_inventory_build` receives RCX pointing to PAGING_INVENTORY from
+`sdk/boot.inc`: owned queue/count/capacity, validated map/size/stride, physical
+width, NXE/1-GiB flags and root frame. Entries are two qwords: physical frame and
+level 4–1. EAX=0 success; EAX=1 clears count. All firmware-ABI nonvolatile registers
+are preserved. No firmware calls, SIMD, CR3 writes or explicit page-entry writes
+occur. The caller requires four-level IA-32e mode, captures raw CR3 and derives
+the root by masking low control bits. It retains EFER.NXE and CPUID 1-GiB support
+for leaf interpretation. Unsupported modes and classifications stop boot.
+
+`paging_inventory_reserve` takes RCX=successful inventory and RDX=candidate
+RANGE_SET. It subtracts each table page. EAX=1 clears candidate count and invalidates
+the ledger; EAX=0 completes exclusion. It requires a successful inventory rather
+than treating an empty failed queue as permission to use candidates. The runtime
+checks the return at each stage. `JOSHUA:PAGING_RESERVED CR3=... TABLES=...` is
+emitted only after exclusion and a comparison against captured CR3. The QEMU test
+compares this value against the final CPU register state as well.
+
+Tables are bounded to 16,384 entries in 256 KiB of BSS inside the image reservation.
+Only known readable RAM below the low canonical identity boundary is inspected.
+Recursive mappings and cross-level sharing are deliberately unsupported. This
+implements inventory and reservation, not page-table ownership or fault recovery.

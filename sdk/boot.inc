@@ -55,10 +55,25 @@ endstruc
 %define PE_TEXT_SIZE 0x4000
 %define PE_DATA_RVA 0x5000
 %define PE_BSS_RVA 0x6000
-%define PE_BSS_SIZE 0x61000
+%define PE_BSS_SIZE 0xa1000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192
+%define PAGING_TABLE_CAPACITY 16384
+%define PAGING_FLAG_NXE 1
+%define PAGING_FLAG_1G 2
+
+struc PAGING_INVENTORY
+ .entries: resq 1
+ .count: resq 1
+ .capacity: resq 1
+ .memory_map: resq 1
+ .map_size: resq 1
+ .descriptor_size: resq 1
+ .physical_bits: resq 1
+ .flags: resq 1
+ .root: resq 1
+endstruc
 
 ; v0 remains frozen at 88 bytes. v1 appends loaded-image bounds.
 struc BOOT_INFO_V1

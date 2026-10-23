@@ -109,3 +109,27 @@ bits only, rejecting protection/runtime/unknown bits; normal QEMU now requires
 a nonzero count. No memory is allocated. Active page-table inventory/reservation
 is still mandatory before using candidates; M2a remains incomplete. No new
 physical test or remote CI result is claimed for this slice in this record.
+
+## M2a active paging inventory and exclusions
+
+On the same recorded Linux/PowerShell 7.4.6/NASM 2.16.03/QEMU 10.2.2/OVMF setup:
+
+- Build and reproducibility passed PE checks and 20,710 media assertions,
+  identical artifacts, relative tool invocation and corrupted-PE rejection.
+- Normal ISO and FAT boots each inventoried 1,033 table frames, excluded them
+  from candidates and reached the intended checkpoint. Captured and final CR3
+  both equalled 0x1F401000; framebuffer and halted ring-0/IF-clear checks passed.
+- Paging host suite passed 250 checks, including 100 seeded shared-table graphs
+  and exclusion comparisons. Snapshots verified no writes to synthetic tables.
+- All 6,425 reservation-oracle checks, 24 map fixtures and Ud2/Gp boot fixtures
+  passed again. `git diff --check` passed.
+- Independent design and source reviews found no actionable issues. Reviewers
+  did not rerun tests; source review covered ABI, masks, traversal and exclusions.
+
+The initial 4,096-frame proposal was expanded to 16,384 after observing the OVMF
+count and sizing for a possible 16-GiB/4-KiB mapping. This sizing is not hardware
+qualification. Full 16,384-frame exhaustion and explicit register-sentinel tests
+were not run; small-capacity exhaustion and source ABI review were performed.
+LA57, recursive mappings and unreadable firmware tables remain unsupported. No
+allocator, CR3 switch, paging ownership, process isolation or new physical-machine
+evidence is claimed. CI results for this slice are pending publication.

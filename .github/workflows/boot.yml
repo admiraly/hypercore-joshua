@@ -58,3 +58,6 @@ jobs:
       - name: Exercise candidate reservations against host oracle
         shell: pwsh
         run: ./tests/Test-Reservations.ps1
+      - name: Exercise paging inventory and exclusion fixtures
+        shell: pwsh
+        run: ./tests/Test-PagingInventory.ps1

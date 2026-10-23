@@ -129,6 +129,65 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    mov rax,cr0
+    bt rax,31
+    jnc kernel_fault
+    test al,1
+    jz kernel_fault
+    mov rax,cr4
+    test eax,0x1000
+    jnz kernel_fault
+    test eax,0x20
+    jz kernel_fault
+    mov ecx,0xc0000080
+    rdmsr
+    test eax,0x400
+    jz kernel_fault
+    shr eax,11
+    and eax,1
+    mov [paging_inventory+PAGING_INVENTORY.flags],rax
+    mov eax,0x80000001
+    cpuid
+    bt edx,26
+    jnc .no_1g
+    or qword [paging_inventory+PAGING_INVENTORY.flags],PAGING_FLAG_1G
+.no_1g:
+    lea rax,[paging_tables]
+    mov [paging_inventory+PAGING_INVENTORY.entries],rax
+    lea rax,[memory_map]
+    mov [paging_inventory+PAGING_INVENTORY.memory_map],rax
+    mov rax,[r12+BOOT_INFO.memory_map_size]
+    mov [paging_inventory+PAGING_INVENTORY.map_size],rax
+    mov rax,[r12+BOOT_INFO.descriptor_size]
+    mov [paging_inventory+PAGING_INVENTORY.descriptor_size],rax
+    mov [paging_inventory+PAGING_INVENTORY.physical_bits],r15
+    mov rax,cr3
+    mov [paging_cr3],rax
+    mov rdx,0x000ffffffffff000
+    and rdx,rax
+    mov [paging_inventory+PAGING_INVENTORY.root],rdx
+    lea rcx,[paging_inventory]
+    call paging_inventory_build
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[paging_inventory]
+    lea rdx,[candidate_set]
+    call paging_inventory_reserve
+    test eax,eax
+    jnz kernel_fault
+    mov rax,cr3
+    cmp rax,[paging_cr3]
+    jne kernel_fault
+    lea rcx,[debug_paging]
+    call debug_write
+    mov rcx,[paging_cr3]
+    call debug_hex
+    lea rcx,[debug_table_count]
+    call debug_write
+    mov rcx,[paging_inventory+PAGING_INVENTORY.count]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx
