@@ -416,6 +416,11 @@ fault_test_instruction:
     jnz kernel_fault
     lea rcx,[debug_user_machine]
     call debug_write
+    call user_smoke
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_user_smoke]
+    call debug_write
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]
@@ -554,6 +559,8 @@ exception_stubs:
 %endrep
 
 exception_stop:
+    test byte [rsp+24],3
+    jnz user_exception_entry
     cli
     cld
     mov r12,[rsp]

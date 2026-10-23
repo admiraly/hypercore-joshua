@@ -130,3 +130,14 @@ debug_user_root_b: db ' ROOT_B=',0
 debug_user_entry_stack: db 'JOSHUA:USER_ENTRY_STACK INDEX=',0
 
 debug_user_machine: db 'JOSHUA:USER_MACHINE_PREPARED',13,10,0
+
+debug_user_smoke: db 'JOSHUA:USER_PAIR_RETURNED',13,10,0
+debug_user_failure: db 'JOSHUA:USER_TRANSITION_FAILURE STEP=',0
+
+debug_user_result: db 'JOSHUA:USER_RESULT INDEX=',0
+debug_user_result_root: db ' ROOT=',0
+debug_user_result_cs: db ' CS=',0
+debug_user_result_state: db ' STATE=',0
+debug_user_result_unknown: db ' UNKNOWN=',0
+debug_user_result_ticks: db ' TICKS=',0
+debug_user_result_eois: db ' EOIS=',0

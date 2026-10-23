@@ -3,6 +3,12 @@ default rel
 %include 'sdk/boot.inc'
 %include 'sdk/context.inc'
 %include 'sdk/user.inc'
+%ifndef JOSHUA_QEMU_KVM_TEST
+ %define JOSHUA_QEMU_KVM_TEST 0
+%endif
+%ifndef JOSHUA_USER_TEST
+ %define JOSHUA_USER_TEST 0
+%endif
 %ifndef JOSHUA_CONTEXT_TEST
  %define JOSHUA_CONTEXT_TEST 0
 %endif
@@ -501,12 +507,23 @@ serial_init:
     jnc .done
     mov eax,0x40000000
     cpuid
+%if JOSHUA_QEMU_KVM_TEST
+    ; Explicit KVM-only alignment fixture. Normal images still recognize TCG only.
+    cmp ebx,0x4b4d564b
+    jne .tcg_vendor
+    cmp ecx,0x564b4d56
+    jne .done
+    cmp edx,0x0000004d
+    je .emulator_uart
+.tcg_vendor:
+%endif
     cmp ebx,0x54474354
     jne .done
     cmp ecx,0x43544743
     jne .done
     cmp edx,0x47435447
     jne .done
+.emulator_uart:
     mov dx,0x3fd
     in al,dx
     cmp al,0xff
@@ -604,6 +621,9 @@ stop_cpu:
 %include 'kernel/user/map.inc'
 %include 'kernel/user/proof.inc'
 %include 'kernel/user/machine.inc'
+%include 'kernel/user/frame.inc'
+%include 'kernel/user/retire.inc'
+%include 'kernel/user/start.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -718,6 +738,9 @@ kernel_context_records: resb 3*KERNEL_CONTEXT_RECORD_size
 context_worker_rsp: resq 2
 user_context: resb USER_CONTEXT_size
 user_processes: resb USER_PROCESS_COUNT*USER_PROCESS_size
+user_transition_step: resq 1
+user_terminal_state: resq 1
+user_drain_windows: resq 1
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384

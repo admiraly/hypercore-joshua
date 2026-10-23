@@ -114,3 +114,58 @@ user_gdt_prepare:
     pop rsi
     pop rbx
     ret
+
+; RCX proved64-KiB owned GDT, RDX copied-prefix bytes, R8 owned TSS base.
+; Caller first proves hardware active selectors/IDT use the unchanged owned suffix.
+; EAX0 zeroes only the prefix; EAX1 leaves every byte unchanged. No calls/privilege.
+user_gdt_retire_prefix:
+    test rcx,rcx
+    jz .bad
+    test rcx,7
+    jnz .bad
+    cmp rdx,8
+    jb .bad
+    cmp rdx,65504
+    ja .bad
+    test rdx,7
+    jnz .bad
+    mov r10,rcx
+    add r10,rdx
+    jc .bad
+    mov r11,r10
+    add r11,32
+    jc .bad
+    mov rax,0x00af9b000000ffff
+    cmp [r10],rax
+    jne .bad
+    mov rax,0x00cf93000000ffff
+    cmp [r10+8],rax
+    jne .bad
+    ; Exact busy64-bit TSS descriptor: limit103, baseR8, flags/reserved0.
+    mov rax,r8
+    and eax,0xffffff
+    shl rax,16
+    or rax,0x67
+    mov r11,r8
+    shr r11,24
+    and r11d,255
+    shl r11,56
+    or rax,r11
+    mov r11,0x00008b0000000000
+    or rax,r11
+    cmp [r10+16],rax
+    jne .bad
+    mov rax,r8
+    shr rax,32
+    cmp [r10+24],rax
+    jne .bad
+    xor eax,eax
+.clear:
+    mov [rcx],rax
+    add rcx,8
+    sub rdx,8
+    jnz .clear
+    ret
+.bad:
+    mov eax,1
+    ret

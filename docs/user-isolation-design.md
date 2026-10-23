@@ -297,3 +297,71 @@ and normal FAT boot,
 and has a focused independent source review with no findings. QMP records TS set,
 SCE clear and zero LDTR/FS/GS bases. SYSENTER readbacks occur inside the helper.
 This is machine preparation evidence; no real CPL3 fast-entry/fault claim follows.
+
+## Proposed firmware-descriptor retirement refinement
+
+Actual QEMU OVMF's inherited GDT contains present conforming code (access byte9Fh),
+so the strict retained-prefix audit correctly stops before launch. Do not relax the
+CPL3 authority audit to accept that entry. Instead, after owned GDT/TSS/IDT activation
+and LLDT0, retire the entire copied firmware prefix before the existing audit and
+user append. This changes the earlier blanket retention policy after its transition
+purpose has ended; original selector numbers are retained only until retirement.
+
+Before any retirement store, verify IF0, GDTR base equals the owned64-KiB image GDT,
+limit equals original-prefix-size+31, and original-prefix-size equals the aligned
+owned code selector. Verify exact owned ring0 code/data descriptors and busy TSS
+encoding/address/limit. Hardware CS must equal the owned code selector; SS/DS/ES the
+owned data selector; FS/GS selectors and LDTR must be zero; TR the owned TSS selector.
+Verify all256 IDT gates use the owned code selector, are present DPL0 interrupt gates
+with expected IST/reserved bits, and IDTR base/limit match owned storage. This runs
+before DPL3 gate installation. Every active descriptor authority is then outside
+the prefix: four qwords hold owned code/data/TSS, and all kernel interrupts target
+owned code. APs do not use this BSP-only copied table; firmware tables are untouched.
+
+Only then zero every qword of the copied prefix, including null entries. Do not
+change its byte length or owned selector numbers. Reuse the strict user_gdt_prepare
+audit on the retired table before appending DPL3 code/data/non-present test data.
+An unexpected live selector/table/descriptor must reject before any retirement write.
+An injected callable descriptor after retirement must still fail that strict audit.
+The no-gate/LDT/alternate-CS entry policy remains mandatory. This is authority
+removal, not acceptance of inherited callable code. Host fixtures must prove complete
+prefix retirement, unchanged owned suffix, bounds/failure atomicity and ABI; target
+fixtures must cover selector audit rejection before any user launch. Existing raw
+GDT authority tests remain rejection tests, including conforming code.
+
+
+## Transition bring-up evidence (in progress)
+
+The retirement refinement has design and focused code review with no actionable
+findings. The host descriptor suite now has2,778 cumulative cases, including exact
+suffix preservation, bounds,256 suffix bit mutations and eight ABI sentinels.
+The first adapter source review found one P2 fixture-output collision; UserTest now
+selects its own default output folder. No new runtime defect was identified, but
+pending-timer negatives, exact target assertions and final regressions remained open.
+A parent ABI audit corrected drain's caller-shadow reservation to64 bytes below
+entry-stack top, with the exact drain IRQ frame at high-256.
+
+Real private-root CPL3 entry/unknown-call/exit now returns two independent processes
+to the actual parked kernel continuation. Payload checks zeroed entry GPRs, all
+fourteen non-result GPRs/RSP and DF across unknown-call return. Initial campaigns
+exercise contained supervisor/code/NX/guard/I/O/CLI/FPU/fast-entry/NP/far-transfer/UD
+faults, invalid return and eight-tick timeout, followed by B progress. These are
+bring-up results, not final regression evidence. The new independent listing/PE
+oracle checks actual CS/root, exact vector/error/RIP/applicable CR2 and Spin8/8.
+It initially exposed that Stack's predecrement returned to canonical space; the
+fixture now places RSP farther into the noncanonical hole.
+
+TCG10.2.2 does not deliver the expected #AC for the alignment fixture and delivers
+#GP for the noncanonical stack fixture. Those exact fixtures remain failures on
+that profile; do not count their process-dead states as correct vector evidence.
+Separate explicit AlignmentKvm/StackKvm builds recognize only the KVM CPUID vendor
+in addition to ordinary TCG for emulator UART diagnostics. Normal images still
+recognize TCG only. Test-Qemu's host CPU profile requires explicit KVM acceleration.
+KVM with this host's Intel i7-14700K delivered actual #AC17/error0, with processB
+continuation and the exact oracle passing. This is virtualized hardware-assisted
+QEMU evidence, not bare-metal/Dell qualification. StackKvm also delivered actual #SS12/error0 with B continuation. All16 TCG
+exact-profile reruns pass; the two KVM profiles supply the SS/AC vector evidence.
+Normal FAT, x2APIC ISO and two-build reproducibility pass. Intel-host KVM also
+checks disabled SYSCALL (#UD) and null-CS SYSENTER (#GP0), bringing the current
+exact campaign to16 TCG plus4 Intel-host KVM profiles. Pending-timer/drain negatives, QMP
+private-root walks, full regressions and final review are still pending. The broad issue and milestone remain open.

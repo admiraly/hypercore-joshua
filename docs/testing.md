@@ -201,3 +201,27 @@ FPU context, AP/SMP, user isolation or physical qualification is established.
 PowerShell AST and supplies a read-only physical-memory model. Fifteen fixtures
 reject read-only/user ancestors at every level, handle absent entries and large
 leaves. Effective stack writability requires RW at every traversed level.
+
+
+## Draft ring3 transition campaign (issue #32)
+
+`Test-Qemu.ps1` now requires host Python3 for the exact user-result oracle on normal
+boots. `tests/Test-UserRuntime.ps1` builds16 separate TCG profiles with immutable
+fixture identity in each manifest, then verifies actual CPL3/roots, precise fault
+vector/error/RIP/applicable CR2, watchdog8/8 and independent B continuation.
+It uses isolated `out/user-*` folders, including when Build's UserTest is used alone.
+
+On the explicitly tested Intel Linux KVM host, add `-IncludeKvm` (plus native QEMU
+and firmware paths as needed) for AlignmentKvm, StackKvm, SyscallKvm and SysenterKvm.
+These select `-Acceleration Kvm -CpuModel host`; they are not Windows CI or
+bare-metal evidence, and the SYSENTER expectation is Intel-specific. Normal images
+recognize only the TCG emulator UART profile; these explicit KVM fixture builds
+add exact KVM CPUID recognition for serial evidence. No physical UART probe is
+added to normal images. TCG's Alignment and Stack fixtures deliberately fail their
+exact expected-vector oracles; they must not be counted as passes just because B
+continued. Intel KVM supplies the actual #AC/#SS vector evidence.
+
+The bounded drain implementation has source review but forced pending-timer exit/
+fault, drain-exhaustion and unexpected kernel-timer negative tests remain pending.
+Independent QMP private-root walks and final whole-issue regressions remain open.
+The exact-result oracle supplements, not replaces, those gates. PR #35 remains draft.

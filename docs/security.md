@@ -3,7 +3,9 @@
 This unsigned development image is not a secure general-purpose OS. Firmware,
 the boot medium, and the image are trusted inputs. Malicious firmware, physical
 access, DMA-capable devices, SMM, model execution, and hostile processes are not
-contained by the prototype. No user processes or AI run at all.
+contained by the prototype. Two bounded embedded test programs now execute at
+CPL3 under private roots; no AI runs. This is architectural transition testing,
+not qualification for arbitrary hostile software.
 
 Current safeguards: read-only boot workflow; no storage/network protocol use;
 QEMU-only bounded serial polling and firmware retries; validated framebuffer arithmetic;

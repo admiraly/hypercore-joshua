@@ -5,12 +5,14 @@ param(
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
     [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')][string]$ExpectedFault = 'None',
-    [ValidateSet('qemu64', 'qemu64,+x2apic')][string]$CpuModel = 'qemu64',
-    [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic'
+    [ValidateSet('qemu64', 'qemu64,+x2apic', 'host')][string]$CpuModel = 'qemu64',
+    [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic',
+    [ValidateSet('Tcg','Kvm')][string]$Acceleration = 'Tcg'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($CpuModel -eq 'host' -and $Acceleration -ne 'Kvm') { throw 'The host CPU profile requires explicit KVM acceleration.' }
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'out' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
@@ -31,7 +33,7 @@ $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
 $listener.Start()
 $port = $listener.LocalEndpoint.Port
 $listener.Stop()
-$arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', $CpuModel, '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
+$arguments = @('-machine', 'q35', '-accel', $Acceleration.ToLowerInvariant(), '-cpu', $CpuModel, '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
 if ($BootMedia -eq 'Iso') {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso')).Path
     $arguments += @('-drive', ('media=cdrom,readonly=on,format=raw,file=' + $media))
@@ -265,6 +267,13 @@ try {
     # Some QEMU versions close QMP before delivering the quit response.
     $qmpWriter.WriteLine('{"execute":"quit"}')
     if (-not $process.WaitForExit(5000)) { throw 'QEMU did not exit after quit.' }
+    if ($ExpectedFault -eq 'None') {
+        $pythonName = 'python3'
+        if ($env:OS -eq 'Windows_NT') { $pythonName = 'python' }
+        $python = Get-Command $pythonName -ErrorAction Stop
+        & $python.Source (Join-Path $root 'tests/test_user_runtime.py') $OutputDirectory --boot-media $BootMedia.ToLowerInvariant()
+        if ($LASTEXITCODE -ne 0) { throw 'Actual user fault/continuation oracle failed.' }
+    }
     Write-Host ('PASS: ' + $BootMedia + ' UEFI boot -> GOP -> ExitBootServices -> halted ring 0; expected fault: ' + $ExpectedFault)
     Write-Host ('Screenshot: ' + $screenshot)
 }

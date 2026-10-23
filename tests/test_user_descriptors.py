@@ -96,7 +96,7 @@ for _ in range(2000):
         access = rng.choice([0x93, 0xb3, 0xf3, 0x73, 0x9b, 0xbb, 0x7b, 0x82, 0x89, 0x8b])
         words += descriptor(access, not access & 0x10)
     audit(words)
-lib.host_user_gdt_abi.argtypes = [C.c_void_p, U64, U64]
+lib.host_user_gdt_abi.argtypes = [C.c_void_p, U64, U64, U64]
 lib.host_user_gdt_abi.restype = C.c_int
 for helper in [0, 1]:
     for valid in [False, True]:
@@ -105,6 +105,36 @@ for helper in [0, 1]:
             data[i] = value
         if not valid:
             data[1] = descriptor(0xfb)[0]
-        assert lib.host_user_gdt_abi(data, 40, helper) == (0 if valid else 1)
+        assert lib.host_user_gdt_abi(data, 40, helper, 0) == (0 if valid else 1)
         checks += 1
 print(f'PASS: {checks} user GDT authority/extension/ABI fixtures.')
+
+# Retire all inherited authority without relocating the owned suffix. The host
+# oracle constructs descriptor bytes independently; adapter hardware proof is not
+# modeled by this pure-helper test. Every call also checks eight ABI sentinels.
+def retirement(prefix, tss=0x12345678abcdef00, mutation=None, expected=0):
+    global checks
+    data=(U64*8192)()
+    for i in range(8192): data[i]=rng.getrandbits(64)
+    if 8 <= prefix <= 65504 and prefix % 8 == 0:
+        i=prefix//8
+        data[i]=0x00af9b000000ffff
+        data[i+1]=0x00cf93000000ffff
+        data[i+2]=(103 | ((tss & 0xffffff)<<16) | (0x8b<<40) | (((tss>>24)&255)<<56))
+        data[i+3]=tss>>32
+        if mutation is not None: data[i+mutation[0]]^=1<<mutation[1]
+    before=bytes(data)
+    assert lib.host_user_gdt_abi(data,prefix,2,tss)==expected
+    if expected: assert bytes(data)==before
+    else:
+        assert bytes(data)[:prefix]==bytes(prefix)
+        assert bytes(data)[prefix:]==before[prefix:]
+        # Audit/append still rejects any post-retirement authority injection.
+        assert lib.host_user_gdt_audit(data,prefix+32)==0
+    checks+=1
+for prefix in [8,16,88,4096,32768,65504]: retirement(prefix)
+for prefix in [0,1,7,9,65512,(1<<64)-1]: retirement(prefix,expected=1)
+for slot in range(4):
+    for bit in range(64): retirement(88,mutation=(slot,bit),expected=1)
+for _ in range(200): retirement(rng.randrange(1,8189)*8,tss=rng.getrandbits(64))
+print(f'PASS: {checks} cumulative user descriptor/retirement/oracle/ABI cases.')

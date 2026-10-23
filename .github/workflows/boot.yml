@@ -32,6 +32,8 @@ jobs:
         run: ./tests/Test-ApicTimer.ps1
       - name: Validate context launch, rejection and worker guard
         run: ./tests/Test-ContextSwitch.ps1
+      - name: Validate bounded CPL3 exits, faults and watchdog
+        run: ./tests/Test-UserRuntime.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -42,6 +44,9 @@ jobs:
             out/*.json
             out/*.log
             out/*.png
+            out/user-*/*.json
+            out/user-*/*.log
+            out/user-*/*.png
   memory-map:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -91,3 +96,12 @@ jobs:
       - name: Validate guarded kernel context frames and scheduling policy
         shell: pwsh
         run: ./tests/Test-KernelContext.ps1
+      - name: Validate user descriptor authority and retirement
+        shell: pwsh
+        run: ./tests/Test-UserDescriptors.ps1
+      - name: Validate private user storage, roots and ownership
+        shell: pwsh
+        run: ./tests/Test-UserStorage.ps1
+      - name: Validate returning and discarded user frames
+        shell: pwsh
+        run: ./tests/Test-UserFrame.ps1

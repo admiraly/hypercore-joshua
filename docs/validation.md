@@ -413,3 +413,30 @@ Windows execution awaits CI. FPU/SIMD contexts, arbitrary kernel task APIs, fair
 AP/SMP, user isolation, physical qualification and complete milestone exits remain
 open. CET is rejected for this conventional context path; no security/performance
 parity claims are made. No merge performed.
+
+
+## Draft private-context transition evidence (issue #32)
+
+23 October2026, Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: Build passes20,766
+static media assertions. Sixteen TCG/qemu64 ISO profiles pass the independent exact
+serial/PE/listing oracle for real CPL3 roots/CS, fault identity or bounded timeout,
+and actual trusted bootstrap/processB continuation. Payloads check zeroed entry
+registers and preserved non-result GPRs/RSP/DF across unknown INT80 return.
+Normal FAT and actual x2APIC ISO pass; two-build EFI/FAT/ISO/manifest reproducibility
+passes after the current fixture/harness wiring. Whole-issue requalification remains
+due after the remaining runtime changes.
+
+On this host's Intel i7-14700K via explicit KVM/host profiles, actual #AC17/error0,
+#SS12/error0, SCE-disabled SYSCALL #UD6 and null-CS SYSENTER #GP13/error0 all pass the
+same precise fault and independent B oracle. This is hardware-assisted virtualized
+evidence, not physical HyperCore/Dell qualification. TCG Alignment did not deliver
+#AC and TCG noncanonical Stack delivered #GP, so those exact profiles are failures
+and excluded from TCG passing counts. They are not relabeled successful containment.
+
+Descriptor retirement adds host bounds/suffix/ABI cases (2,778 cumulative total).
+Independent design/code review cleared retirement after proof of every live owned
+selector/IDT authority. Transition source review found P2 fixture output collision,
+fixed by isolated default UserTest directories; follow-up review found no actionable
+findings. Reviews did not execute tests. Full pending-timer/drain negatives,
+independent QMP private-root/ownership walks, full host/fault regressions and final
+review remain open; neither issue #32 nor a milestone is complete.

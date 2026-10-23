@@ -35,7 +35,8 @@ host_user_gdt_abi:
     push r13
     push r14
     push r15
-    sub rsp,56
+    sub rsp,72
+    mov [rsp+56],rcx
     mov [rsp+32],rdi
     mov [rsp+40],rsi
     mov [rsp+48],rdx
@@ -49,12 +50,18 @@ host_user_gdt_abi:
     mov r15,0x123456789abcde77
     mov rcx,[rsp+32]
     mov rdx,[rsp+40]
+    cmp qword [rsp+48],2
+    je .retire
     cmp qword [rsp+48],0
     jne .prepare
     call user_gdt_audit
     jmp .check
 .prepare:
     call user_gdt_prepare
+    jmp .check
+.retire:
+    mov r8,[rsp+56]
+    call user_gdt_retire_prefix
 .check:
 %macro abi_check 2
     mov r11,%2
@@ -73,7 +80,7 @@ host_user_gdt_abi:
 .bad:
     mov eax,99
 .return:
-    add rsp,56
+    add rsp,72
     pop r15
     pop r14
     pop r13
