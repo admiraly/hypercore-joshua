@@ -40,7 +40,7 @@
 
 apic_timer_entry:
     irq_save
-%if JOSHUA_KEYBOARD_TEST != 0
+%if JOSHUA_KEYBOARD_TEST != 0 || JOSHUA_CONSOLE
     cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],0
     jne keyboard_timer_saved
 %endif

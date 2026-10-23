@@ -775,3 +775,50 @@ CI now includes the model suite; no CI result is claimed. Boot facts/provenance,
 console profile/layout integration, actual IRQ idle/halt, interactive media and
 full console target/regression campaigns remain open, as do Windows and physical
 qualification. No merge, issue closure or milestone completion.
+
+## First native console test media (23 October 2026)
+
+Issue #40/PR #41 now integrates the owned facts adapter, checked console components
+and real keyboard foreground loop in the separate `Build.ps1 -Console` profile.
+The current non-installing test image is `out/console/JOSHUA-Console-Test.iso`:
+SHA256 `3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+This supersedes the earlier checkpoint's statement that profile/layout integration
+and interactive media do not exist. It does not close the wider qualification gates.
+
+Final hardened `tools/Test-Console.ps1` passed xAPIC ISO, xAPIC FAT and x2APIC ISO.
+Each uses real QMP device key events for editing, status JSON, history, Ctrl-C and
+halt, with30 seconds of timer-free idle. Physical captures check actual CPU root/
+RSP/RIP and IF1/HLT wait, records and IRQ/EOI/queue state, then actual stopped LAPIC,
+selected keyboard IOAPIC mask and controller output quietness, and IF0/ring0 halt.
+Actual QMP screenshot pixels match the constant HALTED footer; the entire prompt
+underline area is background and terminal cursor metadata is independently fixed.
+Target PNG screenshots were visually inspected. Artifact hashes and fixture flags
+are checked before boot; success summaries are published only after clean exit.
+
+The first ad-hoc native boot reached input then faulted on halt-row drawing: two
+indexed symbol LEAs encoded absolute image RVAs. Both were corrected to RIP-relative
+base plus row offset, with a focused independent review. That failed log was
+preserved privately. A subsequent ad-hoc invocation reached native HALTED but its
+QMP quit reader failed; neither invocation is counted as a passing smoke command.
+Earlier weaker ISO/FAT smoke passes predate the strengthened oracle and are not
+substituted for the three final hardened passes above.
+
+Normal and Console reproducibility passed two builds each,20,822 static assertions
+per build, identical EFI/FAT/ISO/manifest hashes (plus named Console ISO), and corrupt
+PE rejection. Updated reservation fixtures passed6,425 checks. All24 Linux host
+suites passed, plus15 stack-walker cases. Normal ISO/FAT passed private-root and
+CPL3/continuation checks. Original Text keyboard ISO passed after the shared-macro
+refactor. Nine fault fixtures, context launch/rejection/guard, two ELF rejections,
+x2APIC ISO/FAT and expected missing-EOI stall regressions passed. Full40-target
+keyboard and24-profile TCG user campaigns are still running and are not claimed
+as complete here; final batch results will be recorded separately.
+
+Independent design, integration, addressing-fix and oracle follow-ups found no
+unresolved runtime findings. Four initial oracle evidence gaps (manifest/media
+identity, IOREGSEL, stale/premature summaries and unchecked screenshot) and a cursor
+coordinate gap were corrected and re-reviewed. Reviewers inspected source only;
+they did not reproduce runs or inspect artifacts. The new Windows CI job uploads
+both tested media plus manifest and captures, but Windows execution is pending.
+Broader native command breadth, negative console fixtures, saturation targets,
+full pixel/snapshot mutation campaigns and physical qualification remain open.
+No merge, issue closure or milestone completion is claimed.

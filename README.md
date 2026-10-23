@@ -10,7 +10,9 @@ not a usable operating system.
 The unsigned x86-64 UEFI application is authored entirely in NASM Assembly. It
 provides firmware diagnostics, captures the graphics framebuffer and memory map,
 exits boot services, and enters an embedded HyperCore stub with its own stack,
-GDT/TSS, guarded emergency stacks, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
+GDT/TSS, guarded emergency stacks, fault-stop IDT, and framebuffer text renderer.
+The default checkpoint deliberately halts. A separate experimental `-Console`
+profile now runs the native BSP command console after those bring-up checks.
 It validates the final memory map and records conservative memory candidates
 excluding the loaded image, page zero, framebuffer and inventoried active paging
 structures. A bounded physical frame allocator tracks exact ownership, zeroes
@@ -88,3 +90,31 @@ Original project source is licensed under the MIT License; see `LICENSE`.
 External host tools and firmware retain their own licenses and are not committed.
 Use issues for scoped work and evidence, and pull requests for reviewable changes.
 See `CONTRIBUTING.md`, `AGENTS.md`, and `SECURITY.md` before contributing.
+
+
+## Experimental native console test ISO
+
+Build the separate non-installing console profile:
+
+```powershell
+./tools/Build.ps1 -Console
+```
+
+The test image is `out/console/JOSHUA-Console-Test.iso`. It uses a real PS2 keyboard
+IRQ path and original blue-white JOSHUA text. Enter `help`; diagnostic commands are
+`about`, `status`, `mem`, `ps`, `devices`, with `--json` on the last four. `clear`
+resets the transcript; `halt` retires input and permanently halts. Editing supports
+Backspace/Delete, Left/Right/Home/End, Up/Down history and Ctrl-C; lines stop at127
+characters. The ordinary firmware diagnostic menu precedes native boot as before.
+
+This is an unsigned BSP development preview with read-only diagnostics. It has no
+installer, filesystem, network, arbitrary program launcher or AI runtime. The local
+QEMU smoke exercises editing/JSON/history/cancellation,30-second timer-free idle and
+halt; broader feature/negative/regression gates are still open. Windows CI and
+physical compatibility remain unqualified. See `docs/console-design.md` and the
+current evidence in `docs/validation.md`; do not infer completed milestones.
+
+For a local QEMU check, run `./tools/Test-Console.ps1` and then add `-BootMedia Fat`.
+On Linux specify `-QemuPath /usr/bin/qemu-system-x86_64 -FirmwareDirectory .tools/firmware`.
+No physical disks are written by these commands. The separate Piper announcement
+media and instructions remain in `docs/piper-test.md` on its speech workstream.

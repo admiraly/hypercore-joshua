@@ -326,3 +326,24 @@ The model runner exports an actual Assembly-rendered host preview with synthetic
 facts. No component test establishes actual keyboard delivery, boot snapshot
 provenance, interactive console operation or physical compatibility. These remain
 explicit target/integration gates. See docs/console-design.md and docs/validation.md.
+
+
+## Native console target smoke
+
+Build `./tools/Build.ps1 -Console`, then run `./tools/Test-Console.ps1` for ISO and
+`./tools/Test-Console.ps1 -BootMedia Fat`. Reproducibility uses
+`./tests/Test-Reproducibility.ps1 -Console`. Optional explicit x2APIC delivery uses
+`./tools/Build.ps1 -Console -TimerTest X2` then the smoke with
+`-OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'`.
+Linux additionally needs the absolute QEMU path and `.tools/firmware` directory.
+
+The smoke verifies artifact hashes/fixture isolation before starting read-only
+media. Actual QMP key events perform editing, JSON submission, history, cancellation
+and halt, with at least30 seconds of timer-free idle. Stopped physical captures
+check real CPU root/RSP/RIP, model/editor/result/facts, IRQ/EOI and queue invariants,
+actual LAPIC retirement and IOREGSEL/route/port state. Actual display pixels verify
+the constant halt row and absence of any cursor underline across the prompt row.
+A final success summary is published only after clean QEMU exit; stale summaries
+are invalidated before a run. Native feature breadth, negative fixtures, saturation,
+full pixel/snapshot mutation campaigns and all regressions remain separate gates.
+The new Windows console CI job is wired; execution remains unverified here.

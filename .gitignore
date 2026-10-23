@@ -8,3 +8,6 @@ out/
 *.pem
 *.dmp
 *.log
+
+__pycache__/
+*.py[cod]

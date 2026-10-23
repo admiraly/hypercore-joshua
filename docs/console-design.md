@@ -1,6 +1,6 @@
 # Native BSP development console (issue #40)
 
-Status: editor, renderer, parser, response and screen model host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
+Status: experimental native console profile integrated; target qualification in progress. This builds on issue #38/PR #39's real PS2 path.
 The destination is an interactive, non-installing development preview, not the full
 user-space shell/capability system in the specification. Runtime stays Assembly.
 No speech, storage/network/AI, firmware-after-exit, process restart or merge changes.
@@ -552,3 +552,131 @@ A source-only follow-up found no actionable issues in the full4095-byte syntheti
 body fixtures; these exercise defensive composition bounds, not production
 response provenance. Boot-owned facts capture, interactive input and retirement are
 still not integrated; no console ISO is claimed by host composition evidence.
+
+## Boot and live-console integration contract (review before implementation)
+
+Add `Build.ps1 -Console`, defaulting to a separate `out/console` directory, with
+manifest console=true and an additional clearly named `JOSHUA-Console-Test.iso`
+copy/hash. Keep normal internal ISO/FAT names for existing tooling. Console rejects
+FaultTest/ContextTest/UserTest/ElfTest/KeyboardTest and MissingEoi combinations;
+TimerTest X2 is permitted as an explicit delivery profile with `out/console-x2`.
+`Test-Reproducibility.ps1 -Console` must rebuild that profile twice and compare its
+named ISO too. There is no speech inclusion or firmware input after boot-services
+exit. The old checkpoint profile and every diagnostic fixture remain distinct.
+
+Measured host console code/data are6781/1853 bytes including a wrapper. Reserve
+headroom consistently across profiles: PE text0x1000/size0xd000, data0xe000/0x1000,
+rodata0xf000/0x5000, BSS0x14000/0xe8000, relocation RVA0xfc000 with raw offset0x14000,
+image size0xfd000 and file size0x15000. Update actual PE checks, reservation coverage
+fixtures and image contracts together. Append three fixed BSS pages after the
+existing user-entry stacks, containing separate eight-aligned anchor/editor/grid/
+model/command/facts/response records; assert the sum fits12288 bytes. Nine guards,
+existing stack extents and boot/user ABI layouts remain unchanged. All new state
+is within loaded-image ownership and RW/NX proof; new text RX and constants RO/NX.
+ELF envelope retains its existing offset within rodata. Bounds assertions still
+reject every oversized profile rather than weakening section checks.
+
+Refactor the existing `keyboard_window_run` activation and retirement bodies into
+shared NASM source macros in `kernel/input/window-common.inc`. They expand at each
+caller's fixed aligned RSP, preserving the exact saved-frame/oldRSP relationship;
+there is no interrupt-enabled helper call with a different stack. Macro arguments
+are trusted fixed wait/drain labels, flags and failure labels. They retain all
+current authority/route/controller checks, F4/ACK/staging, mask/disable/flush, joint
+40h/44h drain and1024-window limit. KeyboardTest hook conditionals stay explicit
+and absent in console images. Compile the fixture consumer only for KeyboardTest;
+console images contain the real collector and IRQ entries but no test consumer,
+producer wait, injected frame or missing-input deadline shortcut.
+
+Console ownership begins only after user/worker checks returned, root is the owned
+root, IF0/DF0, no active user, and the APIC timer is stopped/masked with zero initial/
+current counts and all ISR/IRR empty. `console_run` saves integer nonvolatiles and
+uses56 bytes at fixed RSP for shadow plus outgoing command/response stack arguments.
+It initializes the checked surface/editor/grid/model, clears only visible pixels
+(background packed per GOP format), renders the initial screen, then activates
+keyboard delivery through the shared macro. Full framebuffer/image direct overlap
+is rejected before clearing; caller identity/ownership proofs establish backing
+separation from all image records/immutable code. Anchor is initialized once from
+validated owned boot data and never mutated afterward. Revalidate GOP extent,
+geometry/format/arithmetic via grid_init before any pixel store. Margin clear is
+an adapter operation; renderer remains limited to active cells and never padding.
+
+Only `PUSH2;POPFQ;STI;HLT;CLI` opens the active window, with exact wait continuation
+and the existing fifteen GPR sentinel check, oldRSP and post-CLI RFLAGS==2. No timer
+is armed, so idle has no deadline or polling loop. IRQ44 validates the exact frame,
+root/selectors/flags and actual ISR ownership before collection/EOI. Its IRQ/EOI
+counters saturate in console builds, as do editor/model/decoder counters. ISR does
+no formatting, rendering or command execution. IRQ40 dispatches to the keyboard
+owner whenever phase!=0: active phase1 is a permanent-stop error before EOI;
+only phase2 may validate its drain frame/actual ISR40 and EOI without ticks/rearm.
+Phase3 rejects both entries. No unexpected event is treated as successful input.
+
+Foreground IF0 pops real decoder events and calls editor_event. Changed/cancelled
+input recomposes prompt and renders dirty rows; ignored/full events execute no
+command. Submission runs command_parse, owned facts capture, response_build,
+model_complete and render in that order. Use only fixed direct helper calls; action
+metadata is validated by fresh parse before clear or halt. No host string supplies
+native input and no user text supplies a function pointer or format string.
+
+Facts capture reads fixed owned globals under IF0/current owned root: BOOT magic/
+v1-size/image base/size; FRAME_ALLOCATOR magic, fixed ranges/records pointers and
+capacity4096/count<=capacity/free<=total; RANGE_SET fixed entries/capacity8192/count
+bound; OWNED_PAGING ready1/failed0/root/current CR3 and nonzero table_count<=4096*64;
+ACPI magic/count<=256/enabled1..count; APIC magic/mode1..2; USER magic/stage3/failed0/
+active0/phase0 and terminal process states3..5; keyboard window magic/phase1/failure0,
+IRQ==EOI, and a checked decoder with bounded queue indices/count. Copy only the
+frozen fifteen integer fields and publish FACTS_MAGIC last. No firmware table is
+reread or hardware authority inferred from displayed counts. Capture failure stops
+without displaying a fabricated result; its partial output is not resumed.
+
+On successful halt, first render the honest HALTING response, then use shared
+retirement at the same fixed RSP. Stop/mask timer and verify zero counts, mask IRQ44,
+write-only disable controller, bounded flush, publish phase2/flags202h and drain
+until all ISR/IRR are empty or stop at1025. Only after phase3/failure0, source
+mask/quiet checks and successful model/grid validation disable the visible cursor,
+replace result row with `HALTED / INTERRUPTS RETIRED` and render. Then emit console
+halt evidence, return to kernel's existing IF0 permanent halt marker. Collection
+failure2 retires sources through the same path but never emits normal HALTED; other
+corruption/unowned-event paths stop IF0 and do not claim recovery. No further input
+window can open after terminal phase3.
+
+Boot and source integration still require independent implementation review,
+actual ISO/FAT/x2 keyboard sessions,30-second idle, editing/history/capacity/JSON/
+scroll/clear/unknown/usage and halt evidence, independent framebuffer/metadata and
+actual LAPIC/IOAPIC/port retirement checks. Re-run the full existing input, user,
+fault, context, ELF and host regressions and reproducibility. Negative console
+fixtures must reject active timer delivery and invalid frames/state without EOI
+or success markers, and exercise counter saturation. Windows and physical gates
+remain separate; the first interactive success cannot close all qualification.
+
+
+## First live integration checkpoint
+
+The boot profile and source-checked facts adapter now exist. Shared fixed-RSP
+keyboard activation/retirement macros serve the original fixture consumer and
+native foreground loop; production ISR counters saturate and active vector40 is
+fatal before EOI. The first actual boot reached READY and handled input but faulted
+while drawing the halt row: two indexed symbol addresses encoded image-relative
+absolute RVAs. Both now load the RIP-relative grid base and add the row offset;
+independent focused review found no analogous new addressing hazards. The failed
+log was preserved privately. A later ad-hoc smoke reached native HALTED but its
+QMP quit reader failed; that invocation is not counted as an automation pass.
+
+The final reviewed smoke verifies fixture/artifact identity, real CPU root/RSP/RIP,
+physical records/LAPIC/IOREGSEL/route/port state, constant halt pixels in the actual
+QMP display and no underline across the prompt row. Summaries are invalidated
+before a run and published only after clean QEMU exit. Hardened xAPIC ISO/FAT and
+x2APIC ISO runs passed actual PS2 editing/JSON/history/Ctrl-C,30-second timer-free
+idle and retirement. Actual target screenshots were visually inspected. Normal
+ISO/FAT and the original Text keyboard fixture also passed after layout/refactor.
+Normal and Console reproducibility passed, including the named console ISO.
+All24 Linux host suites and15 stack-walker fixtures passed. Nine fault fixtures,
+three context profiles, two ELF rejections and x2APIC ISO/FAT plus missing-EOI
+regression passed. The larger input/user batches are still running separately
+and are not counted as passes yet.
+
+Source-only integration/address-fix/oracle follow-ups have no unresolved findings.
+Reviews did not independently reproduce runs or inspect artifacts. The console
+CI job is wired but Windows execution remains pending. Full command breadth,
+negative console fixtures, counter saturation targets, independent full pixel/
+snapshot mutations and physical qualification are open; issue #40 and milestones
+remain incomplete. Earlier host-only checkpoint descriptions above are historical.

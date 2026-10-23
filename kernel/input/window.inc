@@ -1,3 +1,5 @@
+%include 'kernel/input/window-common.inc'
+%if JOSHUA_KEYBOARD_TEST != 0
 ; BSP-only bounded test input window. Trusted state and stack were proved at boot.
 ; Only the explicit KeyboardTest image calls this adapter. No ISR prints/allocates.
 keyboard_window_run:
@@ -10,99 +12,11 @@ keyboard_window_run:
     push r14
     push r15
     sub rsp,40
-    pushfq
-    pop rax
-    test eax,0x200
-    jnz .bad
-    mov rax,cr3
-    cmp rax,[owned_paging+OWNED_PAGING.root]
-    jne .bad
-    cmp qword [user_context+USER_CONTEXT.phase],0
-    jne .bad
-    cmp qword [user_context+USER_CONTEXT.active],0
-    jne .bad
-    cmp qword [kernel_context+KERNEL_CONTEXT.state],2
-    jne .bad
-    cmp qword [keyboard_window+KEYBOARD_WINDOW.ready],0
-    jne .bad
-    call apic_pending_clear
-    test eax,eax
-    jnz .bad
-    lea rax,[keyboard_irq_entry]
-    lea rdx,[kernel_idt+0x44*16]
-    mov [rdx],ax
-    mov byte [rdx+4],0
-    shr rax,16
-    mov [rdx+6],ax
-    shr rax,16
-    mov [rdx+8],eax
-    mov r12,[keyboard_io_window]
-    mov r13,[keyboard_io_selector]
-    mov rcx,r12
-    mov edx,r13d
-    call ioapic_read
-    cmp eax,[keyboard_saved_low]
-    jne .bad
-    mov rcx,r12
-    lea edx,[r13+1]
-    call ioapic_read
-    cmp eax,[keyboard_saved_high]
-    jne .bad
-    mov rcx,r12
-    mov edx,r13d
-    mov r8d,0x10044
-    call ioapic_write
-    and eax,0x1afff             ; writable fields, excluding delivery/remote status
-    cmp eax,0x10044
-    jne .bad
-    mov r8d,[keyboard_authority+KEYBOARD_AUTH.bsp_id]
-    shl r8d,24
-    mov rcx,r12
-    lea edx,[r13+1]
-    call ioapic_write
-    and eax,0xff000000
-    cmp eax,r8d
-    jne .bad
-    mov rax,cr3
-    mov [keyboard_window+KEYBOARD_WINDOW.root],rax
-    mov [keyboard_window+KEYBOARD_WINDOW.wait_rsp],rsp
-    lea rax,[kernel_stack]
-    mov [keyboard_window+KEYBOARD_WINDOW.stack_low],rax
-    lea rax,[kernel_stack_top]
-    mov [keyboard_window+KEYBOARD_WINDOW.stack_high],rax
-    lea rax,[keyboard_window_run.wait_close]
-    mov [keyboard_window+KEYBOARD_WINDOW.wait_rip],rax
-    lea rax,[keyboard_window_run.drain_close]
-    mov [keyboard_window+KEYBOARD_WINDOW.drain_rip],rax
-    movzx eax,word [kernel_code_selector]
-    mov [keyboard_window+KEYBOARD_WINDOW.code_selector],rax
-    movzx eax,word [kernel_data_selector]
-    mov [keyboard_window+KEYBOARD_WINDOW.data_selector],rax
-    mov qword [keyboard_window+KEYBOARD_WINDOW.flags],0x202
 %if JOSHUA_KEYBOARD_TEST = 2
-    mov qword [keyboard_window+KEYBOARD_WINDOW.flags],0x602
+    keyboard_window_activate .wait_close,.drain_close,0x602,.bad
+%else
+    keyboard_window_activate .wait_close,.drain_close,0x202,.bad
 %endif
-    lea rax,[image_start+0x1000]
-    mov [keyboard_window+KEYBOARD_WINDOW.text_start],rax
-    add rax,PE_TEXT_SIZE
-    mov [keyboard_window+KEYBOARD_WINDOW.text_end],rax
-    mov qword [keyboard_window+KEYBOARD_WINDOW.phase],1
-    mov rax,KEYBOARD_WINDOW_MAGIC
-    mov [keyboard_window+KEYBOARD_WINDOW.ready],rax
-    lea rcx,[keyboard_controller]
-    call keyboard_controller_enable
-    test eax,eax
-    jnz .bad
-    mov rcx,r12
-    mov edx,r13d
-    mov r8d,0x44
-    call ioapic_write
-    and eax,0x1afff
-    cmp eax,0x44
-    jne .bad
-    call keyboard_collect
-    test eax,eax
-    jnz .bad
 %if JOSHUA_KEYBOARD_TEST = 16
     lea rdi,[keyboard_decoder+KEYBOARD_DECODER.events]
     mov ecx,64
@@ -208,68 +122,7 @@ keyboard_window_run:
     jne .bad
     jmp .consume
 .cleanup:
-    call user_timer_stop
-    mov rcx,[keyboard_io_window]
-    mov edx,[keyboard_io_selector]
-    mov r8d,0x10044
-    call ioapic_write
-    and eax,0x1afff
-    cmp eax,0x10044
-    jne .bad
-    cmp qword [keyboard_controller+KEYBOARD_CONTROLLER.stage],11
-    je .disabled
-    lea rcx,[keyboard_controller]
-    call keyboard_controller_disable
-    test eax,eax
-    jnz .bad
-.disabled:
-    cmp qword [keyboard_controller+KEYBOARD_CONTROLLER.ready],0
-    jne .bad
-    cmp qword [keyboard_controller+KEYBOARD_CONTROLLER.failed],0
-    jne .bad
-    cmp qword [keyboard_controller+KEYBOARD_CONTROLLER.scanning],0
-    jne .bad
-    call keyboard_flush_output
-    test eax,eax
-    jnz .bad
-%if JOSHUA_KEYBOARD_TEST = 16 || JOSHUA_KEYBOARD_TEST = 17
-    call keyboard_status
-    mov [keyboard_fixture+KEYBOARD_FIXTURE.terminal_status],rax
-    test eax,1
-    jnz .bad
-%endif
-    mov qword [keyboard_window+KEYBOARD_WINDOW.flags],0x202
-    mov qword [keyboard_window+KEYBOARD_WINDOW.phase],2
-%if (JOSHUA_KEYBOARD_TEST >= 4 && JOSHUA_KEYBOARD_TEST <= 7) || JOSHUA_KEYBOARD_TEST = 17
-    mov rax,[keyboard_window+KEYBOARD_WINDOW.keyboard_eois]
-    mov [keyboard_fixture+KEYBOARD_FIXTURE.drain_keyboard_eois],rax
-    mov rax,[keyboard_window+KEYBOARD_WINDOW.timer_eois]
-    mov [keyboard_fixture+KEYBOARD_FIXTURE.drain_timer_eois],rax
-    mov qword [keyboard_fixture+KEYBOARD_FIXTURE.stage],3
-%endif
-.drain:
-    call apic_pending_clear
-    test eax,eax
-    jz .drained
-    inc qword [keyboard_window+KEYBOARD_WINDOW.drain_windows]
-    cmp qword [keyboard_window+KEYBOARD_WINDOW.drain_windows],1024
-    jbe .drain_open
-%if JOSHUA_KEYBOARD_TEST = 7
-    mov qword [keyboard_fixture+KEYBOARD_FIXTURE.stage],6
-%endif
-    jmp .bad
-.drain_open:
-    push 2
-    popfq
-%if JOSHUA_KEYBOARD_TEST != 7
-    sti
-%endif
-    nop
-.drain_close:
-    cli
-    jmp .drain
-.drained:
-    mov qword [keyboard_window+KEYBOARD_WINDOW.phase],3
+    keyboard_window_retire .drain_close,.bad
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],0
 %if JOSHUA_KEYBOARD_TEST >= 4 && JOSHUA_KEYBOARD_TEST <= 6
     jne .bad
@@ -311,6 +164,8 @@ keyboard_window_run:
     pop rbp
     pop rbx
     ret
+
+%endif ; fixture consumer only
 
 ; At most32 OBF bytes. EAX1 means still-full/corrupt; caller quiesces or stops.
 ; Staging before STI and IRQ collection share the actual decoder, never a shortcut.
@@ -394,7 +249,11 @@ keyboard_irq_entry:
     call lapic_read
     test eax,0x10
     jz kernel_fault
+%if JOSHUA_CONSOLE
+    keyboard_saturate keyboard_window+KEYBOARD_WINDOW.keyboard_irqs
+%else
     inc qword [keyboard_window+KEYBOARD_WINDOW.keyboard_irqs]
+%endif
     cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],2
     je .eoi
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],0
@@ -416,7 +275,11 @@ keyboard_irq_entry:
     mov ecx,0xb0
     xor edx,edx
     call lapic_write
+%if JOSHUA_CONSOLE
+    keyboard_saturate keyboard_window+KEYBOARD_WINDOW.keyboard_eois
+%else
     inc qword [keyboard_window+KEYBOARD_WINDOW.keyboard_eois]
+%endif
     irq_restore
 .frame_reject:
 %if JOSHUA_KEYBOARD_TEST = 15
@@ -451,6 +314,10 @@ keyboard_timer_saved:
     call lapic_read
     test eax,1
     jz kernel_fault
+%if JOSHUA_CONSOLE
+    cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],2
+    jne kernel_fault ; active console owns no timer delivery; never EOI it
+%endif
 %if JOSHUA_KEYBOARD_TEST = 17
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],2
     jne .no_failed_timer
@@ -474,7 +341,11 @@ keyboard_timer_saved:
     mov ecx,0xb0
     xor edx,edx
     call lapic_write
+%if JOSHUA_CONSOLE
+    keyboard_saturate keyboard_window+KEYBOARD_WINDOW.timer_eois
+%else
     inc qword [keyboard_window+KEYBOARD_WINDOW.timer_eois]
+%endif
     cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],1
     jne .return
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],0
