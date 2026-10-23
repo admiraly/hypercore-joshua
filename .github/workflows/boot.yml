@@ -179,13 +179,17 @@ jobs:
       - name: Build reproducible native console media
         run: ./tests/Test-Reproducibility.ps1 -Console
       - name: Exercise real keyboard console from ISO
-        run: ./tools/Test-Console.ps1
+        run: ./tools/Test-Console.ps1 -Features
+      - name: Reject corrupted console pixels and grid captures
+        run: |
+          python ./tests/test_console_pixels.py out/console
+          if ($LASTEXITCODE -ne 0) { throw 'Console pixel mutation checks failed.' }
       - name: Exercise real keyboard console from FAT
-        run: ./tools/Test-Console.ps1 -BootMedia Fat
+        run: ./tools/Test-Console.ps1 -Features -BootMedia Fat
       - name: Build and exercise x2APIC console
         run: |
           ./tools/Build.ps1 -Console -TimerTest X2
-          ./tools/Test-Console.ps1 -OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'
+          ./tools/Test-Console.ps1 -Features -OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -195,6 +199,7 @@ jobs:
             out/console*/BOOTX64.EFI
             out/console*/joshua-uefi.img
             out/console*/manifest.json
+            out/console*/*.ppm
             out/console*/*.png
             out/console*/*.json
             out/console*/*.log

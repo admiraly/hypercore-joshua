@@ -35,8 +35,9 @@ page into those private contexts; it is not a general ELF loader.
 A bounded i8042 preparation checkpoint now validates firmware authority and configures
 the keyboard with scanning disabled and its IRQ masked. Explicit experimental
 fixtures open a bounded PS2 IRQ input window with ordered-event, DF and deadline
-checks; live lifecycle qualification and the interactive shell remain unfinished.
-There is no general task scheduler, storage driver, network stack, shell,
+checks. The separate Console profile uses that IRQ path for the experimental
+interactive diagnostic console; broader qualification remains unfinished.
+There is no general task scheduler, storage driver, network stack, user-space shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
 **Bare-metal status:** on 22 October 2026, the owner confirmed a flawless boot

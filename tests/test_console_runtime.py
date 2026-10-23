@@ -12,6 +12,7 @@ import socket
 import struct
 import subprocess
 import time
+from console_pixels import validate_pixels
 from keyboard_runtime_oracle import validate_lapic, validate_output_quiet, validate_queue_indices
 
 p = argparse.ArgumentParser(description=__doc__)
@@ -22,6 +23,7 @@ p.add_argument('--boot-media',choices=['Iso','Fat'],default='Iso')
 p.add_argument('--cpu',default='qemu64')
 p.add_argument('--timeout',type=int,default=120)
 p.add_argument('--idle-seconds',type=int,default=30)
+p.add_argument('--features',action='store_true',help='exercise command grammar through real PS2 input')
 a = p.parse_args()
 assert 30 <= a.idle_seconds <= 120,'idle evidence requires at least30 seconds'
 out = a.output.resolve()
@@ -194,6 +196,85 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         cancelled = snapshot('cancelled')
         assert editor_text(cancelled['editor'])==('',0),'real Ctrl-C cancellation'
         assert struct.unpack_from('<Q',cancelled['editor'],88)[0]==1,'cancellation count'
+        completed = 1
+        if a.features:
+            # Each result is observed before submitting the next command. No guest
+            # memory writes or host-side command-string execution are used.
+            cases = [('help',1,0,0),('about',2,0,0),('status',3,0,0),
+                     ('mem',4,0,0),('mem --json',4,0,1),('ps',5,0,0),
+                     ('ps --json',5,0,1),('devices',6,0,0),('devices --json',6,0,1),
+                     ('  StAtUs   --json  ',3,0,1),('net',10,69,0),
+                     ('unknown',255,127,0),('unknown a b',255,2,0),
+                     ('help --json',1,2,0),('status --JSON',3,2,0),
+                     ('halt extra',8,2,0),('',0,0,0),('clear',7,0,0)]
+            for index,(text,command,code,flag) in enumerate(cases):
+                type_text(text)
+                key('ret')
+                values = snapshot('feature-'+str(index))
+                completed += 1
+                action = 1 if command==7 and code==0 else 0
+                assert struct.unpack('<5Q',values['command']) == (0x31444e4d43484f4a,command,code,flag,action),'feature command: '+text
+                assert struct.unpack('<8Q',values['model'])[3:] == (completed,command,code,flag,action),'feature completion: '+text
+                assert editor_text(values['editor']) == ('',0),'feature input reset'
+                ready,length = struct.unpack_from('<2Q',values['response'])
+                body = values['response'][16:16+length]
+                assert ready==0x3150534552484f4a and length<=4095 and values['response'][16+length:]==bytes(4096-length),'feature response publication'
+                if code:
+                    assert body=={2:b'USAGE ERROR (2)\n',69:b'UNAVAILABLE (69)\n',127:b'UNKNOWN COMMAND (127)\n'}[code],'feature exact error'
+                elif command==0:
+                    assert body==b'','empty command'
+                elif flag:
+                    names={3:('status',[1,6,7,8]),4:('mem',[2,3,4,5]),5:('ps',[12,13,14,15]),6:('devices',[7,6,9,10,11])}
+                    fields='image_bytes free_pages live_allocations candidate_ranges owned_table_pages enabled_cpus apic_mode timer_eois keyboard_irqs keyboard_eois keyboard_drops process_a_state process_a_status process_b_state process_b_status'.split()
+                    name,indices=names[command]
+                    facts=struct.unpack('<16Q',values['facts'])
+                    expected={'command':name,'status':0}
+                    expected.update({fields[i-1]:facts[i] for i in indices})
+                    assert body==(json.dumps(expected,separators=(',',':'))+'\n').encode(),'feature exact JSON bytes'
+                else:
+                    constants={1:b'HELP ABOUT STATUS MEM PS DEVICES CLEAR HALT\nSTATUS|MEM|PS|DEVICES --json\n',
+                               2:b'JOSHUA / HYPERCORE\nBSP DEVELOPMENT CONSOLE\nASSEMBLY RUNTIME. NO AI EXECUTION.\nQEMU EVIDENCE; PHYSICAL QUALIFICATION OPEN.\n',
+                               7:b'CONSOLE CLEARED\n'}
+                    if command in constants:
+                        assert body==constants[command],'feature exact constant response'
+                    else:
+                        names={3:('status',[1,6,7,8]),4:('mem',[2,3,4,5]),5:('ps',[12,13,14,15]),6:('devices',[7,6,9,10,11])}
+                        fields='image_bytes free_pages live_allocations candidate_ranges owned_table_pages enabled_cpus apic_mode timer_eois keyboard_irqs keyboard_eois keyboard_drops process_a_state process_a_status process_b_state process_b_status'.split()
+                        name,indices=names[command]
+                        facts=struct.unpack('<16Q',values['facts'])
+                        expected=name.upper()+'\n'+''.join(fields[i-1]+'='+str(facts[i])+'\n' for i in indices)
+                        assert body==expected.encode(),'feature exact human response'
+                qmp('screendump',filename=str(out/(tag+'-feature-'+str(index)+'.ppm')))
+                # The guest remains idle with no further input between the
+                # physical record capture and display capture.
+                validate_pixels(values['grid'],(out/(tag+'-feature-'+str(index)+'.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            # Capacity, viewport and navigation use the same actual key path.
+            capacity_text='a'+'b'*125+'c'
+            type_text(capacity_text)
+            full=snapshot('full-line')
+            assert editor_text(full['editor'])==(capacity_text,127),'127-character line'
+            fg=struct.unpack_from('<13Q',full['grid'])
+            assert fg[10:13]==(fg[7]-1,fg[8]-2,1),'full-line viewport cursor'
+            prompt=full['grid'][104+(fg[8]-2)*100:104+(fg[8]-2)*100+fg[7]]
+            assert prompt==b'JOSHUA> '+capacity_text.encode()[127-(fg[7]-9):]+b' ','full-line viewport reserves visible cursor cell'
+            qmp('screendump',filename=str(out/(tag+'-full-line.ppm')))
+            validate_pixels(full['grid'],(out/(tag+'-full-line.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            rejected_before=struct.unpack_from('<Q',full['editor'],80)[0]
+            key('b')
+            rejected=snapshot('full-rejection')
+            assert editor_text(rejected['editor'])==(capacity_text,127),'full insertion preserves text'
+            assert struct.unpack_from('<Q',rejected['editor'],80)[0]==rejected_before+1,'full rejection accounting'
+            key('home')
+            assert editor_text(snapshot('home')['editor'])==(capacity_text,0),'Home exact cursor'
+            key('delete')
+            assert editor_text(snapshot('delete')['editor'])==('b'*125+'c',0),'Delete removes leading a'
+            key('end')
+            assert editor_text(snapshot('end')['editor'])==('b'*125+'c',126),'End exact cursor'
+            key('backspace')
+            navigated=snapshot('navigation')
+            assert editor_text(navigated['editor'])==('b'*125,125),'Home/Delete/End/Backspace'
+            key('c','ctrl')
+            assert editor_text(snapshot('capacity-cancel')['editor'])==('',0),'capacity cancellation'
         type_text('halt')
         key('ret')
         while 'JOSHUA:KERNEL_HALTED' not in log():
@@ -203,7 +284,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         regs = registers()
         assert 'HLT=1' in regs and 'CPL=0' in regs and not(int(re.search(r'RFL=([0-9A-Fa-f]+)',regs)[1],16)&0x200),'permanent IF0 ring0 halt'
         m = struct.unpack('<8Q',terminal['model'])
-        assert m[3:]==(2,8,0,0,2),'halt follows exact valid command'
+        assert m[3:]==(completed+1,8,0,0,2),'halt follows exact valid command'
         grid = terminal['grid']
         g = struct.unpack_from('<13Q',grid)
         assert g[0]==0x3144495247484f4a and g[9]==0 and g[12]==0,'rendered grid / disabled cursor'
@@ -224,6 +305,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         # Actual display pixels, independently rasterized from the constant halt
         # text and authored font asset, rather than trusting grid bytes alone.
         ppm = (out/(tag+'-screen.ppm')).read_bytes()
+        validate_pixels(grid,ppm,Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
         header = re.match(rb'^P6\n(\d+) (\d+)\n255\n',ppm)
         assert header,'QEMU P6 screenshot header'
         width,height = map(int,header.groups())
@@ -259,10 +341,10 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         process.wait(timeout=5)
         assert process.returncode==0,'clean QEMU shutdown'
         temporary=summary_path.with_suffix('.json.tmp')
-        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':2,'checks':'real editing/history/JSON/idle/halt pixels; full campaign pending'},indent=2)+'\n')
+        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':completed+1,'features':a.features,'checks':'real PS2 commands, editing/history, timer-free idle and full visible grid/display consistency; negative qualification pending'},indent=2)+'\n')
         temporary.replace(summary_path)
 
-        print(f'PASS: Console {a.boot_media} real PS2 editing/history/JSON, {a.idle_seconds}s timer-free idle, owned IRQs and physical IF0 halt retirement; broader campaign pending.')
+        print(f'PASS: Console commands={completed+1} features={a.features} {a.boot_media} real PS2 editing/history/JSON, {a.idle_seconds}s timer-free idle, owned IRQs and physical IF0 halt retirement; broader campaign pending.')
     finally:
         if client:
             client.close()

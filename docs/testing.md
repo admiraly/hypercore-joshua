@@ -341,9 +341,19 @@ The smoke verifies artifact hashes/fixture isolation before starting read-only
 media. Actual QMP key events perform editing, JSON submission, history, cancellation
 and halt, with at least30 seconds of timer-free idle. Stopped physical captures
 check real CPU root/RSP/RIP, model/editor/result/facts, IRQ/EOI and queue invariants,
-actual LAPIC retirement and IOREGSEL/route/port state. Actual display pixels verify
-the constant halt row and absence of any cursor underline across the prompt row.
+actual LAPIC retirement and IOREGSEL/route/port state. Actual display pixels are
+compared across the entire visible framebuffer against a separate rasterization of
+the captured grid, including margins and cursor. This checks grid/display consistency;
+it shares the authored font and does not independently prove transcript provenance
+or GOP stride padding. The constant halt row and cursor retirement have additional
+expectations independent of the grid.
 A final success summary is published only after clean QEMU exit; stale summaries
-are invalidated before a run. Native feature breadth, negative fixtures, saturation,
-full pixel/snapshot mutation campaigns and all regressions remain separate gates.
+are invalidated before a run. Use `-Features` for18 additional submissions covering implemented commands, human/JSON
+responses, grammar/errors, empty input and clear, then127-character capacity, rejected
+insertion and Home/Delete/End/Backspace. Each submission checks exact command/result
+and response bytes; JSON values are compared with captured facts, not an independent
+source-record oracle. Run `python tests/test_console_pixels.py out/console` after an
+ISO pass for24 baseline/mutation checks. Negative console fixtures, saturation,
+independent live transcript/source-facts oracles and broader snapshot mutations
+remain separate gates.
 The new Windows console CI job is wired; execution remains unverified here.

@@ -840,3 +840,45 @@ A frozen copy for testing is `out/JOSHUA-Console-Test-23a66e3.iso`, with the sam
 SHA256 recorded above. All native evidence remains QEMU-only. Native command breadth,
 negative console/mutation coverage, Windows CI and physical qualification remain
 open. Independent reviews were source-only. No issue/milestone closure or merge.
+
+### Native console command and visible-pixel expansion
+
+Host-only validation expands the unchanged23a66e3 console runtime: `Test-Console.ps1
+-Features` submits20 commands through actual QMP PS2 key events. Eighteen added
+submissions cover help/about, human status/mem/ps/devices and JSON variants, padded
+mixed-case names, unavailable/unknown/usage results, case-sensitive options, rejected
+halt arguments, empty input and clear. Each completion checks the exact command,
+model result and full bounded response bytes. Dynamic numbers are checked against
+the captured facts record; independent source-record provenance remains open.
+Capacity checks use127 characters with distinct ends, a rejected insertion, exact
+intermediate Home/Delete/End/Backspace states, cancellation and prompt viewport.
+
+The pixel oracle independently rasterizes all active cells and the cursor and
+compares the entire visible PPM, including margins. It uses captured grid text and
+the authored font: this establishes display/grid consistency, not independent live
+transcript provenance, font correctness or GOP padding coverage. Halt/footer and
+capacity-prompt expectations additionally constrain visible content. Twenty-four
+baseline/mutation checks reject altered grid metadata/text/cursor and actual margin,
+transcript, prompt/footer pixels, malformed headers and incomplete/extra pixels.
+The mutation baseline must pass first. Screenshots and physical records are retained
+under ignored output paths. Windows CI now requests Features on its three profiles
+and explicitly propagates mutation failure; Windows execution remains unverified.
+
+Independent source review caught a navigation false pass when identical characters
+could conceal incorrect Home behavior. Distinct ends and intermediate assertions
+resolved it; a follow-up found no actionable findings. Reviewers did not run tests
+or inspect artifacts. There are no runtime, ABI, memory or image changes in this
+slice. Console-specific negative/saturation targets, independent live transcript
+and facts-source oracles, broader snapshot mutations and physical qualification
+remain open. No issue/milestone closure or merge is claimed.
+
+Final strengthened runs passed on xAPIC ISO/FAT and x2APIC ISO: each completed all20
+submissions, capacity/navigation assertions,30-second idle, complete visible pixel
+comparisons and physical IF0 halt retirement, with QEMU exit0. The24 baseline/pixel
+mutations passed against both xAPIC and x2APIC ISO captures. The final xAPIC screenshot
+was visually inspected. Earlier successful invocations before the intermediate
+navigation assertions are not substituted for these reruns. The frozen Console ISO
+and current named image retain SHA256
+`3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+Build/reproducibility and inherited regressions remain the previously recorded
+23a66e3 results; they were not rerun for this host-only validation change.
