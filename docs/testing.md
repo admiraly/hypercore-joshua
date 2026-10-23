@@ -236,4 +236,5 @@ Windows uses `python`. It requires the baseline to pass, then rejects47 corrupte
 snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
 code. These counts describe mutations, not hardware qualification. CI runs the
 same mutation suite. Source review closed parent-cache/reserved-bit findings.
-Final whole-issue regressions and Windows CI remain pending; PR #35 remains draft.
+Final local campaigns and regressions pass as recorded in validation.md. Windows
+CI remains pending; PR #35 remains draft.

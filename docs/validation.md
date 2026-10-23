@@ -461,3 +461,25 @@ DoubleFault target passes with CR2 inside the intended ordinary-stack guard. Fau
 logs are now uploaded by CI. The final28-profile campaign, complete regressions and
 new-head Windows CI are still running/pending at this checkpoint. No planned test
 is counted as passing, and no issue or milestone completion is claimed here.
+
+### Final local campaign on runtime commit 859225e
+
+The final separate24-profile TCG campaign passes, including19 successful contained/
+exit paths and five intentional kernel-stop cases. All four Intel KVM profiles
+pass exact fault and private-paging oracles. An initial KVM launch exited before
+JOSHUA entry; its #AC retry passed. This failed launch is retained as a reliability
+limit, not counted as successful execution. TCG #SS/#AC exact-vector failures from
+the earlier checkpoint remain excluded; KVM evidence does not erase them.
+
+All15 host suites, nine fault fixtures, x2APIC ISO/FAT plus missing-EOI rejection,
+context launch/bad-frame/worker-guard regressions, normal ISO/FAT, and two-build
+EFI/FAT/ISO/manifest reproducibility pass on the final runtime source. The corrupted
+PE rejection check passes. One extra ad-hoc x2 expectation against the normal
+xAPIC image was correctly rejected; actual x2 evidence uses the X2 fixture in
+Test-ApicTimer.ps1. No product change was made for that invocation mistake.
+
+Independent final source review found no actionable findings, including the #DF
+parser correction, campaign wiring, private-paging oracle and documentation. Reviews
+were read-only and did not independently reproduce the parent-run evidence. Windows
+CI on the final PR head remains pending. PR #35 stays draft; issue #32 and broader
+milestone/physical/speculative/SMP qualification are not declared complete.

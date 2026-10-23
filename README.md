@@ -27,7 +27,7 @@ new memory implementation has no physical qualification.
 A bounded experimental ring3 path now runs two embedded Assembly programs under
 private roots, with unknown-call/exit gates, contained synchronous faults and an
 eight-tick watchdog. Timer/drain rejection fixtures and independent physical page walks extend its
-validation; final campaign and CI qualification remain open. This is not a qualified general process system.
+validation; local campaigns pass and Windows CI qualification remains open. This is not a qualified general process system.
 There is no general task scheduler, program loader, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
