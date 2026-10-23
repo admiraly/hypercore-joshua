@@ -495,6 +495,14 @@ owned_fault_instruction:
     call keyboard_prepare
     test eax,eax
     jnz kernel_fault
+%if JOSHUA_CONSOLE
+    call console_run
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_halted]
+    call debug_write
+    jmp stop_cpu
+%endif
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx

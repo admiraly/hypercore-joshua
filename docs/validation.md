@@ -663,3 +663,358 @@ armed fixture stage2 from window phase1, and the final8,373 mutation count from
 historical counts. Windows CI and physical Latitude/input qualification remain open.
 No issue/milestone completion, full input-stack/shell claim or merge follows. Issue
 #40 owns the next native WOPR/Joshua console; speech branches remain unchanged.
+
+## Console editor checkpoint (23 October 2026)
+
+Issue #40, `feature/console-shell`, based on `32a0bbe`: the reviewed pure
+Assembly editor is host-tested but has no boot call site. The independent model
+and actual Assembly ABI harness passed **344,659 cumulative checks**, including
+all 65,536 input tokens, 20,000 seeded mixed events, fixed-buffer guard pages,
+corruption rejection, history, submitted-buffer lifetime and counter saturation.
+This count includes repeated state/result assertions, not independent scenarios.
+Independent read-only source review found no actionable findings and did not
+reproduce the test run. The prior three editor design findings were resolved
+before implementation (layout/invariants, no-op/browsing semantics, result ABI).
+
+`tools/Build.ps1` passed all 20,790 static media assertions;
+`tests/Test-Reproducibility.ps1` produced identical EFI/FAT/ISO/manifest hashes
+and rejected the corrupt PE. Normal `tools/Test-Qemu.ps1` ISO and `-BootMedia Fat`
+both passed with private-root/ownership evidence and the intended halted ring0
+checkpoint. These image runs exercise the existing boot path, not the unused
+editor. Linux CI includes the new editor suite but has not yet reported results.
+No interactive console, renderer, parser, IRQ lifecycle, Windows or physical
+qualification is established by this checkpoint. No merge or milestone completion.
+
+## Checked console renderer checkpoint (23 October 2026)
+
+Issue #40/PR #41 extends the host-only console component validation with five
+Assembly grid helpers and an original95-character font. No boot call site or
+interactive console is added at this checkpoint. `tests/Test-ConsoleGrid.ps1`
+passed **5,055 cumulative checks**, including complete actual-framebuffer byte
+comparisons for RGB/BGR surfaces, margins and stride padding, dirty rows/cursor,
+all printable glyph indices, min/clamped geometry, invalid state/anchor values,
+overflow/direct-overlap rejection and inaccessible guard pages around framebuffer,
+grid and anchor. Pixel addressing/colors are independently modeled; font rasters
+reuse the authored font asset with two literal checks, not an independent font
+oracle. The actual Assembly-rendered host preview was visually inspected at
+`out/console-grid-tests/console-grid-preview.png`; it is not a boot screenshot.
+The editor regression passed344,659 cumulative checks again.
+
+Independent renderer design review found P2 gaps in alias exclusion and success
+returns; both were corrected and re-reviewed before implementation. Independent
+read-only implementation and final guard/preview/CI reviews found no actionable
+findings. Reviewers did not reproduce tests or inspect output artifacts.
+
+`tests/Test-Reproducibility.ps1` invoked two successful `tools/Build.ps1` builds,
+each passing20,790 static assertions; EFI/FAT/ISO/manifest hashes matched and the
+corrupt PE was rejected. Normal QEMU ISO and FAT runs both passed private-root,
+permissions, ownership and actual CPL3/continuation assertions, then halted as
+expected. Those images still exercise the existing checkpoint, not the unused
+console helpers. Linux CI now includes both component suites but has not reported
+results here. Prompt/model/parser/IRQ integration, interactive target campaigns,
+Windows and physical qualification remain open. No merge/milestone completion.
+
+## Console command and response checkpoint (23 October 2026)
+
+Issue #40/PR #41 now has pure Assembly command parsing and diagnostic response
+components, with no boot call sites yet. `Test-ConsoleCommand.ps1` passed95,317
+cumulative checks against an independent grammar model: case permutations,
+argument precedence,127-byte boundaries,15,000 seeded mixed inputs, whole-editor
+corruption, overlap, guards and eight-register sentinels. A design P2 requiring
+an exact result readiness value was fixed and re-reviewed before coding.
+Independent read-only parser implementation review found no actionable findings.
+
+`Test-ConsoleResponse.ps1` passed28,687 cumulative checks: independent complete
+text/schema/JSON expectations, command-combination validation,1,000 seeded facts
+snapshots, unsigned64 extremes, input preservation/zero tails, overlap/corruption,
+protected extents and actual internal append capacity/overflow checks. Response
+design and implementation reviews found no actionable findings. Static audit
+bounds the deepest formatter stack at288 bytes below entry (296 including its
+incoming return address); all calls align and provide shadow space. Reviewers
+made no edits and did not independently reproduce tests or inspect artifacts.
+The editor and grid regressions passed344,659 and5,055 checks respectively.
+Counts are cumulative assertions, not independent scenarios.
+
+Current-source reproducibility invoked two builds passing20,790 static assertions
+each, with identical EFI/FAT/ISO/manifest hashes and corrupt-PE rejection. Normal
+QEMU ISO and FAT runs passed private paging/ownership, actual CPL3/continuation
+and the expected ring0 halt. They exercise the existing boot checkpoint, not the
+unused console components. Linux CI includes all four console suites; no CI result
+is asserted here. No snapshot boot adapter, prompt/transcript model, real keyboard
+console lifecycle or interactive ISO is delivered by these host component tests.
+Windows, physical qualification, full console target/regression campaigns and
+issue/milestone completion remain open. No merge.
+
+## Console screen-model checkpoint (23 October 2026)
+
+Issue #40/PR #41 now composes prompt, transcript and result rows through pure
+Assembly helpers, without a boot call site. `Test-ConsoleModel.ps1` passed17,279
+cumulative checks against an independent complete-grid/model oracle. It invokes
+actual Assembly parse/build/compose helpers, covers viewport positions through127,
+three geometries,100 seeded completions each, exact-width/LF/wrap/scroll, clear
+ordering, saturation, fresh-parse mismatch rejection, all record overlaps and
+inaccessible boundaries around six records. Synthetic4095-byte printable/LF and
+empty bodies test defensive composition bounds beyond current response templates;
+they do not prove production response provenance. No pixels change in composition.
+
+The actual Assembly renderer produced the visually inspected host preview at
+`out/console-model-tests/console-model-preview.png`. Its facts are synthetic and it
+is not a boot screenshot or actual keyboard session. Shared `command_check`
+extraction leaves response behavior unchanged; editor/grid/parser/response suites
+passed344,659/5,055/95,317/28,687 cumulative checks again. Independent design, code
+and maximum-body follow-up reviews found no actionable findings. Static maximum
+model depth is616 bytes below entry RSP (624 with incoming return address).
+Reviewers did not reproduce tests or inspect artifacts. Counts are assertions,
+not independent scenarios.
+
+Current-source reproducibility ran two builds passing20,790 static assertions
+each, with identical EFI/FAT/ISO/manifest hashes and corrupt-PE rejection. Normal
+QEMU ISO and FAT passed private paging/ownership, actual CPL3/continuation and the
+intended ring0 halt. Those images do not exercise unused console helpers. Linux
+CI now includes the model suite; no CI result is claimed. Boot facts/provenance,
+console profile/layout integration, actual IRQ idle/halt, interactive media and
+full console target/regression campaigns remain open, as do Windows and physical
+qualification. No merge, issue closure or milestone completion.
+
+## First native console test media (23 October 2026)
+
+Issue #40/PR #41 now integrates the owned facts adapter, checked console components
+and real keyboard foreground loop in the separate `Build.ps1 -Console` profile.
+The current non-installing test image is `out/console/JOSHUA-Console-Test.iso`:
+SHA256 `3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+This supersedes the earlier checkpoint's statement that profile/layout integration
+and interactive media do not exist. It does not close the wider qualification gates.
+
+Final hardened `tools/Test-Console.ps1` passed xAPIC ISO, xAPIC FAT and x2APIC ISO.
+Each uses real QMP device key events for editing, status JSON, history, Ctrl-C and
+halt, with30 seconds of timer-free idle. Physical captures check actual CPU root/
+RSP/RIP and IF1/HLT wait, records and IRQ/EOI/queue state, then actual stopped LAPIC,
+selected keyboard IOAPIC mask and controller output quietness, and IF0/ring0 halt.
+Actual QMP screenshot pixels match the constant HALTED footer; the entire prompt
+underline area is background and terminal cursor metadata is independently fixed.
+Target PNG screenshots were visually inspected. Artifact hashes and fixture flags
+are checked before boot; success summaries are published only after clean exit.
+
+The first ad-hoc native boot reached input then faulted on halt-row drawing: two
+indexed symbol LEAs encoded absolute image RVAs. Both were corrected to RIP-relative
+base plus row offset, with a focused independent review. That failed log was
+preserved privately. A subsequent ad-hoc invocation reached native HALTED but its
+QMP quit reader failed; neither invocation is counted as a passing smoke command.
+Earlier weaker ISO/FAT smoke passes predate the strengthened oracle and are not
+substituted for the three final hardened passes above.
+
+Normal and Console reproducibility passed two builds each,20,822 static assertions
+per build, identical EFI/FAT/ISO/manifest hashes (plus named Console ISO), and corrupt
+PE rejection. Updated reservation fixtures passed6,425 checks. All24 Linux host
+suites passed, plus15 stack-walker cases. Normal ISO/FAT passed private-root and
+CPL3/continuation checks. Original Text keyboard ISO passed after the shared-macro
+refactor. Nine fault fixtures, context launch/rejection/guard, two ELF rejections,
+x2APIC ISO/FAT and expected missing-EOI stall regressions passed. Full40-target
+keyboard and24-profile TCG user campaigns are still running and are not claimed
+as complete here; final batch results will be recorded separately.
+
+Independent design, integration, addressing-fix and oracle follow-ups found no
+unresolved runtime findings. Four initial oracle evidence gaps (manifest/media
+identity, IOREGSEL, stale/premature summaries and unchecked screenshot) and a cursor
+coordinate gap were corrected and re-reviewed. Reviewers inspected source only;
+they did not reproduce runs or inspect artifacts. The new Windows CI job uploads
+both tested media plus manifest and captures, but Windows execution is pending.
+Broader native command breadth, negative console fixtures, saturation targets,
+full pixel/snapshot mutation campaigns and physical qualification remain open.
+No merge, issue closure or milestone completion is claimed.
+
+
+### Completed first-integration regression batches
+
+After the preceding checkpoint, the frozen runtime source in23a66e3 completed the
+full40-target keyboard campaign:17 xAPIC profiles on ISO/FAT plus Text/PendingBoth/
+OverflowPending x2APIC on both media,18 positives and22 expected stops. The script
+exited0 and all40 per-target result lines were checked. It includes8,373 shared
+oracle mutations. The24-profile TCG user campaign also exited0 with its final exact
+oracle summary. Nine faults and the timer/context/ELF batches had already passed.
+These preserve the inherited collection/fixture qualifications; controlled refill
+is not natural production timing evidence. No new console negative/saturation or
+full-feature campaign is inferred from the older keyboard fixtures.
+
+A frozen copy for testing is `out/JOSHUA-Console-Test-23a66e3.iso`, with the same
+SHA256 recorded above. All native evidence remains QEMU-only. Native command breadth,
+negative console/mutation coverage, Windows CI and physical qualification remain
+open. Independent reviews were source-only. No issue/milestone closure or merge.
+
+### Native console command and visible-pixel expansion
+
+Host-only validation expands the unchanged23a66e3 console runtime: `Test-Console.ps1
+-Features` submits20 commands through actual QMP PS2 key events. Eighteen added
+submissions cover help/about, human status/mem/ps/devices and JSON variants, padded
+mixed-case names, unavailable/unknown/usage results, case-sensitive options, rejected
+halt arguments, empty input and clear. Each completion checks the exact command,
+model result and full bounded response bytes. Dynamic numbers are checked against
+the captured facts record; independent source-record provenance remains open.
+Capacity checks use127 characters with distinct ends, a rejected insertion, exact
+intermediate Home/Delete/End/Backspace states, cancellation and prompt viewport.
+
+The pixel oracle independently rasterizes all active cells and the cursor and
+compares the entire visible PPM, including margins. It uses captured grid text and
+the authored font: this establishes display/grid consistency, not independent live
+transcript provenance, font correctness or GOP padding coverage. Halt/footer and
+capacity-prompt expectations additionally constrain visible content. Twenty-four
+baseline/mutation checks reject altered grid metadata/text/cursor and actual margin,
+transcript, prompt/footer pixels, malformed headers and incomplete/extra pixels.
+The mutation baseline must pass first. Screenshots and physical records are retained
+under ignored output paths. Windows CI now requests Features on its three profiles
+and explicitly propagates mutation failure; Windows execution remains unverified.
+
+Independent source review caught a navigation false pass when identical characters
+could conceal incorrect Home behavior. Distinct ends and intermediate assertions
+resolved it; a follow-up found no actionable findings. Reviewers did not run tests
+or inspect artifacts. There are no runtime, ABI, memory or image changes in this
+slice. Console-specific negative/saturation targets, independent live transcript
+and facts-source oracles, broader snapshot mutations and physical qualification
+remain open. No issue/milestone closure or merge is claimed.
+
+Final strengthened runs passed on xAPIC ISO/FAT and x2APIC ISO: each completed all20
+submissions, capacity/navigation assertions,30-second idle, complete visible pixel
+comparisons and physical IF0 halt retirement, with QEMU exit0. The24 baseline/pixel
+mutations passed against both xAPIC and x2APIC ISO captures. The final xAPIC screenshot
+was visually inspected. Earlier successful invocations before the intermediate
+navigation assertions are not substituted for these reruns. The frozen Console ISO
+and current named image retain SHA256
+`3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+Build/reproducibility and inherited regressions remain the previously recorded
+23a66e3 results; they were not rerun for this host-only validation change.
+
+### Isolated console rejection/saturation implementation
+
+Three separate ConsoleTest profiles add controlled BadEditor/BadFacts rejections
+and near-MAX counters. Each build passed20,822 static assertions. Design review
+cleared the slice; code review found two oracle gaps (early rejection-counter
+saturation and nonzero unpublished baseline outputs), both corrected and re-reviewed
+without remaining findings. Reviews were source-only, without reproducing results.
+First ISO invocations passed, but final stronger-oracle ISO/FAT reruns are pending
+at this checkpoint. Normal and interactive Console two-build reproducibility passed,
+including20,822 assertions per build and corrupt-PE rejection. No final target batch
+or Windows result is inferred here. Active console timer/drain negative fixtures,
+independent facts/transcript provenance, broader mutations and hardware gates remain
+open. No milestone/issue closure or merge is claimed.
+
+The final stronger-oracle batch subsequently passed all six xAPIC targets:
+BadEditor and BadFacts exact expected stops on ISO/FAT, and Saturation full20-command
+Features on ISO/FAT with near-limit transitions, independent ISR trace growth,
+visible pixels and physical retirement. All six commands exited0. Normal Test-Qemu
+ISO/FAT passed private paging/ownership/CPL3/continuation checks. Ordinary Console
+Features ISO/FAT passed again, and24 pixel mutations passed on its ISO capture.
+Normal, Console and all three fixture reproducibility profiles each passed two
+builds with20,822 assertions per build, identical artifacts and corrupted-PE
+rejection. Fixture reproducibility ran in separate output directories; their ISOs
+were byte-compared with the actual tested fixture media. The ordinary interactive
+ISO remains byte-identical to the frozen23a66e3 image. No fixture instrumentation
+was added to the user-facing image.
+
+Final source/CI/evidence review found no actionable findings; reviewers did not
+reproduce these tests. Windows execution and physical qualification remain open.
+The wider inherited regression results remain the earlier frozen-runtime evidence;
+they were not all rerun for these compile-time-only hooks. Active console timer/
+drain rejection and independent live facts/transcript oracles remain next gates.
+
+### Console timer ownership and bounded drain fixtures
+
+Design/source reviews cleared the controlled UnexpectedTimer/PendingTimer/
+DrainExhaust profiles. Initial xAPIC ISO/FAT runs passed all six targets: actual
+phase1 ISR40 rejection before EOI, one phase2 timer EOI followed by complete halt
+retirement, and exact1025-window rejection with IRR40 still pending. The215 captured
+baseline/mutation checks subsequently passed. The first mutation invocation failed
+its own single-field assertion because LVTT also matched LVTTHMR; a word boundary
+corrected the driver selector, without weakening the actual timer oracle. That
+failed invocation is not counted as a pass. Source follow-up found no findings;
+reviewers did not run tests or inspect artifacts.
+
+Normal/Console reproducibility passed two builds and corrupt-PE rejection; all
+builds passed20,822 static assertions. Frame5,996, editor344,659 and model17,279
+host checks passed. Final regression/reproducibility and optional x2 fixture results
+are still pending here. Controlled injection does not qualify arbitrary timer or
+NMI/MC timing, independent live facts/transcript provenance, hardware or Windows.
+No merge, issue/milestone closure or exhaustive corruption claim is made.
+
+Subsequent checks confirmed normal Test-Qemu and ordinary Console Features ISO/FAT,
+normal/Console/three timer-fixture reproducibility and byte equality between rebuilt
+and tested fixture ISOs. These passed; optional x2 fixture targets remain pending.
+One x2 DrainExhaust ISO invocation failed in the host driver while parsing a partial
+READY address line. Its serial log is preserved separately. The driver now waits
+for the complete strictly formatted line under the existing deadline;255 checks
+extract the actual regex and test every interrupted prefix plus malformed fields.
+No address assertion was relaxed and no target success is inferred from that failed
+invocation. A final x2 rerun is required. The older fixture paragraph's pending
+regression/reproducibility wording describes its earlier checkpoint only.
+
+Final x2APIC reruns under the complete-READY reader passed all six profiles on
+ISO/FAT, including the previously failed DrainExhaust ISO invocation's profile.
+Together with six xAPIC passes this establishes12 timer/drain target profiles;
+the earlier partial-line failure is retained as a failed driver invocation, not
+substituted by another medium. All final commands exited0. The old KeyboardTest
+DrainExhaust ISO also passed after the shared compile-time STI condition change.
+The215 timer mutations and255 readiness cases passed. Source-only follow-up cleared
+the readiness/CI/evidence changes and resolved the earlier stale-status finding.
+
+Five reproducibility profiles passed: normal, Console and the three xAPIC timer
+fixtures. x2 fixture media were built/hashed/tested, but separate x2 reproducibility
+is not claimed. Current ordinary Console ISO remains SHA256
+`3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
+No general asynchronous interrupt resilience or complete OS qualification follows.
+Independent live facts/transcript provenance, broader corruption, Windows and
+physical qualification remain open. No issue/milestone closure or merge.
+
+### Independent live facts and transcript checkpoint
+
+Host-only validation now derives source/console locations from a hashed build
+listing/EFI and actual TR base, captures read-only owned records and independently
+predicts complete editor/model/grid/command/facts/response state from real qcodes.
+Enter make/break separation permits an exact expected IRQ/EOI increment; source,
+CPU/LAPIC/queue/port quiet evidence is frozen before submission. Pixels use the
+reference grid. This addresses live reporting/composition against owned records;
+shared font content, underlying subsystem correctness, trusted build/host provenance
+and physical/Windows qualification remain separate assumptions/gates.
+
+An initial invocation matched independent status state but then failed when QMP
+rejected key-up while the VM was stopped. Its failed serial evidence is retained;
+key-up now follows the completed comparison and resume. That invocation is not a
+pass. Subsequent20-command ISO/FAT sessions passed before the final coherent port-
+capture/replay wiring. The final20-command ISO/FAT/x2APIC ISO sessions then passed
+with that wiring, each including full independent state/source-facts/transcript and
+pixel comparisons,30-second idle and physical retirement. Replay and mutation tests
+passed488 cumulative checks on each profile, including a valid coordinated forged
+facts/JSON/grid/pixel case. This count includes baseline/replayed events, not488
+independent corruption scenarios. Twenty-four pixel mutations and255 READY cases
+also passed. Console listing-inclusive reproducibility passed two builds,20,822
+assertions each and corrupt-PE rejection. Tested EFI/FAT/both ISO names/listing/
+manifest were byte-compared with the separate reproducibility output. Ordinary ISO
+remains byte-identical to frozen23a66e3. Source reviews found no findings, with
+assumptions retained; one stale pending-status documentation P3 was corrected.
+Reviewers did not run tests or inspect artifacts. No milestone/issue closure or merge.
+
+### Real-key navigation and development-readiness audit
+
+The issue40 audit identified a live-test gap despite host coverage: wrapped history,
+draft cursor restoration and Left/Right extended-key behavior. Features now traverses
+all eight slots in exact order, verifies history/live boundary no-ops against complete
+editor bytes, moves a cursor without detaching browsing, restores `draft` at cursor3,
+and checks every subsequent insertion/navigation/deletion step separately with distinct
+bytes. The final navigation prompt also receives independent visible-pixel comparison.
+There are still20 command submissions.
+
+Final expanded ordinary ISO/FAT/x2APIC ISO and Saturation ISO runs passed, including
+30-second idle and physical halt retirement. Ordinary profiles passed561 cumulative
+replay/source/state/mutation checks each; the count grew through events/checkpoints,
+not new independent corruption scenarios. Pixel24 and readiness255 checks passed.
+An earlier expanded run passed before the final per-key assertions; it is not used
+instead of the final four reruns. Source review found no blocking findings, noted
+possible grouped-key compensation, then cleared the intermediate assertions.
+Reviewers inspected source only and did not reproduce results/artifacts. A minor
+stale README qualification sentence was corrected to distinguish completed local
+campaigns from the remaining Windows/physical gates.
+
+README/roadmap now link development-readiness.md, which maps console acceptance to
+local evidence and keeps Windows, exact reference inventory, repeated physical boots,
+failure-path qualification, milestone exits and maintainer decisions open. No source
+or image runtime changes occurred; the ordinary ISO still matches frozen23a66e3.
+Earlier runtime regression/reproducibility records remain inherited, not newly run
+results for this host-only slice. No release/milestone/issue completion or merge.

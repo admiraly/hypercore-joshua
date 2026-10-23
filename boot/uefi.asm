@@ -5,6 +5,19 @@ default rel
 %include 'sdk/user.inc'
 %include 'sdk/elf.inc'
 %include 'sdk/keyboard.inc'
+%include 'sdk/console.inc'
+%ifndef JOSHUA_CONSOLE_TEST
+ %define JOSHUA_CONSOLE_TEST 0
+%endif
+%if JOSHUA_CONSOLE_TEST < 0 || JOSHUA_CONSOLE_TEST > 6
+ %error Invalid console fixture
+%endif
+%ifndef JOSHUA_CONSOLE
+ %define JOSHUA_CONSOLE 0
+%endif
+%if JOSHUA_CONSOLE_TEST != 0 && JOSHUA_CONSOLE = 0
+ %error Console fixture requires Console
+%endif
 %ifndef JOSHUA_KEYBOARD_TEST
  %define JOSHUA_KEYBOARD_TEST 0
 %endif
@@ -641,8 +654,16 @@ stop_cpu:
 %include 'kernel/input/ports.inc'
 %include 'kernel/input/start.inc'
 %include 'kernel/input/frame.inc'
-%if JOSHUA_KEYBOARD_TEST != 0
+%if JOSHUA_KEYBOARD_TEST != 0 || JOSHUA_CONSOLE
 %include 'kernel/input/window.inc'
+%endif
+%if JOSHUA_CONSOLE
+%include 'kernel/console/editor.inc'
+%include 'kernel/console/grid.inc'
+%include 'kernel/console/command.inc'
+%include 'kernel/console/response.inc'
+%include 'kernel/console/model.inc'
+%include 'kernel/console/start.inc'
 %endif
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
@@ -702,7 +723,11 @@ wide menu_message, `\r\n[B] Boot  [I] Info  [M] Memory map  [R] Reboot  [S] Shut
 wide map_message, `Memory map bytes: `
 wide stride_message, `  Descriptor bytes: `
 wide map_failure, `Memory map unavailable or unsupported.\r\n`
+%if JOSHUA_CONSOLE
+wide boot_message, `\r\nLeaving firmware for the native BSP console. No installer or disk writes.\r\n`
+%else
 wide boot_message, `\r\nLeaving firmware. HyperCore will display a status screen and halt.\r\n`
+%endif
 wide graphics_failure, `Unsupported framebuffer. Need >=640x400 packed RGB/BGR GOP.\r\n`
 wide image_failure, `Loaded image bounds unavailable or unsupported.\r\n`
 wide input_failure, `Firmware input failed. Returning to firmware.\r\n`
@@ -720,6 +745,13 @@ debug_keyboard_decoder: db ' DECODER=',0
 debug_keyboard_controller: db ' CONTROLLER=',0
 debug_keyboard_fixture: db ' FIXTURE=',0
 debug_keyboard_done: db 'JOSHUA:KEYBOARD_WINDOW_DONE',13,10,0
+%if JOSHUA_CONSOLE
+%include 'kernel/console/font.inc'
+%include 'kernel/console/command-data.inc'
+%include 'kernel/console/response-data.inc'
+%include 'kernel/console/model-data.inc'
+%include 'kernel/console/start-data.inc'
+%endif
 times PE_RODATA_SIZE-($-$$) db 0
 
 section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA
@@ -787,6 +819,15 @@ user_entry1_top:
 user_entry2_guard: resb 4096
 user_entry2_stack: resb 16384
 user_entry2_top:
+console_storage:
+console_anchor: resb CONSOLE_SURFACE_size
+console_editor: resb CONSOLE_EDITOR_size
+console_grid: resb CONSOLE_GRID_size
+console_model: resb CONSOLE_MODEL_size
+console_command: resb CONSOLE_COMMAND_size
+console_facts: resb CONSOLE_FACTS_size
+console_response: resb CONSOLE_RESPONSE_size
+resb 12288-($-console_storage)
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

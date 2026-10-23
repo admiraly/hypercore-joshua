@@ -50,9 +50,11 @@ models or connectivity; flicker/scanlines/motion must be optional. The current
 checkpoint remains an honest status display, not a simulated working shell.
 
 
-Current staged work has local evidence for private embedded ELF programs and a
-bounded real PS2 input window. Issue #38 owns keyboard delivery/retirement and its
-controlled fault campaign; issue #40 owns the next native WOPR/Joshua line editor
-and command console. These scoped steps do not close the physical M0/M1, general
-process/capability, or milestone exit gates. The interactive development release
-still requires the console implementation and its own validation.
+Current staged work has local QEMU evidence for private embedded ELF programs,
+real PS2 delivery/retirement and the experimental native console. Issue #38 owns
+the keyboard foundation and issue #40/PR #41 owns the WOPR/Joshua editor and console.
+The console now has its own actual-key, independent state/facts/pixel, rejection,
+saturation and timer/drain validation; exact results remain in validation.md.
+These scoped steps do not close physical M0/M1, general process/capability or other
+milestone exits. See [the development-preview readiness audit](development-readiness.md)
+for acceptance evidence and remaining release gates.

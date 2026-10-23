@@ -10,7 +10,9 @@ not a usable operating system.
 The unsigned x86-64 UEFI application is authored entirely in NASM Assembly. It
 provides firmware diagnostics, captures the graphics framebuffer and memory map,
 exits boot services, and enters an embedded HyperCore stub with its own stack,
-GDT/TSS, guarded emergency stacks, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
+GDT/TSS, guarded emergency stacks, fault-stop IDT, and framebuffer text renderer.
+The default checkpoint deliberately halts. A separate experimental `-Console`
+profile now runs the native BSP command console after those bring-up checks.
 It validates the final memory map and records conservative memory candidates
 excluding the loaded image, page zero, framebuffer and inventoried active paging
 structures. A bounded physical frame allocator tracks exact ownership, zeroes
@@ -33,8 +35,9 @@ page into those private contexts; it is not a general ELF loader.
 A bounded i8042 preparation checkpoint now validates firmware authority and configures
 the keyboard with scanning disabled and its IRQ masked. Explicit experimental
 fixtures open a bounded PS2 IRQ input window with ordered-event, DF and deadline
-checks; live lifecycle qualification and the interactive shell remain unfinished.
-There is no general task scheduler, storage driver, network stack, shell,
+checks. The separate Console profile uses that IRQ path for the experimental
+interactive diagnostic console; broader qualification remains unfinished.
+There is no general task scheduler, storage driver, network stack, user-space shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
 **Bare-metal status:** on 22 October 2026, the owner confirmed a flawless boot
@@ -76,6 +79,9 @@ for proposed ownership and paging invariants.
 
 ## Next gates
 
+See [the development-preview readiness audit](docs/development-readiness.md) for
+console acceptance evidence and the remaining Windows/reference-hardware gates.
+
 M0 remains open pending full contract review and exact NVMe/NIC/GPU inventory.
 MIT licensing is selected and the first Latitude boot is owner-confirmed.
 M1 remains open until repeated Latitude boots and failure-path evidence are
@@ -88,3 +94,32 @@ Original project source is licensed under the MIT License; see `LICENSE`.
 External host tools and firmware retain their own licenses and are not committed.
 Use issues for scoped work and evidence, and pull requests for reviewable changes.
 See `CONTRIBUTING.md`, `AGENTS.md`, and `SECURITY.md` before contributing.
+
+
+## Experimental native console test ISO
+
+Build the separate non-installing console profile:
+
+```powershell
+./tools/Build.ps1 -Console
+```
+
+The test image is `out/console/JOSHUA-Console-Test.iso`. It uses a real PS2 keyboard
+IRQ path and original blue-white JOSHUA text. Enter `help`; diagnostic commands are
+`about`, `status`, `mem`, `ps`, `devices`, with `--json` on the last four. `clear`
+resets the transcript; `halt` retires input and permanently halts. Editing supports
+Backspace/Delete, Left/Right/Home/End, Up/Down history and Ctrl-C; lines stop at127
+characters. The ordinary firmware diagnostic menu precedes native boot as before.
+
+This is an unsigned BSP development preview with read-only diagnostics. It has no
+installer, filesystem, network, arbitrary program launcher or AI runtime. The local
+QEMU Features sessions exercise commands/JSON, wrapped history and draft restoration,
+per-key navigation/boundaries,30-second timer-free idle and halt. Local rejection,
+saturation, timer/drain, independent replay and inherited regression campaigns are
+recorded in validation.md. Windows CI and physical compatibility remain unqualified. See `docs/console-design.md` and the
+current evidence in `docs/validation.md`; do not infer completed milestones.
+
+For a local QEMU check, run `./tools/Test-Console.ps1` and then add `-BootMedia Fat`.
+On Linux specify `-QemuPath /usr/bin/qemu-system-x86_64 -FirmwareDirectory .tools/firmware`.
+No physical disks are written by these commands. The separate Piper announcement
+media and instructions remain in `docs/piper-test.md` on its speech workstream.

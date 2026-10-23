@@ -131,6 +131,21 @@ jobs:
       - name: Validate exact keyboard IRQ return frames
         shell: pwsh
         run: ./tests/Test-KeyboardFrame.ps1
+      - name: Validate bounded console editor
+        shell: pwsh
+        run: ./tests/Test-ConsoleEditor.ps1
+      - name: Validate checked console framebuffer grid
+        shell: pwsh
+        run: ./tests/Test-ConsoleGrid.ps1
+      - name: Validate bounded console command grammar
+        shell: pwsh
+        run: ./tests/Test-ConsoleCommand.ps1
+      - name: Validate bounded console diagnostic responses
+        shell: pwsh
+        run: ./tests/Test-ConsoleResponse.ps1
+      - name: Validate bounded console screen composition
+        shell: pwsh
+        run: ./tests/Test-ConsoleModel.ps1
   keyboard:
     runs-on: windows-latest
     timeout-minutes: 15
@@ -151,3 +166,65 @@ jobs:
             out/keyboard-*/*.log
             out/keyboard-*/*.bin
             out/keyboard-*/*.json
+  console:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Fetch verified host tools
+        run: ./tools/Get-Toolchain.ps1 -IncludeQemu
+      - name: Build reproducible native console media
+        run: ./tests/Test-Reproducibility.ps1 -Console
+      - name: Exercise real keyboard console from ISO
+        run: ./tools/Test-Console.ps1 -Features
+      - name: Reject corrupted console pixels and grid captures
+        run: |
+          python ./tests/test_console_pixels.py out/console
+          if ($LASTEXITCODE -ne 0) { throw 'Console pixel mutation checks failed.' }
+      - name: Replay independent console state and reject forged facts
+        run: |
+          python ./tests/test_console_live_mutations.py out/console
+          if ($LASTEXITCODE -ne 0) { throw 'Independent console replay/mutation checks failed.' }
+      - name: Exercise real keyboard console from FAT
+        run: ./tools/Test-Console.ps1 -Features -BootMedia Fat
+      - name: Replay independent FAT console captures
+        run: |
+          python ./tests/test_console_live_mutations.py out/console --boot-media fat
+          if ($LASTEXITCODE -ne 0) { throw 'Independent FAT console replay/mutation checks failed.' }
+      - name: Validate isolated console rejection and saturation on both media
+        run: |
+          foreach ($fixture in @('BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')) {
+            ./tools/Build.ps1 -Console -ConsoleTest $fixture
+            ./tools/Test-Console.ps1 -Fixture $fixture -TimeoutSeconds 180
+            ./tools/Test-Console.ps1 -Fixture $fixture -BootMedia Fat -TimeoutSeconds 180
+          }
+      - name: Reject partial readiness and corrupted console timer evidence
+        run: |
+          python ./tests/test_console_ready.py
+          if ($LASTEXITCODE -ne 0) { throw 'Console readiness parser checks failed.' }
+          python ./tests/test_console_timer_mutations.py out
+          if ($LASTEXITCODE -ne 0) { throw 'Console timer mutation checks failed.' }
+      - name: Build and exercise x2APIC console
+        run: |
+          ./tools/Build.ps1 -Console -TimerTest X2
+          ./tools/Test-Console.ps1 -Features -OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'
+          python ./tests/test_console_live_mutations.py out/console-x2
+          if ($LASTEXITCODE -ne 0) { throw 'Independent x2APIC console replay/mutation checks failed.' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: joshua-console-test
+          path: |
+            out/console*/JOSHUA-Console-Test.iso
+            out/console*/BOOTX64.EFI
+            out/console*/joshua-uefi.img
+            out/console*/manifest.json
+            out/console*/boot.lst
+            out/console*/*.ppm
+            out/console*/*.png
+            out/console*/*.json
+            out/console*/*.log
+            out/console*/*.bin

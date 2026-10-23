@@ -1,12 +1,14 @@
-param([string]$OutputDirectory)
+param([string]$OutputDirectory, [switch]$Console, [ValidateSet('None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')][string]$ConsoleTest='None')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'out' }
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root $(if ($Console) { 'out/console' } else { 'out' }) }
+if ($ConsoleTest -ne 'None' -and -not $PSBoundParameters.ContainsKey('OutputDirectory')) { $OutputDirectory=Join-Path $root ('out/console-test-'+$ConsoleTest.ToLowerInvariant()) }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $artifacts = @('BOOTX64.EFI', 'joshua-uefi.img', 'joshua-m0.iso', 'manifest.json')
-& (Join-Path $root 'tools/Build.ps1') -OutputDirectory $OutputDirectory
+if ($Console) { $artifacts += @('JOSHUA-Console-Test.iso','boot.lst') }
+& (Join-Path $root 'tools/Build.ps1') -OutputDirectory $OutputDirectory -Console:$Console -ConsoleTest $ConsoleTest
 $hashes = @{}
 foreach ($artifact in $artifacts) {
     $hashes[$artifact] = (Get-FileHash -LiteralPath (Join-Path $OutputDirectory $artifact) -Algorithm SHA256).Hash
@@ -14,7 +16,7 @@ foreach ($artifact in $artifacts) {
 Push-Location (Split-Path $root -Parent)
 try {
     $relativeNasm = Join-Path (Split-Path $root -Leaf) '.tools/nasm-2.16.03/nasm.exe'
-    & (Join-Path $root 'tools/Build.ps1') -NasmPath ('.\' + $relativeNasm) -OutputDirectory $OutputDirectory
+    & (Join-Path $root 'tools/Build.ps1') -NasmPath ('.\' + $relativeNasm) -OutputDirectory $OutputDirectory -Console:$Console -ConsoleTest $ConsoleTest
 }
 finally { Pop-Location }
 foreach ($artifact in $artifacts) {

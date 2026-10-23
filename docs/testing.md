@@ -304,3 +304,134 @@ second-refill-timeout and unsupported-port-response mutations. The old8,338 coun
 checkpoint. OverflowPending uses fixture-only bounded refill waits on the real
 PS2 path; it does not qualify natural production timing. See the design's controlled
 fixture section for the failed batch and strict replacement acceptance conditions.
+
+
+## Console component host fixtures (issue #40)
+
+On Linux with pinned NASM2.16.03, ld, Python3 and PowerShell, run:
+
+```powershell
+./tests/Test-ConsoleEditor.ps1
+./tests/Test-ConsoleGrid.ps1
+./tests/Test-ConsoleCommand.ps1
+./tests/Test-ConsoleResponse.ps1
+./tests/Test-ConsoleModel.ps1
+```
+
+These assemble actual Assembly helpers into host libraries, exercising integer ABI
+sentinels and independent state/grammar/pixel/schema/model oracles. Current local
+cumulative counts are344,659/5,055/95,317/28,687/17,279 respectively, not independent
+scenario counts. All suites are in Linux CI; no CI success is asserted here.
+The model runner exports an actual Assembly-rendered host preview with synthetic
+facts. No component test establishes actual keyboard delivery, boot snapshot
+provenance, interactive console operation or physical compatibility. These remain
+explicit target/integration gates. See docs/console-design.md and docs/validation.md.
+
+
+## Native console target smoke
+
+Build `./tools/Build.ps1 -Console`, then run `./tools/Test-Console.ps1` for ISO and
+`./tools/Test-Console.ps1 -BootMedia Fat`. Reproducibility uses
+`./tests/Test-Reproducibility.ps1 -Console`. Optional explicit x2APIC delivery uses
+`./tools/Build.ps1 -Console -TimerTest X2` then the smoke with
+`-OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'`.
+Linux additionally needs the absolute QEMU path and `.tools/firmware` directory.
+
+The smoke verifies artifact hashes/fixture isolation before starting read-only
+media. Actual QMP key events perform editing, JSON submission, history, cancellation
+and halt, with at least30 seconds of timer-free idle. Stopped physical captures
+check real CPU root/RSP/RIP, model/editor/result/facts, IRQ/EOI and queue invariants,
+actual LAPIC retirement and IOREGSEL/route/port state. Actual display pixels are
+compared across the entire visible framebuffer against a separate rasterization of
+the captured grid, including margins and cursor. This checks grid/display consistency;
+it shares the authored font and does not independently prove transcript provenance
+or GOP stride padding. The constant halt row and cursor retirement have additional
+expectations independent of the grid.
+A final success summary is published only after clean QEMU exit; stale summaries
+are invalidated before a run. Use `-Features` for18 additional submissions covering implemented commands, human/JSON
+responses, grammar/errors, empty input and clear, then127-character capacity, rejected
+insertion and Home/Delete/End/Backspace. Each submission checks exact command/result
+and response bytes; JSON values are compared with captured facts, not an independent
+source-record oracle. Run `python tests/test_console_pixels.py out/console` after an
+ISO pass for24 baseline/mutation checks. Negative console fixtures, saturation,
+independent live transcript/source-facts oracles and broader snapshot mutations
+remain separate gates.
+The new Windows console CI job is wired; execution remains unverified here.
+
+## Isolated console rejection and saturation targets
+
+`./tools/Build.ps1 -Console -ConsoleTest BadEditor` creates separate
+`out/console-test-badeditor` media. Run `./tools/Test-Console.ps1 -Fixture BadEditor`
+and repeat with `-BootMedia Fat`; BadFacts and Saturation use the same commands
+with their own mode names and directories. Linux requires explicit QEMU/firmware
+paths as above. `Test-Reproducibility.ps1 -Console -ConsoleTest <mode>` can compare
+fixture builds without overwriting interactive artifacts. Explicit x2APIC profiles
+need matching output-directory/CPU arguments; no x2 fixture result is inferred.
+
+BadEditor requires only the authored invalid length mutation and no editor/output
+publication. BadFacts captures a valid source before poisoning, exact parser/editor
+submission state and zero facts/response after source rejection. Both require exact
+permanent owned-root CPL0/IF0 halt with phase1, no normal HALTED, and no unrelated
+fault. They do not claim source retirement. Saturation runs Features with near-limit
+seeds, observes MAX-1 then MAX and later MAX for submissions/rejections/cancellations,
+model completions and IRQ accounting. A separate fixture-only actual ISR44 trace
+provides delivery evidence independent of saturated counters. Pixel, idle and safe
+retirement assertions remain enabled. All modes check manifest/media isolation and
+publish final summaries only after clean QEMU exit0. These controlled fixtures do
+not qualify natural lifetime limits, active-timer/drain rejection or physical input.
+
+ConsoleTest also accepts UnexpectedTimer, PendingTimer and DrainExhaust. Use the
+same Build/Test commands and isolated directories on ISO/FAT. UnexpectedTimer
+requires real phase1 timer delivery to stop before EOI, with actual ISR40 retained.
+PendingTimer follows an actual halt submission and requires one phase2 timer EOI,
+no ticks/rearm, matching copied return fields and complete physical retirement.
+DrainExhaust suppresses STI only in its controlled fixture loop: counter1025,
+actual IRR40 with empty ISR, zero EOIs and no HALTED are mandatory. The fixture
+record copies saved fields only after frame/ISR proof and before stack reset.
+These are controlled pending injections, not natural asynchronous timing evidence.
+
+After all three ISO captures, `python tests/test_console_timer_mutations.py out`
+requires215 baseline/mutation checks against the same timer predicates used during
+capture. Mutations include return fields, stage/pending/EOI/limit state, exact LAPIC
+sets/masking/counts and every saved-flags bit. RF has separate accepted cases;
+metadata flags stay strict. This is targeted corruption coverage; complete capture
+provenance and all possible corruptions are not established. Windows CI runs the
+six fixture profiles on both media and propagates mutation failures explicitly.
+
+`python tests/test_console_ready.py` extracts the actual driver regex and checks255
+complete/partial/malformed READY cases. The target driver awaits all nine fixed-width
+addresses and the line terminator under its existing deadline, so interrupted serial
+writes cannot be parsed prematurely. It retains exact address/profile validation.
+
+## Independent live console reporting and composition
+
+Normal Console tests now require a newly built manifest containing hashed boot.lst.
+The actual loaded TSS base, PE bounds and listing bind console/source physical
+addresses. Stopped owned-source captures supply expected diagnostic numbers;
+complete editor/model/grid/command/facts/response bytes are predicted from real
+qcodes. Pixels are compared against the reference grid, with the authored font
+still shared. The source payloads are trusted subsystem records, not independently
+reproved allocator/ACPI data or malicious-firmware protection.
+
+`python tests/test_console_live_mutations.py out/console` replays the completed
+Features ISO session; add `--boot-media fat` for FAT or use `out/console-x2` for its
+ISO. Each current Features profile passes561 cumulative baseline/event/mutation checks.
+It requires the published20-command independent summary and reconstructs facts
+from frozen pre-submit sources, not diagnostic expected-state JSON. Actual Enter
+make/break separation gives an exact predicted interrupt increment. The CPU/LAPIC/
+queue/port quiet checkpoint is frozen before the make. Captured trace delivery is
+trusted host evidence; unexpected extra delivery/repeat fails the live test.
+
+Mutations cover complete records, source stability and listing/EFI/TR/address
+identity. A coordinated valid memory-diagnostic JSON/facts/grid/pixel forgery passes
+the older self-consistency predicate and must fail the independent reference. No
+synthetic pixels or responses are substituted into the actual QEMU success campaign.
+CI uploads the listing and captures and runs replay for ISO/FAT/x2APIC with immediate
+native-exit checks. Windows execution and physical qualification remain separate.
+
+The Features path also traverses all eight wrapped history slots, checks oldest/live
+Up/Down no-ops, preserves browsing during cursor movement and restores an edited
+draft at its saved cursor. Each Left/Right/Home/End/Delete/Backspace transition is
+captured separately, including exact whole-editor no-ops at line boundaries. It
+still submits20 commands; the larger replay count includes these added events and
+checkpoints, not additional independent corruption scenarios.

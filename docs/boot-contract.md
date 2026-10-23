@@ -535,3 +535,50 @@ and actual zero-budget OBF proof are mandatory. Normal returning ISR work remain
 bounded without producer waits. WINDOW_DONE follows positive checks, while terminal
 failure2 remains a permanent stop after physical retirement. These fixtures establish
 neither arbitrary hardware timing nor physical compatibility.
+
+
+## Current console-profile integration (issue #40)
+
+This current layout supersedes earlier checkpoint layout values above: text RVA
+0x1000/size0xd000, data0xe000/0x1000, rodata0xf000/0x5000, BSS0x14000/0xe8000,
+relocation RVA0xfc000/raw0x14000, total image0xfd000/file0x15000. Three BSS pages
+hold console records after existing user-entry stacks; nine guards and boot/user
+ABI sizes are unchanged. Whole-image ownership/identity/cache/permission proofs
+still cover every byte; console state is RW/NX, code RX and constants RO/NX.
+
+`-Console` selects separate outputs and never enables fixture inputs. Its real
+keyboard consumer uses the shared fixed-RSP activation/retirement macros and
+existing exact192-byte IRQ frames. Only the STI/HLT/CLI prompt wait and bounded
+joint drain enable interrupts. Active vector40 is unowned and fatal before EOI;
+phase2 accepts only exactly validated real pending vectors. IRQ44 collects/EOIs;
+foreground IF0 performs editing, source-checked facts capture, bounded formatting,
+model updates and rendering. All indefinite counters saturate. Halt masks/stops
+hardware, disables and flushes the controller and drains before the visible HALTED
+row and permanent IF0 marker. See docs/console-design.md for exact helper records,
+source provenance and failure policies. QEMU smoke is narrower than the full
+interactive/negative/regression exit gates and does not qualify physical machines.
+
+## Isolated console rejection and counter fixtures
+
+Explicit ConsoleTest profiles are compile-time instrumentation in separate media.
+BadEditor writes length128 immediately before checked editor_event, retaining the
+actual EDX token. BadFacts writes owned enabled-CPU count0 after parse and before
+facts-source validation. Both fail permanently before output publication; phase1
+and IF0 are stop-only evidence, not successful hardware retirement. Saturation seeds
+selected foreground and keyboard counters at MAX-1 before READY, with normal queue,
+root and permissions. Its separate finite actual-ISR44 trace is updated only after
+exact frame and hardware ISR ownership proof. Neither injection nor trace exists
+in normal Console images. No versioned ABI or image bounds change. See the exact
+fixture/source evidence expectations in console-design.md and testing.md.
+
+Console timer fixtures4–6 add only compile-time controlled pending injection and
+64-byte evidence in owned data. Phase1 UnexpectedTimer proves a real ISR40 then
+stops without EOI. PendingTimer proves the exact phase2 drain return and one EOI
+without rearm before successful phase3 retirement. DrainExhaust leaves IF0 in the
+fixture drain windows and stops at1025 with timer still in IRR, not ISR. The existing
+normal wait/drain/frame policy and versioned layouts are unchanged. Saved-field
+copying follows frame and ISR proof, uses only volatile RAX, adds no call/stack
+depth, and does not modify the returning frame. The forcing helper consumes48
+bytes below its entry RSP through a leaf lapic_read/write, or96 through nested
+user_timer_stop/console_timer_check (including helper calls), within the bootstrap
+reserve. Normal Console contains neither forcing nor evidence-copy instructions.
