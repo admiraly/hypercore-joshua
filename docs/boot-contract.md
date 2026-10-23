@@ -78,3 +78,9 @@ are not assigned stable numeric IDs here.
   Services, GetMemoryMap, ExitBootServices, Graphics Output Protocol, ResetSystem.
 - Microsoft PE/COFF specification: PE32+, section flags, base relocation blocks.
 - Intel 64 and IA-32 Software Developer's Manual, Volume 3: GDT, IDT, long mode.
+
+## Optional Piper test image
+
+The host-rendered announcement adds a read-only, non-executable fifth `.voice`
+section without changing boot-info v0 or BSS/DMA offsets. Playback copies bounded
+PCM into the existing HDA buffer. See [Piper test contract](piper-test.md).

@@ -1,6 +1,13 @@
 bits 64
 default rel
 %include 'sdk/boot.inc'
+%ifdef JOSHUA_PIPER_PCM
+    %define VOICE_CAPACITY 0x181000
+    %define PE_SECTIONS 5
+%else
+    %define VOICE_CAPACITY 0
+    %define PE_SECTIONS 4
+%endif
 
 section .headers start=0 vstart=0
 db 'MZ'
@@ -8,17 +15,17 @@ times 0x3c-($-$$) db 0
 dd 0x80
 times 0x80-($-$$) db 0
 db 'PE',0,0
-dw 0x8664, 4
+dw 0x8664, PE_SECTIONS
 dd 0,0,0
 dw 0xf0, 0x0022
 dw 0x20b
 db 0,0
-dd 0x4000,0x4000,0x344000
+dd 0x4000,0x4000+VOICE_CAPACITY,0x344000
 dd efi_entry,0x1000
 dq 0
 dd 0x1000,0x200
 dw 0,0,0,0,0,0
-dd 0,0x34d000,0x1000,0
+dd 0,0x34d000+VOICE_CAPACITY,0x1000,0
 dw 10,0x0140
 dq 0x10000,0x1000,0x10000,0x1000
 dd 0,16
@@ -41,6 +48,12 @@ db '.reloc',0,0
 dd 12,0x34c000,0x1000,0x8000,0,0
 dw 0,0
 dd 0x42000040
+%ifdef JOSHUA_PIPER_PCM
+db '.voice',0,0
+dd VOICE_CAPACITY,0x34d000,VOICE_CAPACITY,0x9000,0,0
+dw 0,0
+dd 0x40000040
+%endif
 times 0x1000-($-$$) db 0
 
 section .text start=0x1000 vstart=0x1000
@@ -604,3 +617,18 @@ hda_dma_end:
 ; A negative repeat count fails assembly if BSS no longer matches the PE header.
 times (hda_dma_end-memory_map)-0x344000 resb 0
 times 0x344000-(hda_dma_end-memory_map) resb 0
+
+%ifdef JOSHUA_PIPER_PCM
+section .voice start=0x9000 vstart=0x34d000
+piper_clip:
+incbin JOSHUA_PIPER_PCM
+piper_clip_end:
+debug_piper_pcm: db 'JOSHUA:PIPER_PCM',13,10,0
+%if (piper_clip_end-piper_clip) < 256 || (piper_clip_end-piper_clip) > SPEECH_MAX_SAMPLES*4
+    %error Piper_clip_outside_DMA_capacity
+%endif
+%if (piper_clip_end-piper_clip) % 256
+    %error Piper_clip_must_have_two_aligned_BDL_entries
+%endif
+times VOICE_CAPACITY-($-$$) db 0
+%endif

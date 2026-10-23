@@ -65,3 +65,33 @@ Not completed: repeated Latitude qualification, Secure Boot signing, remote USB 
 fault/retry/NMI injection, firmware-menu keyboard automation, source-level crash
 debugging, native memory isolation, or any workload benchmark. The CI workflow
 is added but has not run on a remote runner. M0/M1 are not declared fully qualified.
+
+## Piper test ISO (issue #33, 23 October 2026)
+
+This isolated test branch extends PR #5's speech prototype, not the later memory
+and scheduling stack. Local host: Linux, PowerShell 7.4.6, NASM 2.16.03, QEMU
+10.2.2 TCG/q35/qemu64, distribution OVMF. Piper 1.8.0 with ONNX Runtime 1.31.0
+rendered John medium on the host. No model inference executes in the image.
+
+Completed locally:
+
+- Piper build: PE and 23,806 FAT/ISO assertions; two independent EFI/FAT/ISO and
+  manifest hashes match, including native extensionless NASM and relative paths.
+- Two host renders produced identical PCM bytes. Preview WAV, provenance hash and
+  actual EFI `.voice` PCM match byte for byte; peak/duration/stereo checks pass.
+- QEMU ISO and FAT with HDA: Piper marker and `SPEECH_OK:00`, then intended halt.
+  Both captured approximately 4.00 s at 48 kHz stereo, RMS 2,700, peak 25,877.
+- No-audio ISO: `SPEECH_UNAVAILABLE:01`, then intended halt. Framebuffer pixels,
+  ring 0, HLT and IF-clear assertions pass for all three profiles.
+- NASM rejects 0-, 255-, 257- and 1,573,120-byte clips; accepts the full bounded
+  1,572,864-byte clip. That maximum fixture is an assembly-bound check, not playback.
+- Default formant build reproducibility and ISO HDA boot still pass.
+- Independent source review found two P2 host issues (NASM resolution and bundled
+  attribution); both were fixed and follow-up review found no remaining finding.
+
+Windows execution/remote CI and physical speaker output are not established by
+these local runs. PowerShell legacy argument passing is checked locally as an
+additional compatibility fixture; it does not replace Windows testing. No listening
+rating, SOF/SoundWire support, hardware audio qualification or milestone completion
+is claimed. Artifact identities are supplied with the test bundle, not inferred
+from earlier prototype images. See [test instructions](piper-test.md).

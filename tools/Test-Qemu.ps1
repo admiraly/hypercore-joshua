@@ -34,7 +34,7 @@ $port = $listener.LocalEndpoint.Port
 $listener.Stop()
 $arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', 'qemu64', '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
 if (-not $NoAudio) {
-    $arguments += @('-audiodev', ('wav,id=speech,path=' + $speech), '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=speech')
+    $arguments += @('-audiodev', ('wav,id=speech,out.frequency=48000,path=' + $speech), '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=speech')
 }
 if ($BootMedia -eq 'Iso') {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso')).Path
@@ -83,7 +83,9 @@ $quotedArguments = ($arguments | ForEach-Object { [char]34 + $_ + [char]34 }) -j
 $process = $null
 $client = $null
 try {
-    $process = Start-Process -FilePath $QemuPath -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru -RedirectStandardError $errorLog -RedirectStandardOutput $outputLog
+    $startOptions = @{ FilePath = $QemuPath; ArgumentList = $quotedArguments; PassThru = $true; RedirectStandardError = $errorLog; RedirectStandardOutput = $outputLog }
+    if ($env:OS -eq 'Windows_NT') { $startOptions.WindowStyle = 'Hidden' }
+    $process = Start-Process @startOptions
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     $log = ''
     do {
@@ -95,6 +97,8 @@ try {
         try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
         if ($log -match 'JOSHUA:(BOOT_FAILURE|KERNEL_FAULT)') { throw ('Boot failed: ' + $log) }
     } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or [DateTime]::UtcNow -ge $deadline)
+    $manifest = Get-Content -LiteralPath (Join-Path $OutputDirectory 'manifest.json') -Raw | ConvertFrom-Json
+    if (-not $NoAudio -and $manifest.piperPcm -and -not $log.Contains('JOSHUA:PIPER_PCM')) { throw 'Piper playback marker missing.' }
     $previousIndex = -1
     $speechMarker = 'SPEECH_OK:00'
     if ($NoAudio) { $speechMarker = 'SPEECH_UNAVAILABLE:01' }
@@ -123,18 +127,22 @@ try {
     }
     Invoke-Qmp 'qmp_capabilities' | Out-Null
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
-    Add-Type -AssemblyName System.Drawing
-    $bitmap = New-Object Drawing.Bitmap($screenshot)
-    try {
-        if ($bitmap.Width -lt 640 -or $bitmap.Height -lt 400) { throw 'Framebuffer dimensions below baseline.' }
-        foreach ($sample in @(@(0, 0, 8), @(38, 32, 224), @(32, 280, 224))) {
-            $pixel = $bitmap.GetPixel($sample[0], $sample[1])
-            if ($pixel.R -ne $sample[2] -or $pixel.G -ne $sample[2] -or $pixel.B -ne $sample[2]) {
-                throw ('Native framebuffer rendering mismatch at ' + $sample[0] + ',' + $sample[1])
-            }
+    # QEMU writes a simple P6 image; inspect bytes without platform graphics libraries.
+    $ppm = Join-Path $OutputDirectory ($tag + '-screen.ppm')
+    Invoke-Qmp 'screendump' @{ filename = $ppm } | Out-Null
+    $pixels = [IO.File]::ReadAllBytes($ppm)
+    $header = [Text.Encoding]::ASCII.GetString($pixels, 0, [Math]::Min(128, $pixels.Length))
+    if ($header -notmatch '\AP6\n([0-9]+) ([0-9]+)\n255\n') { throw 'Unexpected QEMU PPM header.' }
+    $offset = $Matches[0].Length
+    $width = [int]$Matches[1]
+    $height = [int]$Matches[2]
+    if ($width -lt 640 -or $height -lt 400 -or $pixels.Length -ne $offset + $width * $height * 3) { throw 'Invalid framebuffer dimensions or payload.' }
+    foreach ($sample in @(@(0, 0, 8), @(38, 32, 224), @(32, 280, 224))) {
+        $index = $offset + ($sample[1] * $width + $sample[0]) * 3
+        if ($pixels[$index] -ne $sample[2] -or $pixels[$index+1] -ne $sample[2] -or $pixels[$index+2] -ne $sample[2]) {
+            throw ('Native framebuffer rendering mismatch at ' + $sample[0] + ',' + $sample[1])
         }
     }
-    finally { $bitmap.Dispose() }
     $cpus = @(Invoke-Qmp 'query-cpus-fast')
     if ($cpus.Count -ne 2) { throw 'Expected two configured CPUs.' }
     $registers = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = 'info registers' }
@@ -146,8 +154,9 @@ try {
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {
         throw 'Maskable interrupts unexpectedly enabled in the halted stub.'
     }
-    Invoke-Qmp 'quit' | Out-Null
-    $process.WaitForExit(5000) | Out-Null
+    # QEMU can close QMP before sending the quit response.
+    $qmpWriter.WriteLine('{"execute":"quit"}')
+    if (-not $process.WaitForExit(5000)) { throw 'QEMU did not exit after quit.' }
     if (-not $NoAudio) { Test-SpeechCapture $speech }
     $speechResult = 'spoken checkpoint captured to ' + $speech
     if ($NoAudio) { $speechResult = 'no HDA controller reported without blocking boot' }

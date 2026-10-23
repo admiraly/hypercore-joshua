@@ -60,8 +60,8 @@ function Write-IsoRecord {
 $source = (Resolve-Path -LiteralPath $EfiPath).ProviderPath
 if (-not [IO.File]::Exists($source)) { throw 'EfiPath must name a regular EFI file.' }
 $sourceLength = (Get-Item -LiteralPath $source).Length
-if ($sourceLength -lt 1 -or $sourceLength -gt 262144) {
-    throw 'EFI payload must be between 1 byte and 256 KiB.'
+if ($sourceLength -lt 1 -or $sourceLength -gt 2097152) {
+    throw 'EFI payload must be between 1 byte and 2 MiB.'
 }
 $payload = [IO.File]::ReadAllBytes($source)
 if ($payload.Length -ne $sourceLength) { throw 'EFI input changed while reading.' }
