@@ -181,3 +181,19 @@ length reads and full bounded ranges before checksums or parsing. Adjacent ACPI
 descriptors may cover a range; RP, unknown classes, unproven pages and pointer/length
 overflow stop discovery. ACPI storage stays reserved. Parser success grants no MMIO
 mapping, controller programming or firmware-memory reclamation authority.
+
+## Controller mapping and interrupt boundary (issue #28)
+
+The controller window at PML4 index257 is distinct from the tracked kernel arena.
+Its three table pages are prepared before the existing whole-chunk ownership/cache
+proof and retained permanently. Only identified LAPIC/IOAPIC pages may be staged;
+all overlapping firmware descriptors are checked, and RAM, image, framebuffer and
+allocator records are excluded. Explicit ACPI/CPU authority may cover firmware map
+gaps under the bounded PC profile in `apic-timer-design.md`; this never creates a
+free-memory range. Every device alias preserves the inherited identity selector and
+requires a read-only PAT/MTRR proof of strict UC before MMIO. No cache type is forced.
+
+The BSP timer handler never calls allocation or mapping APIs. Those APIs still
+require IF clear and cannot be called inside the bounded interrupt-enabled timer
+wait. This stage does not add locks, SMP shootdowns, interrupt-safe allocation or
+process isolation.

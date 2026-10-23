@@ -262,6 +262,53 @@ fault_test_instruction:
     call acpi_topology_start
     test eax,eax
     jnz kernel_fault
+    call apic_start
+    test eax,eax
+    jz .apic_ready
+    mov ebx,eax
+    lea rcx,[debug_apic_failure]
+    call debug_write
+    mov ecx,ebx
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    jmp kernel_fault
+.apic_ready:
+    lea rcx,[debug_apic_ready]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.mode]
+    call debug_hex
+    lea rcx,[debug_uc_pages]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.uc_pages]
+    call debug_hex
+    lea rcx,[debug_io_count]
+    call debug_write
+    mov rcx,[acpi_context+ACPI_CONTEXT.io_count]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    call apic_timer_smoke
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_timer_ok]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.mode]
+    call debug_hex
+    lea rcx,[debug_timer_ticks]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.ticks]
+    call debug_hex
+    lea rcx,[debug_timer_eois]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.eois]
+    call debug_hex
+    lea rcx,[debug_timer_returns]
+    call debug_write
+    mov rcx,[apic_context+APIC_CONTEXT.returns]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]

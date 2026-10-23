@@ -13,6 +13,7 @@ acpi_topology_start:
     mov qword [r12+ACPI_CONTEXT.ready],0
     mov qword [r12+ACPI_CONTEXT.count],0
     mov qword [r12+ACPI_CONTEXT.enabled],0
+    mov qword [r12+ACPI_CONTEXT.io_count],0
     xor eax,eax
     cpuid
     mov r15d,eax
@@ -39,6 +40,9 @@ acpi_topology_start:
     lea rax,[acpi_cpu_records]
     mov [r12+ACPI_CONTEXT.records],rax
     mov qword [r12+ACPI_CONTEXT.capacity],256
+    lea rax,[acpi_io_records]
+    mov [r12+ACPI_CONTEXT.io_records],rax
+    mov qword [r12+ACPI_CONTEXT.io_capacity],8
     mov rcx,r12
     call acpi_topology_build
     test eax,eax

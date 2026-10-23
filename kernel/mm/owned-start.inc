@@ -1,21 +1,3 @@
-; Normalize a raw leaf PAT index. RCX raw leaf, RDX leaf byte size -> EAX index.
-paging_pat_index:
-    mov rax,rcx
-    shr rax,3
-    and eax,3
-    mov r8,rcx
-    cmp rdx,4096
-    jne .large
-    shr r8,7
-    jmp .bit
-.large:
-    shr r8,12
-.bit:
-    and r8d,1
-    shl r8d,2
-    or eax,r8d
-    ret
-
 ; RCX builder, RDX address, R8 permission bits (P/RW/NX, supervisor only).
 ; Verify new identity/permissions and exact inherited cache selector. EDX=index.
 owned_check_page:
@@ -254,6 +236,10 @@ owned_paging_start:
     mov rdx,r12
     lea r8,[mapping_records]
     call lifecycle_prepare
+    test eax,eax
+    jnz .bad
+    mov rcx,r12
+    call controller_window_prepare
     test eax,eax
     jnz .bad
     ; Prove image boundaries, live stack, metadata and descriptor tables.

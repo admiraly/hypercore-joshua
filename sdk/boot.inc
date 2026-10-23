@@ -56,7 +56,7 @@ endstruc
 %define PE_DATA_RVA 0x7000
 %define PE_RODATA_RVA 0x8000
 %define PE_BSS_RVA 0x9000
-%define PE_BSS_SIZE 0xcf000
+%define PE_BSS_SIZE 0xd0000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192
@@ -157,6 +157,32 @@ struc ACPI_CONTEXT
  .pcat: resq 1
  .xsdt: resq 1
  .madt: resq 1
+ .io_records: resq 1
+ .io_capacity: resq 1
+ .io_count: resq 1
+endstruc
+
+%define APIC_READY_MAGIC 0x314349504153484a
+%define CONTROLLER_WINDOW_BASE 0xffff808000000000
+%define CACHE_READY_MAGIC 0x314548434143484a
+struc CACHE_CONTEXT
+ .ready: resq 1
+ .physical_bits: resq 1
+ .raw: resq 1
+ .pat: resq 1
+endstruc
+
+struc APIC_CONTEXT
+ .ready: resq 1
+ .mode: resq 1
+ .lapic: resq 1
+ .ticks: resq 1
+ .eois: resq 1
+ .returns: resq 1
+ .wait_rsp: resq 1
+ .selftest: resq 1
+ .uc_pages: resq 1
+ .staged: resq 9
 endstruc
 
 %define BOOT_MAGIC 0x004F464E4948534A

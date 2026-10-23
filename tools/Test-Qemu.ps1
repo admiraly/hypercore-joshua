@@ -4,7 +4,9 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$ExpectedFault = 'None'
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$ExpectedFault = 'None',
+    [ValidateSet('qemu64', 'qemu64,+x2apic')][string]$CpuModel = 'qemu64',
+    [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,7 +31,7 @@ $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
 $listener.Start()
 $port = $listener.LocalEndpoint.Port
 $listener.Stop()
-$arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', 'qemu64', '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
+$arguments = @('-machine', 'q35', '-accel', 'tcg', '-cpu', $CpuModel, '-smp', '2', '-m', '512', '-vga', 'std', '-nic', 'none', '-display', 'none', '-no-reboot', '-no-shutdown', '-boot', 'order=d,menu=off', '-drive', ('if=pflash,format=raw,unit=0,readonly=on,file=' + $firmware), '-drive', ('if=pflash,format=raw,unit=1,file=' + $vars), '-serial', ('file:' + $serial), '-qmp', ('tcp:127.0.0.1:' + $port + ',server=on,wait=off'))
 if ($BootMedia -eq 'Iso') {
     $media = (Resolve-Path -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso')).Path
     $arguments += @('-drive', ('media=cdrom,readonly=on,format=raw,file=' + $media))
@@ -73,7 +75,7 @@ try {
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
     $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')
-    if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY') }
+    if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY', 'APIC_READY', 'TIMER_OK') }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
@@ -101,6 +103,11 @@ try {
     Invoke-Qmp 'qmp_capabilities' | Out-Null
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
     if ($ownedExpected) {
+        $modeHex = '0000000000000001'
+        $ucPagesHex = '0000000000000002'
+        if ($ExpectedApicMode -eq 'X2apic') { $modeHex = '0000000000000002'; $ucPagesHex = '0000000000000001' }
+        if ($log -notmatch ('JOSHUA:APIC_READY MODE=' + $modeHex + ' UC_PAGES=' + $ucPagesHex + ' IOAPICS=0000000000000001')) { throw 'Missing validated controller/cache/mode evidence.' }
+        if ($log -notmatch ('JOSHUA:TIMER_OK MODE=' + $modeHex + ' TICKS=0000000000000010 EOIS=0000000000000010 RETURNS=0000000000000010')) { throw 'Timer delivery/EOI/return evidence incomplete.' }
         if ($log -notmatch 'JOSHUA:ACPI_TOPOLOGY_READY BSP=0000000000000000 CPUS=0000000000000002 ENABLED=0000000000000002 LAPIC=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Unexpected QEMU BSP/ACPI topology.' }
     }
     if ($ExpectedFault -eq 'None') {

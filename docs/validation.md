@@ -320,3 +320,46 @@ payloads/checksums are neither interpreted nor certified. IOAPIC/ISO/NMI routing
 APIC mode/MSR/MMIO/cache setup, AP startup, interrupts/timer delivery, physical ACPI
 compatibility, isolation and performance remain unqualified. IF stays clear; all
 ACPI memory remains reserved. Windows execution is left to CI; no merge performed.
+
+## BSP APIC timer foundation — 23 October 2026
+
+Issue #28 extends bounded discovery to IOAPIC records and preallocates a dedicated
+owned controller window. Read-only PAT/MTRR capture proves effective strict UC;
+explicit ACPI/CPU authority covers controller pages omitted by the tested OVMF map.
+Controller preflight masks supported external sources while preserving SMI/NMI,
+then sixteen one-shot BSP timer deliveries return with EOI/rearm/IRETQ. No scheduler,
+AP startup or process isolation is introduced.
+
+Actually run on Linux PowerShell7.4.6, native NASM2.16.03, QEMU10.2.2 and the same
+OVMF code/vars pair documented above:
+
+- Build passed20,734 media assertions. Two-build reproducibility passed with identical
+  EFI/FAT/ISO/manifest hashes, relative NASM invocation and corrupt-PE rejection.
+- Normal xAPIC ISO/FAT passed with two UC controller aliases, one IOAPIC and exactly
+  sixteen ticks/EOIs/returns; owned CR3, permissions, TR/IST/guards, framebuffer and
+  final halted ring0/IF-clear assertions passed. The screenshot was inspected.
+- X2 fixtures passed ISO/FAT using `qemu64,+x2apic`, one UC IOAPIC alias and exactly
+  sixteen ticks/EOIs/returns. This executes the x2APIC MSR adapter and IRETQ path.
+- MissingEoi was rejected at the bounded15-second timer checkpoint timeout, after
+  APIC_READY and without TIMER_OK or a fault marker. A negative rejection is not
+  a successful boot or an independent runtime timeout mechanism.
+- Host suites passed:24 map,6,425 reservations,250 inventory,6,297 frames,1,061
+  owned-map,6,249 lifecycle,1,470 descriptor/TSS/guards and1,145 ACPI cases.
+- New effective-UC oracle passed6,271 cases including6,000 seeded combinations,
+  maximum255 pairs, malformed active masks, overlap permutations and PAT WC rejection.
+  APIC policy/staging passed1,364 cases with a modeled controller backend and real
+  host page tables. All254 unsupported IOAPIC version bytes fail before route reads
+  or configuration writes; supported11h/20h, masking, SMI/NMI preservation, failures,
+  authority/descriptor/ownership/cache rejection and failure atomicity are covered.
+- Independent design/cache/runtime reviews were read-only. Runtime review found a
+  missing IOAPIC version check; it was fixed and re-reviewed with no remaining
+  actionable findings. Reviewers did not independently reproduce parent test runs.
+
+Hardware compatibility, NMI/MC resilience, unusual firmware/cache layouts, calibrated
+frequency, SIMD context preservation, SMP and isolation remain unqualified. Windows
+execution is left to CI; no merge performed. Full milestone exits remain open.
+
+All nine final fault regressions passed after the version fix: Ud2, Gp, ReadOnly,
+Nx, Guard, ConstWrite, Unmapped, StackFault and DoubleFault. Each image passed media
+checks and selected IST/frame assertions; ordinary fault vector/error/RIP/CR2 and
+controlled double-fault guard evidence matched, with final ring0 and IF clear.

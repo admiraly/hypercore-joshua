@@ -19,7 +19,8 @@ owned page tables with supervisor-only W^X/NX permissions and an unmapped stack
 guard and dedicated read-only constant storage, preserving inherited cache selectors.
 A bounded high-half kernel arena tracks allocations and invalidates translations
 before physical frame reuse. Bounded ACPI root/MADT validation identifies the BSP
-and local APIC topology before future interrupt work. These paths are QEMU-tested; the
+and local/IO APIC topology. A bounded BSP timer smoke check delivers sixteen
+local-APIC interrupts with EOI and IRETQ, then stops the timer and clears IF. These paths are QEMU-tested; the
 new memory implementation has no physical qualification.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.

@@ -26,6 +26,8 @@ jobs:
         run: ./tools/Test-Qemu.ps1 -BootMedia Fat
       - name: Validate exception frame diagnostics
         run: ./tests/Test-FaultDiagnostics.ps1
+      - name: Validate x2APIC delivery and missing-EOI rejection
+        run: ./tests/Test-ApicTimer.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -76,3 +78,9 @@ jobs:
       - name: Validate ACPI roots, bounded reads and BSP topology
         shell: pwsh
         run: ./tests/Test-Acpi.ps1
+      - name: Validate effective UC cache classification
+        shell: pwsh
+        run: ./tests/Test-CacheType.ps1
+      - name: Validate controller authority and APIC route policy
+        shell: pwsh
+        run: ./tests/Test-ApicPolicy.ps1

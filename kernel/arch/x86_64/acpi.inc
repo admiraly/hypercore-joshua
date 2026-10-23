@@ -116,6 +116,7 @@ acpi_topology_build:
     mov qword [r12+ACPI_CONTEXT.ready],0
     mov qword [r12+ACPI_CONTEXT.count],0
     mov qword [r12+ACPI_CONTEXT.enabled],0
+    mov qword [r12+ACPI_CONTEXT.io_count],0
     mov qword [r12+ACPI_CONTEXT.xsdt],0
     mov qword [r12+ACPI_CONTEXT.madt],0
     cmp qword [r12+ACPI_CONTEXT.capacity],0
@@ -123,6 +124,12 @@ acpi_topology_build:
     cmp qword [r12+ACPI_CONTEXT.capacity],256
     ja .capacity
     cmp qword [r12+ACPI_CONTEXT.records],0
+    je .capacity
+    cmp qword [r12+ACPI_CONTEXT.io_capacity],0
+    je .capacity
+    cmp qword [r12+ACPI_CONTEXT.io_capacity],8
+    ja .capacity
+    cmp qword [r12+ACPI_CONTEXT.io_records],0
     je .capacity
     mov rax,[r12+ACPI_CONTEXT.bsp_id]
     shr rax,32
@@ -257,6 +264,8 @@ acpi_topology_build:
     ja .layout
     cmp byte [rsi],0
     je .local
+    cmp byte [rsi],1
+    je .io_apic
     cmp byte [rsi],9
     je .x2
     cmp byte [rsi],5
@@ -307,6 +316,42 @@ acpi_topology_build:
     jne .next_record
     inc qword [rsp+40]
     jmp .next_record
+.io_apic:
+    cmp r15d,12
+    jb .layout
+    movzx r13d,byte [rsi+2]
+    mov r14d,[rsi+4]
+    test r14,r14
+    jz .topology
+    test r14d,4095
+    jnz .topology
+    lea rax,[r14+4096]
+    mov rdx,[r12+ACPI_CONTEXT.builder]
+    cmp rax,[rdx+OWNED_PAGING.physical_limit]
+    ja .topology
+    mov edi,[rsi+8]
+    mov rdx,[r12+ACPI_CONTEXT.io_count]
+    cmp rdx,[r12+ACPI_CONTEXT.io_capacity]
+    jae .capacity
+    mov rbx,[r12+ACPI_CONTEXT.io_records]
+    xor ecx,ecx
+.io_unique:
+    cmp rcx,rdx
+    jae .io_append
+    cmp [rbx],r13d
+    je .topology
+    cmp [rbx+4],r14d
+    je .topology
+    add rbx,16
+    inc rcx
+    jmp .io_unique
+.io_append:
+    mov [rbx],r13d
+    mov [rbx+4],r14d
+    mov [rbx+8],edi
+    mov dword [rbx+12],0
+    inc qword [r12+ACPI_CONTEXT.io_count]
+    jmp .next_record
 .override:
     cmp r15d,12
     jb .layout
@@ -334,6 +379,18 @@ acpi_topology_build:
     mov rdx,0x0000800000000000
     cmp rax,rdx
     ja .topology
+    cmp qword [r12+ACPI_CONTEXT.io_count],0
+    je .topology
+    mov rbx,[r12+ACPI_CONTEXT.io_records]
+    mov rcx,[r12+ACPI_CONTEXT.io_count]
+    mov rax,[r12+ACPI_CONTEXT.lapic]
+.io_alias:
+    mov edx,[rbx+4]
+    cmp rax,rdx
+    je .topology
+    add rbx,16
+    dec rcx
+    jnz .io_alias
     mov rax,ACPI_READY_MAGIC
     mov [r12+ACPI_CONTEXT.ready],rax
     xor eax,eax
@@ -359,6 +416,7 @@ acpi_topology_build:
     mov qword [r12+ACPI_CONTEXT.ready],0
     mov qword [r12+ACPI_CONTEXT.count],0
     mov qword [r12+ACPI_CONTEXT.enabled],0
+    mov qword [r12+ACPI_CONTEXT.io_count],0
 .return:
     add rsp,56
     pop r15

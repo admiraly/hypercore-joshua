@@ -30,3 +30,7 @@ ist_tops: times 4 dq 0
 kernel_tss_selector: dw 0
 align 8
 acpi_context: times ACPI_CONTEXT_size db 0
+acpi_io_records: times 8*16 db 0
+controller_pt: dq 0
+cache_context: times CACHE_CONTEXT_size db 0
+apic_context: times APIC_CONTEXT_size db 0

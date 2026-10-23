@@ -159,3 +159,21 @@ sentinels. Snapshots require no source-table writes and cleared failure readines
 It does not simulate away production read checks. Normal QEMU ISO/FAT additionally
 requires real OVMF BSP0/two enabled records and a nonzero local-APIC base; controller
 access, AP startup, physical ACPI compatibility and interrupt delivery remain untested.
+
+
+## BSP APIC validation
+
+`tests/Test-CacheType.ps1` checks the exact Assembly effective-UC classifier against
+host expectations, including255 MTRR pairs and PAT WC rejection.
+`tests/Test-ApicPolicy.ps1` runs the exact quiescence and controller staging code
+with a modeled register backend and real host page tables. It checks supported
+versions, rejects every other IOAPIC version before route reads/writes, preserves
+SMI/NMI, checks masking/readback failures and rejects unauthorized/cache-unsafe
+controller pages. These host tests do not execute RDMSR/WRMSR, MMIO or IRETQ.
+
+Normal ISO/FAT QEMU requires APIC_READY and TIMER_OK, sixteen ticks/EOIs/returns,
+matching mode and UC page count, followed by the existing owned-memory/final-state
+checks. `tests/Test-ApicTimer.ps1` additionally boots X2 fixtures from ISO and FAT
+with `qemu64,+x2apic`, and requires MissingEoi to fail the normal timer checkpoint.
+A timeout in that controlled negative fixture is expected rejection, not a passed
+boot. Physical compatibility, calibration, AP startup and scheduling remain open.
