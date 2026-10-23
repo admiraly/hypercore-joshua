@@ -718,6 +718,7 @@ times 0x1000-($-$$) db 0
 debug_keyboard_window: db 'JOSHUA:KEYBOARD_WINDOW ADDRESS=',0
 debug_keyboard_decoder: db ' DECODER=',0
 debug_keyboard_controller: db ' CONTROLLER=',0
+debug_keyboard_fixture: db ' FIXTURE=',0
 debug_keyboard_done: db 'JOSHUA:KEYBOARD_WINDOW_DONE',13,10,0
 times PE_RODATA_SIZE-($-$$) db 0
 
@@ -778,6 +779,7 @@ keyboard_saved_low: resd 1
 keyboard_saved_high: resd 1
 keyboard_window: resb KEYBOARD_WINDOW_size
 keyboard_return_flags: resq 1
+keyboard_fixture: resb KEYBOARD_FIXTURE_size
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384

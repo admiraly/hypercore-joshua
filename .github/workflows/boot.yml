@@ -36,19 +36,6 @@ jobs:
         run: ./tests/Test-UserRuntime.ps1
       - name: Reject malformed embedded ELF before private allocation
         run: ./tests/Test-ElfRuntime.ps1
-      - name: Validate actual keyboard delivery, DF and missing-input deadline
-        run: |
-          python ./tests/test_keyboard_runtime_oracle.py
-          if ($LASTEXITCODE -ne 0) { throw 'Keyboard target-oracle mutations failed.' }
-          foreach ($mode in @('Text','Df','Missing')) {
-            $output = 'out/keyboard-' + $mode.ToLowerInvariant()
-            ./tools/Build.ps1 -KeyboardTest $mode -OutputDirectory $output
-            ./tools/Test-KeyboardRuntime.ps1 -OutputDirectory $output
-            ./tools/Test-KeyboardRuntime.ps1 -OutputDirectory $output -BootMedia Fat
-          }
-          ./tools/Build.ps1 -KeyboardTest Text -TimerTest X2 -OutputDirectory out/keyboard-text-x2
-          ./tools/Test-KeyboardRuntime.ps1 -OutputDirectory out/keyboard-text-x2 -CpuModel 'qemu64,+x2apic'
-          ./tools/Test-KeyboardRuntime.ps1 -OutputDirectory out/keyboard-text-x2 -CpuModel 'qemu64,+x2apic' -BootMedia Fat
       - name: Reject corrupted private paging snapshots
         run: python ./tests/test_user_paging_mutations.py out/user-none
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -144,3 +131,23 @@ jobs:
       - name: Validate exact keyboard IRQ return frames
         shell: pwsh
         run: ./tests/Test-KeyboardFrame.ps1
+  keyboard:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Fetch verified host tools
+        run: ./tools/Get-Toolchain.ps1 -IncludeQemu
+      - name: Validate actual keyboard input, retirement and exact rejections
+        run: ./tests/Test-KeyboardCampaign.ps1 -IncludeX2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: joshua-keyboard-diagnostics
+          path: |
+            out/keyboard-*/*.log
+            out/keyboard-*/*.bin
+            out/keyboard-*/*.json

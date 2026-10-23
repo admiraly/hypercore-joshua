@@ -255,5 +255,47 @@ helper accounting gives a maximum200 bytes below the saved frame for emergency
 disable,136 for collection/decoder and56 for timer stop; all are below the4-KiB
 reserve. No SIMD is live. Oracle findings about actual LAPIC retirement and queue
 indices are addressed with physical/HMP capture plus shared-predicate mutations.
-The remaining forced-pending, overflow/reentry, exhaustion, bad-frame and unexpected
-IRQ tests are mandatory before calling the live lifecycle qualified.
+The controlled-fixture campaign below owns the forced-pending, overflow/reentry,
+exhaustion, bad-frame and unexpected-IRQ gates; its results are in docs/validation.md.
+
+
+## Controlled lifecycle and rejection fixtures
+
+KeyboardTest Pending40/Pending44/PendingBoth latch actual IRR220h bits1h/10h/11h
+under IF0 before normal source retirement, then require nonempty exact drain returns
+and matching EOIs with no active ticks or consumed events. DrainExhaust suppresses
+STI only in that authored fixture and requires the1025th attempted window to stop
+with no EOI, timer64 still pending, both sources masked and controller disabled.
+BadRip/BadSs/BadFlags/BadRsp alter exactly one actual timer-frame field. BadAddress
+passes a displaced proposed frame; BadRoot selects an already-proved private root.
+UnexpectedTimer/UnexpectedKeyboard mark phase3 before actual delivery. Their typed
+oracles require exact saved fields/current root, ISR ownership and zero EOIs/returns;
+an arbitrary kernel fault cannot qualify a rejection test.
+
+KEYBOARD_FIXTURE is144 bytes of target-only evidence, separate from authority and
+public ABI. Overflow prefills64 sentinel events under IF0 and physically snapshots
+all metadata/storage before a real make; afterward exactly one drop and unchanged
+old entries/indices/count are required, with no consumer. OverflowPending instead
+starts from a physically empty queue and records IRQ/EOI baselines after staging.
+A first attempt sending62 events at once supplied only16 collector bytes and later
+hit the512-tick deadline. That is failed test evidence, not32-read exhaustion.
+
+The refined OverflowPending image alone adds two bounded producer waits after
+processing reads16/32 while armed stage2 holds. Each has16,777,216 actual status-read
+iterations, never resets the32-byte data budget and preserves EBX/nonvolatiles and
+shadow space. Host QMP sends16 real translated bytes, physically observes count16,
+sends16 more, observes32, then sends2. No data/OBF/decoder result is synthesized.
+A sticky timeout invalidates the test, both refill acknowledgments require actual
+OBF, and actual OBF must be recorded at zero data budget. This closes a source-review
+false pass where second-refill timeout could otherwise share32-read/16-event totals.
+Mutation tests explicitly reject that otherwise-plausible timeout record.
+
+Acceptance requires exactly32 collector data-port reads and16 decoded `a` events,
+zero drops/errors, at least two post-baseline actual ISR44-owned entries/EOIs, one
+emergency disable, and a subsequent timer EOI observing failure2 with zero ticks.
+Output quiet, actual masked route/timer, zero counts and empty ISR/IRR precede the
+phase3/failure2 permanent IF0 stop; no WINDOW_DONE or normal HALTED marker is allowed.
+The normal ISR still has no producer wait. Instrumented refill nesting consumes120
+bytes below the saved frame; decoder remains136 and emergency disable200. This is
+controlled-producer branch evidence, not natural input-rate or production-latency
+qualification. WINDOW_DONE is emitted only after all positive success checks.

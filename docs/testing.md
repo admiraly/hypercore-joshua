@@ -292,4 +292,15 @@ window/controller/decoder storage, queue index invariants, the masked IOAPIC low
 entry and actual LAPIC timer mask/counts/empty ISR+IRR. Post-CLI DF flags are captured
 from memory. The shared target predicates have8,338 cumulative mutation checks.
 This target suite complements rather than replaces the private-root/user/fault
-campaign. Forced pending/drain/overflow and invalid-frame negatives remain open.
+campaign. The expanded campaign below exercises forced pending/drain/overflow and invalid-frame negatives.
+
+
+`tests/Test-KeyboardCampaign.ps1 -IncludeX2` builds17 isolated keyboard profiles and
+runs each on ISO/FAT, plus Text/PendingBoth/OverflowPending with x2APIC on both media
+(40 target invocations). Windows CI owns this as a separate15-minute job. Exact
+negative predicates retain ISR/IRR evidence; no catch-all failure counts as a pass.
+Shared actual-oracle predicates now pass8,373 cumulative checks, including sticky
+second-refill-timeout and unsupported-port-response mutations. The old8,338 count above describes the first positive
+checkpoint. OverflowPending uses fixture-only bounded refill waits on the real
+PS2 path; it does not qualify natural production timing. See the design's controlled
+fixture section for the failed batch and strict replacement acceptance conditions.

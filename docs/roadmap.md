@@ -48,3 +48,11 @@ lines and a visible cursor. Offer green as an optional profile later. Use origin
 assets and wording. Input and diagnostics must work without animation, sound,
 models or connectivity; flicker/scanlines/motion must be optional. The current
 checkpoint remains an honest status display, not a simulated working shell.
+
+
+Current staged work has local evidence for private embedded ELF programs and a
+bounded real PS2 input window. Issue #38 owns keyboard delivery/retirement and its
+controlled fault campaign; issue #40 owns the next native WOPR/Joshua line editor
+and command console. These scoped steps do not close the physical M0/M1, general
+process/capability, or milestone exit gates. The interactive development release
+still requires the console implementation and its own validation.

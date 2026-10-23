@@ -68,4 +68,26 @@ struc KEYBOARD_WINDOW
  .events: resw 64
 endstruc
 
+; Explicit target-fixture evidence, never driver authority or user ABI.
+struc KEYBOARD_FIXTURE
+ .stage: resq 1
+ .pending: resq 1
+ .drain_keyboard_eois: resq 1
+ .drain_timer_eois: resq 1
+ .reject_keyboard_eois: resq 1
+ .reject_timer_eois: resq 1
+ .expected: resq 1
+ .frame: resq 1
+ .keyboard_irqs_base: resq 1
+ .keyboard_eois_base: resq 1
+ .timer_eois_base: resq 1
+ .collector_reads: resq 1
+ .emergency_disables: resq 1
+ .failed_timer_eois: resq 1
+ .terminal_status: resq 1
+ .refill_timeout: resq 1
+ .refill_acks: resq 1
+ .zero_budget_status: resq 1
+endstruc
+
 %endif

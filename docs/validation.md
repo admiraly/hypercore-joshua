@@ -611,3 +611,55 @@ no tests. Windows CI and complete current-source regressions remain pending.
 Overflow/reentry, forced pending40/44/both, drain exhaustion and invalid/out-of-window
 frame target gates remain open. No complete driver, shell, physical compatibility,
 issue/milestone completion or merge is claimed. Speech work remains separate.
+
+
+## Keyboard lifecycle and rejection campaign (issue #38)
+
+The final frozen-source `Test-KeyboardCampaign.ps1 -IncludeX2` run passes40 actual
+QEMU10.2.2/OVMF target invocations:17 profiles each on ISO/FAT, plus Text,
+PendingBoth and OverflowPending on x2APIC ISO/FAT. This is18 successful-window
+checks and22 exact permanent-stop checks, not40 independent hardware platforms.
+Pending40/44/both prove actual IRR1h/10h/11h before normal source retirement and
+nonempty drain returns with exact EOIs/no active ticks. DrainExhaust stops at1025
+attempts before any EOI with IRR64 retained. Six frame/address/root defects and
+both out-of-window vectors stop with exact saved state/current CR3 and actual ISR
+ownership, without EOI or normal continuation. An arbitrary fault cannot pass.
+
+Overflow snapshots all64 old sentinel events and valid metadata before real input,
+then requires one dropped make with unchanged old storage/indices/count and no
+consumer. Controlled OverflowPending requires exactly32 actual data-port reads,
+16 decoded `a` events, post-baseline actual IRQ44 reentry/EOIs, one emergency disable,
+a timer EOI observing failure2 with zero ticks, then quiet output/masked route/
+stopped timer/empty ISR+IRR and phase3/failure2 permanent stop. All four xAPIC/x2APIC
+ISO/FAT cases pass with sticky timeout0, both actual-OBF refill acknowledgments and
+actual OBF recorded at zero budget. WINDOW_DONE/normal HALTED are forbidden there.
+
+The earlier62-event single-batch attempt failed: only16 collector bytes/eight make
+events arrived, no emergency disable occurred, and the512-tick deadline fired.
+It remains failure evidence. Mode17 alone now uses two finite producer-refill waits
+after reads16/32, with host injection only after physically observing each threshold.
+The normal32-read budget is unchanged, and no data/OBF/decoder outcome is synthesized.
+This qualifies controlled exhaustion/reentry branches, not natural input rates or
+production ISR latency. A source-review P2 second-refill-timeout false pass is closed
+by sticky timeout, real-OBF acknowledgments and zero-budget status. The actual port
+response must match the full byte-port64 response, rejecting unsupported-command
+errors that contain the address. Shared actual-oracle mutations pass8,373 checks.
+
+Regression runs pass24 user execution/fault/watchdog profiles, nine fault fixtures,
+x2APIC ISO/FAT plus missing-EOI rejection, context launch/rejection/guard fixtures,
+and both malformed-ELF targets. Twenty host suites pass, including keyboard decoder
+180,744, authority1,890, controller503, exact-frame5,996 and15 host stack-walker
+fixtures. The existing physical snapshot oracle rejects54 mutations plus49 synthetic
+reserved/cache-policy cases. Normal ISO/FAT and stable normal EFI/FAT/ISO/manifest
+reproducibility/corrupt-PE rejection pass. All61 tested boot variants were rebuilt
+against final runtime source with identical EFI/FAT/ISO hashes; a subsequent frozen
+40-target run uses the final checker and final source throughout.
+
+Independent read-only reviews cleared pending/rejection code and overflow/refill
+logic after the recorded findings were addressed. Normal helper depth remains200
+bytes maximum; the instrumented refill branch consumes120 (decoder136). Reviewers
+ran no tests. Documentation now distinguishes window phase3 from fixture stage3,
+armed fixture stage2 from window phase1, and the final8,373 mutation count from
+historical counts. Windows CI and physical Latitude/input qualification remain open.
+No issue/milestone completion, full input-stack/shell claim or merge follows. Issue
+#40 owns the next native WOPR/Joshua console; speech branches remain unchanged.
