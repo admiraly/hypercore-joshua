@@ -81,7 +81,7 @@ try {
     $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard', 'UserKernelFault')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY', 'APIC_READY', 'TIMER_OK') }
     if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += @('CONTEXT_SWITCH_OK', 'USER_MACHINE_PREPARED') }
-    if ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
+    if ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None') { $markers += @('KEYBOARD_PREPARED','KERNEL_HALTED') } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
         if ($index -le $previousIndex) { throw ('Missing or out-of-order ' + $marker + '. Inspect ' + $serial) }

@@ -532,3 +532,25 @@ and the independent physical oracle. Thus all four KVM cases have current ISO
 execution evidence, while the failed first launches and unqualified one-shot full
 IncludeKvm command remain reliability limits. No source change was used to obtain
 that retry result; neither firmware timeout is reclassified as success.
+
+## Keyboard prepared checkpoint (issue #38)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: actual controller preparation
+reaches GSI1/config65h with scanning disabled and the IOAPIC entry unchanged/masked.
+Normal ISO and FAT pass existing private ELF continuation/protection checks plus
+independent capture of fresh controller/authority/decoder metadata. Build passes
+20,790 media assertions; EFI/FAT/ISO/manifest reproducibility and corrupt-PE rejection
+pass. The actual snapshot oracle rejects54 corruptions and49 synthetic level-policy
+mutations. There is no real keyboard IRQ/delivery evidence at this checkpoint.
+
+Host policy suites pass180,744 decoder assertions (40,000 mixed operations),1,890
+ACPI/ISA/GSI assertions (500 generated maps) and503 modeled-port assertions. Independent
+reviews found no remaining actionable findings in design, decoder, authority,
+controller policy, masked preparation or target evidence checks. Reviews were source
+only and did not independently reproduce parent-run tests. Authority review's coverage
+fixture now places a readable FADT header before an unproved PROT_NONE payload page.
+Design findings about command/input races, deadline retirement and exact IRQ frames
+are resolved in the contract; the live implementation and its required tests remain open.
+
+No issue/milestone, complete keyboard driver, interactive shell, USB or physical
+compatibility claim follows. Speech branches/artifacts remain separate and unchanged.

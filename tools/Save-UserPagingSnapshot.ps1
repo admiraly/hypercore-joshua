@@ -34,6 +34,9 @@ function Save-UserPagingSnapshot([string]$Directory, [string]$Media, [string]$Py
         }
     }
     Get-SnapshotPage $seed.kernelRoot | Out-Null
+    Save-SnapshotRange $seed.keyboardController 56
+    Save-SnapshotRange $seed.keyboardAuthority 48
+    Save-SnapshotRange $seed.keyboardDecoder 216
     Save-SnapshotRange $seed.elfPlan 64
     Save-SnapshotRange $seed.context 144
     Save-SnapshotRange $seed.builder 120

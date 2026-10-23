@@ -492,6 +492,9 @@ owned_fault_instruction:
 %endif
     jmp kernel_fault
 %endif
+    call keyboard_prepare
+    test eax,eax
+    jnz kernel_fault
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx

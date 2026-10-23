@@ -116,3 +116,12 @@ jobs:
       - name: Validate bounded ELF plans and failure-atomic copies
         shell: pwsh
         run: ./tests/Test-Elf.ps1
+      - name: Validate set1 keyboard decoding and bounded events
+        shell: pwsh
+        run: ./tests/Test-Keyboard.ps1
+      - name: Validate ACPI keyboard and ISA route authority
+        shell: pwsh
+        run: ./tests/Test-KeyboardAuthority.ps1
+      - name: Validate bounded keyboard command/reply policy
+        shell: pwsh
+        run: ./tests/Test-KeyboardController.ps1

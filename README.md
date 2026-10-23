@@ -30,6 +30,8 @@ eight-tick watchdog. Timer/drain rejection fixtures and independent physical pag
 validation; local campaigns pass and Windows CI qualification remains open. This is not a qualified general process system.
 A strict embedded ELF64 profile now loads one RX code page and one RW/NX data/BSS
 page into those private contexts; it is not a general ELF loader.
+A bounded i8042 preparation checkpoint now validates firmware authority and configures
+the keyboard with scanning disabled and its IRQ masked; live input is unfinished.
 There is no general task scheduler, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 

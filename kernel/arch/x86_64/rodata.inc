@@ -149,3 +149,7 @@ debug_user_ldt: db 'JOSHUA:USER_INHERITED_LDT_SET',13,10,0
 debug_elf_reject: db 'JOSHUA:ELF_REJECT BEFORE=',0
 debug_elf_count_address: db ' COUNT_ADDRESS=',0
 %endif
+
+debug_keyboard_prepared: db 'JOSHUA:KEYBOARD_PREPARED GSI=',0
+debug_keyboard_config: db ' CONFIG=',0
+debug_keyboard_failure: db 'JOSHUA:KEYBOARD_FAILURE STAGE=',0

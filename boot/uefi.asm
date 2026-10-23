@@ -4,6 +4,7 @@ default rel
 %include 'sdk/context.inc'
 %include 'sdk/user.inc'
 %include 'sdk/elf.inc'
+%include 'sdk/keyboard.inc'
 %ifndef JOSHUA_ELF_TEST
  %define JOSHUA_ELF_TEST 0
 %endif
@@ -631,6 +632,11 @@ stop_cpu:
 %include 'kernel/user/retire.inc'
 %include 'kernel/user/start.inc'
 %include 'kernel/user/fixtures.inc'
+%include 'kernel/input/decoder.inc'
+%include 'kernel/input/authority.inc'
+%include 'kernel/input/controller.inc'
+%include 'kernel/input/ports.inc'
+%include 'kernel/input/start.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -699,6 +705,7 @@ debug_gop: db 'JOSHUA:GOP_OK',13,10,0
 debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 
 %include 'kernel/arch/x86_64/rodata.inc'
+%include 'kernel/input/keymap.inc'
 times 0x1000-($-$$) db 0
 %include 'kernel/user/elf-image.inc'
 times PE_RODATA_SIZE-($-$$) db 0
@@ -751,6 +758,13 @@ user_terminal_state: resq 1
 user_drain_windows: resq 1
 user_pending_seen: resq 1
 user_test_ldt: resb 16
+keyboard_decoder: resb KEYBOARD_DECODER_size
+keyboard_authority: resb KEYBOARD_AUTH_size
+keyboard_controller: resb KEYBOARD_CONTROLLER_size
+keyboard_io_window: resq 1
+keyboard_io_selector: resq 1
+keyboard_saved_low: resd 1
+keyboard_saved_high: resd 1
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384

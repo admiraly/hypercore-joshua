@@ -232,7 +232,7 @@ Normal boots capture physical memory after QMP stop into
 private roots/permissions/cache selectors, complete paging-allocation aliases,
 exact backing ownership, code bytes, padding and terminal metadata. Run
 `python3 tests/test_user_paging_mutations.py out/user-none` after the campaign;
-Windows uses `python`. It requires the baseline to pass, then rejects50 corrupted
+Windows uses `python`. It requires the baseline to pass, then rejects54 corrupted
 snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
 code. These counts describe mutations, not hardware qualification. CI runs the
 same mutation suite. Source review closed parent-cache/reserved-bit findings.
@@ -255,3 +255,19 @@ Normal user campaigns now execute the ELF entry beyond an INT3 prefix and verify
 initialized data/BSS. QMP also compares the actual load plan to independently read
 ELF headers. Mutation coverage adds plan entry, initialized data and BSS corruption;
 final rerun counts/results belong in validation.md, not inferred from this test list.
+
+## Keyboard preparation (issue #38)
+
+Linux host suites `Test-Keyboard.ps1`, `Test-KeyboardAuthority.ps1` and
+`Test-KeyboardController.ps1` execute actual Assembly policies. Current results:
+180,744 decoder/queue checks including40,000 mixed operations;1,890 ACPI/ISA/GSI
+checks including500 generated maps;503 modeled-port command/ACK/order/timeout/ABI
+checks. Each policy call has eight integer ABI sentinels. Authority shares the actual
+ACPI read predicate, modeling paging lookup only; controller callbacks model ports.
+These counts are cumulative assertions, not independent scenarios or real IRQ evidence.
+
+Normal QEMU ISO/FAT now require KEYBOARD_PREPARED and capture the actual controller,
+authority and decoder records. Snapshot mutations include scanning/IRQ12/GSI/modifier
+corruption. The selected IOAPIC route stays masked; no QMP key injection or input
+window has been implemented yet. Full user/fault/APIC regressions and real delivery/
+retirement negatives remain mandatory when the live IRQ stage is wired.

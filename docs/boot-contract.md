@@ -482,3 +482,22 @@ Current PE bounds supersede prior checkpoint layouts: text RVA1000h/sizeA000h,
 data B000h/1000h, constants C000h/4000h, BSS10000h/E5000h, relocation F5000h and
 image F6000h. The expanded constant section holds the authored ELF envelope; no
 external loader or interpreter runs in HyperCore.
+
+## Keyboard preparation checkpoint (issue #38, incomplete driver)
+
+After the normal private ELF pair has returned and before the halted status display,
+IF0 preparation requires the owned root, completed trusted contexts and the validated
+APIC state. A separate authority record checks FADT8042 and MADT ISA/GSI ownership
+before port access. The selected IOAPIC entry must already be masked and use an
+eligible maskable delivery mode; its low/high words are unchanged by this checkpoint.
+No new interrupt gate, unmask or STI is introduced here.
+
+Bounded real60h/64h commands prepare translation/set2 and verify final configuration
+while keyboard scanning is disabled. KEYBOARD_PREPARED reports that checkpoint;
+it is not KEYBOARD_READY or evidence of delivered input. Failure stops under IF0
+with a controller stage diagnostic. Normal image sizes and stack guards are unchanged.
+The controller/authority/decoder occupy previously reserved context-metadata storage.
+
+Future live input must implement the reviewed vector44h frame/EOI contract and
+joint40h/44h deadline/drain ownership before using the queue. No shell input or
+physical keyboard compatibility is established by preparation alone.
