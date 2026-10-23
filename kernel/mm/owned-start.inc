@@ -108,6 +108,24 @@ owned_paging_start:
     call owned_paging_init
     test eax,eax
     jnz .bad
+    lea rcx,[user_context]
+    mov [user_context+USER_CONTEXT.builder],r12
+    lea rax,[user_processes]
+    mov [user_context+USER_CONTEXT.processes],rax
+    lea rax,[user_payload_start]
+    mov [user_context+USER_CONTEXT.payload],rax
+    mov qword [user_context+USER_CONTEXT.payload_size],user_payload_end-user_payload_start
+    call user_storage_prepare
+    test eax,eax
+    jnz .bad
+    lea rax,[user_entry1_stack]
+    mov [user_processes+USER_PROCESS.kernel_low],rax
+    lea rax,[user_entry1_top]
+    mov [user_processes+USER_PROCESS.kernel_high],rax
+    lea rax,[user_entry2_stack]
+    mov [user_processes+USER_PROCESS_size+USER_PROCESS.kernel_low],rax
+    lea rax,[user_entry2_top]
+    mov [user_processes+USER_PROCESS_size+USER_PROCESS.kernel_high],rax
     mov rsi,[r13+BOOT_INFO.memory_map]
 .descriptor:
     mov rax,[r13+BOOT_INFO.memory_map]
@@ -148,6 +166,15 @@ owned_paging_start:
     jnz .image
     or r15,2
 .image:
+    lea rcx,[user_context]
+    mov rdx,rbx
+    mov r8,r14
+    call user_code_boundary
+    mov r14,rax
+    test r9d,r9d
+    jz .image_policy
+    and r15,-3
+.image_policy:
     cmp rbx,[r12+OWNED_PAGING.image_base]
     jb .before_image
     cmp rbx,[r12+OWNED_PAGING.image_end]
@@ -242,6 +269,10 @@ owned_paging_start:
     call controller_window_prepare
     test eax,eax
     jnz .bad
+    lea rcx,[user_context]
+    call user_roots_prepare
+    test eax,eax
+    jnz .bad
     ; Prove image boundaries, live stack, metadata and descriptor tables.
     mov rbx,[r12+OWNED_PAGING.image_base]
 .verify_image:
@@ -310,7 +341,7 @@ owned_paging_start:
     shl rax,3
     add rax,[frame_allocator+FRAME_ALLOCATOR.records]
     cmp qword [rax+16],FRAME_OWNER_PAGING
-    jne .bad
+    jne .user_record
     mov rbx,[rax]
     mov rbp,[rax+8]
     cmp rbp,1
@@ -338,6 +369,21 @@ owned_paging_start:
     jnz .verify_chunk
     inc rdi
     jmp .verify_record
+.user_record:
+    mov rdx,[rax+16]
+    sub rdx,FRAME_OWNER_USER_BASE+1
+    cmp rdx,USER_PROCESS_COUNT
+    jae .bad
+    imul rdx,USER_PROCESS_size
+    lea rcx,[user_processes]
+    add rcx,rdx
+    mov rdx,[rax]
+    cmp rdx,[rcx+USER_PROCESS.backing]
+    jne .bad
+    cmp qword [rax+8],6
+    jne .bad
+    inc rdi
+    jmp .verify_record
 .verify_fb:
     cmp r14,[r12+OWNED_PAGING.table_count]
     jb .bad
@@ -354,6 +400,10 @@ owned_paging_start:
     add rbx,4096
     jmp .fb_page
 .activate:
+    lea rcx,[user_context]
+    call user_roots_check
+    test eax,eax
+    jnz .bad
     cmp qword [r12+OWNED_PAGING.failed],0
     jne .bad
     mov qword [r12+OWNED_PAGING.ready],1

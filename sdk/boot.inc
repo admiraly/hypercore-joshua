@@ -52,12 +52,13 @@ endstruc
  %error Invalid boot-info size
 %endif
 ; PE layout constants are shared by the handwritten headers and image checks.
-%define PE_TEXT_SIZE 0x7000
-%define PE_DATA_RVA 0x8000
-%define PE_RODATA_RVA 0x9000
-%define PE_BSS_RVA 0xa000
-%define PE_BSS_SIZE 0xdb000
-%define STACK_GUARD_COUNT 7
+%define PE_TEXT_SIZE 0x9000
+%define PE_DATA_RVA 0xa000
+%define PE_RODATA_RVA 0xb000
+%define PE_RODATA_SIZE 0x2000
+%define PE_BSS_RVA 0xd000
+%define PE_BSS_SIZE 0xe5000
+%define STACK_GUARD_COUNT 9
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192

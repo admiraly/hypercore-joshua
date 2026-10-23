@@ -124,3 +124,9 @@ debug_context_status: db 'JOSHUA:CONTEXT_STATUS=',0
 debug_context_current: db ' CURRENT=',0
 debug_context_id: db 'JOSHUA:CONTEXT_INHERITED_ID_SET',13,10,0
 debug_context_stack: db 'JOSHUA:CONTEXT_STACK INDEX=',0
+
+debug_user_roots: db 'JOSHUA:USER_ROOTS_PROVED ROOT_A=',0
+debug_user_root_b: db ' ROOT_B=',0
+debug_user_entry_stack: db 'JOSHUA:USER_ENTRY_STACK INDEX=',0
+
+debug_user_machine: db 'JOSHUA:USER_MACHINE_PREPARED',13,10,0

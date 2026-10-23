@@ -20,6 +20,10 @@ kernel_entry:
     mov [stack_guards+40],rax
     lea rax,[context_worker2_guard]
     mov [stack_guards+48],rax
+    lea rax,[user_entry1_guard]
+    mov [stack_guards+56],rax
+    lea rax,[user_entry2_guard]
+    mov [stack_guards+64],rax
     lea rax,[double_fault_top]
     mov [ist_tops],rax
     lea rax,[nmi_top]
@@ -256,6 +260,16 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    lea rcx,[debug_user_roots]
+    call debug_write
+    mov rcx,[user_processes+USER_PROCESS.root]
+    call debug_hex
+    lea rcx,[debug_user_root_b]
+    call debug_write
+    mov rcx,[user_processes+USER_PROCESS_size+USER_PROCESS.root]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
     call lifecycle_smoke
     test eax,eax
     jnz kernel_fault
@@ -375,6 +389,33 @@ fault_test_instruction:
     inc ebx
     cmp ebx,3
     jb .context_stack_marker
+    xor ebx,ebx
+    lea rsi,[user_processes]
+.user_stack_marker:
+    lea rcx,[debug_user_entry_stack]
+    call debug_write
+    lea rcx,[rbx+1]
+    call debug_hex
+    lea rcx,[debug_start]
+    call debug_write
+    mov rcx,[rsi+USER_PROCESS.kernel_low]
+    call debug_hex
+    lea rcx,[debug_end]
+    call debug_write
+    mov rcx,[rsi+USER_PROCESS.kernel_high]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    add rsi,USER_PROCESS_size
+    inc ebx
+    cmp ebx,USER_PROCESS_COUNT
+    jb .user_stack_marker
+    lea rcx,[user_context]
+    call user_machine_prepare
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_user_machine]
+    call debug_write
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]

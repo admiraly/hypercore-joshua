@@ -2,6 +2,7 @@ bits 64
 default rel
 %include 'sdk/boot.inc'
 %include 'sdk/context.inc'
+%include 'sdk/user.inc'
 %ifndef JOSHUA_CONTEXT_TEST
  %define JOSHUA_CONTEXT_TEST 0
 %endif
@@ -24,7 +25,7 @@ dd 0,0,0
 dw 0xf0, 0x0022
 dw 0x20b
 db 0,0
-dd PE_TEXT_SIZE,0x3000,PE_BSS_SIZE
+dd PE_TEXT_SIZE,(PE_RODATA_SIZE+0x2000),PE_BSS_SIZE
 dd efi_entry,0x1000
 dq 0
 dd 0x1000,0x200
@@ -45,7 +46,7 @@ dd 0x1000,PE_DATA_RVA,0x1000,PE_DATA_RVA,0,0
 dw 0,0
 dd 0xc0000040
 db '.rodata',0
-dd 0x1000,PE_RODATA_RVA,0x1000,PE_RODATA_RVA,0,0
+dd PE_RODATA_SIZE,PE_RODATA_RVA,PE_RODATA_SIZE,PE_RODATA_RVA,0,0
 dw 0,0
 dd 0x40000040
 db '.bss',0,0,0,0
@@ -598,6 +599,11 @@ stop_cpu:
 %include 'kernel/mm/frame-check.inc'
 %include 'kernel/mm/owned-map.inc'
 %include 'kernel/mm/paging-pat.inc'
+%include 'kernel/user/descriptors.inc'
+%include 'kernel/user/storage.inc'
+%include 'kernel/user/map.inc'
+%include 'kernel/user/proof.inc'
+%include 'kernel/user/machine.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -667,6 +673,8 @@ debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 
 %include 'kernel/arch/x86_64/rodata.inc'
 times 0x1000-($-$$) db 0
+%include 'kernel/user/payload.inc'
+times PE_RODATA_SIZE-($-$$) db 0
 
 section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA
 dd 0x1000,12
@@ -708,7 +716,15 @@ context_metadata:
 kernel_context: resb KERNEL_CONTEXT_size
 kernel_context_records: resb 3*KERNEL_CONTEXT_RECORD_size
 context_worker_rsp: resq 2
+user_context: resb USER_CONTEXT_size
+user_processes: resb USER_PROCESS_COUNT*USER_PROCESS_size
 resb 4096-($-context_metadata)
+user_entry1_guard: resb 4096
+user_entry1_stack: resb 16384
+user_entry1_top:
+user_entry2_guard: resb 4096
+user_entry2_stack: resb 16384
+user_entry2_top:
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

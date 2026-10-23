@@ -385,3 +385,18 @@ and progress; CONTEXT_STACK records expose bounds/counts for independent QEMU wa
 of all seven absent guards and every supervisor RW/NX stack page. A successful
 selection counter alone is not proof of IRETQ execution. The fixed smoke is not a
 fair scheduler, arbitrary kernel preemption API, user isolation or SMP support.
+
+## User memory preparation under development (issue #32)
+
+The preceding issue #30 seven-stack/layout values describe that revision. Current
+preparation extends the kernel guard proof to nine stacks: two additional16-KiB
+user-entry stacks each have an absent lower4-KiB guard. The current PE text capacity
+is9000h bytes, data/rodata/BSS start atA000h/B000h/D000h, rodata spans2000h, BSS is
+E5000h, relocations F2000h and image size F3000h. Versioned boot-info is unchanged.
+
+Two exact six-page backing allocations and distinct user table paths are prepared
+before activation. Code identity aliases are RO/NX with preserved inherited PAT;
+user leaves are RX code and RW/NX private data/stack with an absent user guard.
+The root/ownership proof follows whole-kernel/chunk proof before kernel CR3 activation.
+USER_ROOTS_PROVED is preparation evidence only: privilege entry/fault containment
+remain under implementation and this marker establishes no CPL3 execution.

@@ -76,7 +76,7 @@ try {
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
     $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY', 'APIC_READY', 'TIMER_OK') }
-    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += 'CONTEXT_SWITCH_OK' }
+    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += @('CONTEXT_SWITCH_OK', 'USER_MACHINE_PREPARED') }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
@@ -221,7 +221,20 @@ try {
                 $allStacks += ,@($start,$end)
                 $contextStackCount++
             }
-            if ($contextStackCount -ne 3 -or $allStacks.Count -ne 7) { throw 'Expected seven distinct guarded stacks.' }
+            if ($contextStackCount -ne 3) { throw 'Expected three kernel context stacks.' }
+            $entryStackCount = 0
+            foreach ($stack in [regex]::Matches($log, 'JOSHUA:USER_ENTRY_STACK INDEX=([0-9A-F]{16}) START=([0-9A-F]{16}) END=([0-9A-F]{16})')) {
+                $index = [Convert]::ToUInt64($stack.Groups[1].Value,16)
+                $start = [Convert]::ToUInt64($stack.Groups[2].Value,16)
+                $end = [Convert]::ToUInt64($stack.Groups[3].Value,16)
+                if ($index -ne ($entryStackCount+1) -or $end -le $start -or $end-$start -ne 16384 -or ($start % 4096) -ne 0) { throw 'Invalid user-entry stack bounds.' }
+                foreach ($other in $allStacks) {
+                    if ($start -lt $other[1] -and $end -gt $other[0]) { throw 'User-entry/kernel stack overlap.' }
+                }
+                $allStacks += ,@($start,$end)
+                $entryStackCount++
+            }
+            if ($entryStackCount -ne 2 -or $allStacks.Count -ne 9) { throw 'Expected nine distinct guarded kernel stacks.' }
             $permissionMask = [Convert]::ToUInt64('8000000000000007',16)
             $expectedPermission = [Convert]::ToUInt64('8000000000000003',16)
             foreach ($stack in $allStacks) {
@@ -236,6 +249,14 @@ try {
         if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x10000) -eq 0) { throw 'CR0.WP is not enabled.' }
         if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x800) -eq 0) { throw 'EFER.NXE is not enabled.' }
         if ($registers -notmatch 'CR4=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x20080) -ne 0) { throw 'PCID/global pages unexpectedly enabled.' }
+    }
+    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') {
+        if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1],16) -band 8) -eq 0) { throw 'User preflight did not set CR0.TS.' }
+        if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1],16) -band 1) -ne 0) { throw 'Inherited SYSCALL entry remains enabled.' }
+        if ($registers -notmatch '(?m)^LDT=0000 ') { throw 'Inherited LDTR remains active.' }
+        foreach ($segment in @('FS', 'GS')) {
+            if ($registers -notmatch ('(?m)^' + $segment + ' =[0-9A-Fa-f]{4} 0000000000000000 ')) { throw ('Nonzero ' + $segment + ' base after user preflight.') }
+        }
     }
     if ($registers -notmatch 'RFL=([0-9A-Fa-f]+)') { throw 'Cannot inspect bootstrap CPU flags.' }
     if (([Convert]::ToUInt64($Matches[1], 16) -band 0x200) -ne 0) {
