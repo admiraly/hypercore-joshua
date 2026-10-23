@@ -173,7 +173,7 @@ foreach ($entries in @($efi, $boot)) {
     }
 }
 $file = $boot['BOOTX64 EFI']
-Assert-True ($file.Attributes -eq 0x20 -and $file.Size -ge 1 -and $file.Size -le 262144) 'BOOTX64.EFI is a file between 1 byte and 256 KiB'
+Assert-True ($file.Attributes -eq 0x20 -and $file.Size -ge 1 -and $file.Size -le 2097152) 'BOOTX64.EFI is a file between 1 byte and 2 MiB'
 $fileChain = @(Read-FatChain $file.Cluster ([int][Math]::Ceiling($file.Size / [double]$clusterSize)))
 $extracted = New-Object byte[] $file.Size
 $copied = 0

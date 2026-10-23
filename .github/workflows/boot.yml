@@ -26,6 +26,22 @@ jobs:
         run: ./tools/Test-Qemu.ps1 -BootMedia Fat
       - name: Boot without audio hardware
         run: ./tools/Test-Qemu.ps1 -NoAudio
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Render Piper announcement on the host
+        run: |
+          python -m pip install piper-tts==1.8.0 onnxruntime==1.31.0
+          python tools/Render-Piper.py
+      - name: Build and reproduce Piper test ISO
+        run: ./tests/Test-Reproducibility.ps1 -PiperPcmPath out/piper/joshua-announcement.pcm
+      - name: Verify embedded Piper bytes against preview
+        run: python tests/Test-Piper.py
+      - name: Boot Piper ISO, FAT and no-audio paths
+        run: |
+          ./tools/Test-Qemu.ps1
+          ./tools/Test-Qemu.ps1 -BootMedia Fat
+          ./tools/Test-Qemu.ps1 -NoAudio
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -37,3 +53,6 @@ jobs:
             out/*.log
             out/*.png
             out/*.wav
+            out/piper/*.wav
+            out/piper/*.json
+            out/piper/*.md
