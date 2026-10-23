@@ -5,7 +5,8 @@ is `JOSHUA_OS_HyperCore_Technical_Spec_v0.1.md`; it is not a list of implemented
 
 ## Current implementation
 
-This is an **M0 foundation and M1 boot prototype**, not a usable operating system.
+This is an **M0/M1 boot prototype with experimental M2 memory bring-up**,
+not a usable operating system.
 The unsigned x86-64 UEFI application is authored entirely in NASM Assembly. It
 provides firmware diagnostics, captures the graphics framebuffer and memory map,
 exits boot services, and enters an embedded HyperCore stub with its own stack,
@@ -13,8 +14,10 @@ GDT, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
 It validates the final memory map and records conservative memory candidates
 excluding the loaded image, page zero, framebuffer and inventoried active paging
 structures. A bounded physical frame allocator tracks exact ownership, zeroes
-allocations and checks allocate/write/free during boot. The kernel still retains
-firmware page tables.
+allocations and checks allocate/write/free during boot. It builds and activates
+owned page tables with supervisor-only W^X/NX permissions and an unmapped stack
+guard, preserving inherited cache selectors. These paths are QEMU-tested; the
+new memory implementation has no physical qualification.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
@@ -60,8 +63,8 @@ for proposed ownership and paging invariants.
 M0 remains open pending full contract review and exact NVMe/NIC/GPU inventory.
 MIT licensing is selected and the first Latitude boot is owner-confirmed.
 M1 remains open until repeated Latitude boots and failure-path evidence are
-recorded. M2 will replace inherited firmware page tables
-with owned memory management before any claims of process isolation.
+recorded. M2 ownership, mapping lifecycle, stress and hardware qualification
+remain open; the first owned-paging transition does not establish process isolation.
 
 ## Collaboration and license
 

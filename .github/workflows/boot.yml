@@ -64,3 +64,6 @@ jobs:
       - name: Exercise frame ownership and allocation oracle
         shell: pwsh
         run: ./tests/Test-Frames.ps1
+      - name: Exercise owned mapping and inherited-cache fixtures
+        shell: pwsh
+        run: ./tests/Test-OwnedMap.ps1

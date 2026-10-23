@@ -70,7 +70,7 @@ kernel_entry:
     jne kernel_fault
     cmp dword [r12+BOOT_INFO.size],BOOT_INFO_V1_size
     jne kernel_fault
-%ifdef JOSHUA_FAULT_TEST
+%if JOSHUA_FAULT_TEST = 1 || JOSHUA_FAULT_TEST = 2
     lea rcx,[debug_fixture_rip]
     call debug_write
     lea rcx,[fault_test_instruction]
@@ -197,6 +197,56 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    call owned_paging_start
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_owned]
+    call debug_write
+    mov rcx,[owned_paging+OWNED_PAGING.root]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+%if JOSHUA_FAULT_TEST >= 3
+%if JOSHUA_FAULT_TEST = 4
+    lea rcx,[frame_allocator]
+    mov edx,1
+    mov r8d,0x4e585453
+    mov r9d,1
+    call frame_alloc
+    test eax,eax
+    jnz kernel_fault
+    mov byte [rdx],0xc3
+    mov r14,rdx
+    mov r15,rdx
+%elif JOSHUA_FAULT_TEST = 5
+    lea r14,[kernel_stack_guard]
+    lea r15,[owned_fault_instruction]
+%else
+    lea r14,[owned_fault_instruction]
+    lea r15,[owned_fault_instruction]
+%endif
+    lea rcx,[debug_fixture_rip]
+    call debug_write
+    mov rcx,r15
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+    lea rcx,[debug_fixture_target]
+    call debug_write
+    mov rcx,r14
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+owned_fault_instruction:
+%if JOSHUA_FAULT_TEST = 4
+    call r14
+%elif JOSHUA_FAULT_TEST = 5
+    mov rax,[kernel_stack_guard]
+%else
+    mov byte [owned_fault_instruction],0x90
+%endif
+    jmp kernel_fault
+%endif
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx

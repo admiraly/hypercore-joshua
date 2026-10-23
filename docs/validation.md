@@ -160,3 +160,37 @@ a host-test determinism adjustment, not a runtime workaround. Full 4,096-live-re
 load, SIMD sentinels, SMP, fault recovery and new physical qualification are not
 claimed. This is a bounded BSP allocator under inherited paging; M2 and process
 isolation remain incomplete. Remote CI for this slice is pending publication.
+
+## M2c initial owned paging transition
+
+On the same recorded Linux host/toolchain/QEMU 10.2.2/OVMF pair:
+
+- `Test-OwnedMap.ps1` passed 1,061 checks, independently decoding every owned
+  table/leaf for tracked-frame ownership, identity, supervisor/W^X flags, PAT
+  encoding, chunks/fallback and poisoned failures. Constant and mixed inherited
+  4-KiB selectors did not promote across old leaf boundaries; large leaves were
+  retained/subdivided only. The host suite does not execute privileged activation.
+- Normal ISO and FAT boots passed with captured CR3 0x1F401000 and distinct owned
+  CR3 0x1000. CPU inspection verified WP/NXE, disabled PCID/global policy and the
+  halted ring-0/IF-clear state. Framebuffer pixel checks passed; the normal ISO
+  PNG was visually inspected with the owned-paging status line.
+- Five isolated exception images passed: Ud2/Gp normalization before memory
+  bring-up and post-switch #PF text write (error3), NX execution (error0x11),
+  guard read (error0). Each #PF matched exact expected RIP and CR2; the NX target
+  was allocated/written under the owned root.
+- Build/reproducibility passed exact PE checks, 20,710 media assertions, identical
+  artifacts, relative invocation and corrupted-PE rejection. All prior frame
+  (6,297), reservation (6,425), paging (250) and map (24) suites passed again.
+- Independent design reviews initially blocked forced cache-type conversion and
+  unproven leaf promotion. Responses preserve inherited PAT selectors and unchanged
+  MTRR effects, prohibit promotion across old boundaries, and verify whole-chunk
+  data/walk cache compatibility. Follow-up design review resolved the P1.
+- Implementation review found no actionable runtime issues and a stale CR3 evidence
+  contract. That contract was corrected; follow-up review resolved it without new
+  findings. Reviews were read-only and did not independently rerun tests.
+
+No effective-WB claim follows from PAT selection alone. No physical qualification,
+initial-PCID-enabled firmware, unusual PAT/MTRR layouts, SMP, TSS/IST, damaged-stack
+recovery or process isolation is established. Immutable assets still share RW/NX
+data storage; dedicated read-only constants and mapping lifecycle remain open.
+Old firmware memory/tables remain reserved. CI for this revision is pending.

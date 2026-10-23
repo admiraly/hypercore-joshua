@@ -55,7 +55,7 @@ endstruc
 %define PE_TEXT_SIZE 0x4000
 %define PE_DATA_RVA 0x5000
 %define PE_BSS_RVA 0x6000
-%define PE_BSS_SIZE 0xb9000
+%define PE_BSS_SIZE 0xba000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192
@@ -101,6 +101,26 @@ struc FRAME_ALLOCATOR
  .capacity: resq 1
  .total_pages: resq 1
  .free_pages: resq 1
+endstruc
+
+%define FRAME_OWNER_PAGING 0x50414745
+%define PTE_NX 0x8000000000000000
+struc OWNED_PAGING
+ .allocator: resq 1
+ .root: resq 1
+ .table_count: resq 1
+ .failed: resq 1
+ .physical_limit: resq 1
+ .pool_next: resq 1
+ .pool_end: resq 1
+ .old_root: resq 1
+ .image_base: resq 1
+ .image_end: resq 1
+ .guard: resq 1
+ .framebuffer_start: resq 1
+ .framebuffer_end: resq 1
+ .pat: resq 1
+ .ready: resq 1
 endstruc
 
 %define BOOT_MAGIC 0x004F464E4948534A

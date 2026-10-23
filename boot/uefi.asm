@@ -1,6 +1,9 @@
 bits 64
 default rel
 %include 'sdk/boot.inc'
+%ifndef JOSHUA_FAULT_TEST
+ %define JOSHUA_FAULT_TEST 0
+%endif
 
 section .headers start=0 vstart=0
 image_start:
@@ -570,6 +573,8 @@ stop_cpu:
 %include 'kernel/mm/paging-inventory.inc'
 %include 'kernel/mm/frames.inc'
 %include 'kernel/mm/frame-check.inc'
+%include 'kernel/mm/owned-map.inc'
+%include 'kernel/mm/owned-start.inc'
 times PE_TEXT_SIZE-($-$$) db 0
 
 section .data start=PE_DATA_RVA vstart=PE_DATA_RVA
@@ -640,6 +645,7 @@ times 0x1000-($-$$) db 0
 section .bss nobits vstart=PE_BSS_RVA
 memory_map: resb MAP_CAPACITY
 kernel_idt: resb 4096
+kernel_stack_guard: resb 4096
 kernel_stack: resb 65536
 kernel_stack_top:
 kernel_gdt: resb 65536
