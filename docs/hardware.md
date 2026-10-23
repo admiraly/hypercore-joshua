@@ -44,3 +44,10 @@ through Ventoy flawlessly and reached the intended native checkpoint. No photo,
 exact Ventoy version/mode, display resolution, independently checked image hash,
 or repeated cold-boot count has yet been supplied. This is a successful reported
 bring-up, not a broad hardware-compatibility or reliability claim.
+
+## Collecting the missing reference inventory
+
+Use [reference-evidence.md](reference-evidence.md) for the read-only Windows
+collector and image-bound manual trial template. Its output is unverified and
+ignored locally; it does not fill the pending fields above without actual capture
+and review, associate disk models with controllers, or establish compatibility.

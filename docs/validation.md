@@ -1018,3 +1018,37 @@ failure-path qualification, milestone exits and maintainer decisions open. No so
 or image runtime changes occurred; the ordinary ISO still matches frozen23a66e3.
 Earlier runtime regression/reproducibility records remain inherited, not newly run
 results for this host-only slice. No release/milestone/issue completion or merge.
+
+## Reference evidence tooling — 23 October 2026
+
+Issue #42 adds host-only Windows CIM projection and an ISO-bound manual trial
+record. Linux PowerShell7.4.6 passed45 synthetic projection/privacy/hash-binding
+checks; PowerShell parser checks and workflow YAML parsing passed. These tests
+exercise fabricated inventory and a five-byte synthetic ISO, not boot media or
+physical hardware. The Windows5.1 provider smoke is wired in scoped CI but has
+not run locally. No real Latitude inventory, cold boot, input or halt result was
+collected; every generated trial begins NotRun/Unknown with qualification
+NotEstablished. No runtime/image changes occurred, so earlier runtime build,
+reproducibility and QEMU records remain inherited rather than newly run here.
+
+Independent source review found unrestricted output/network paths and nested
+writer leaf objects could bypass the privacy boundary. The response constrains
+output below ignored out/reference-evidence, rejects network/reparse paths, and
+validates scalar/array leaves and missing-evidence values before serialization.
+Eight added Linux rejection checks passed, including nested private objects and
+symlink redirects. Windows mapped-drive/junction execution remains unverified.
+
+## Reference-evidence Windows cleanup response — 2026-10-23
+
+PR #43's Windows provider job on9279394 failed in the junction fixture's
+Remove-Item cleanup with a NullReferenceException, before the CIM provider smoke.
+The fixture now uses nonrecursive Directory.Delete for the Windows junction
+entry, retaining Remove-Item for the Linux symlink. Two added assertions require
+the redirect to be absent and its target directory/ISO hash to remain intact.
+Linux PowerShell7.4.6 passes47 synthetic projection/privacy/binding checks and
+redirect cleanup. This does not reproduce Windows junction semantics or provider
+execution; the new-head Windows CI rerun remains required. Production collector
+and runtime code are unchanged, and no hardware/boot qualification is inferred.
+
+Independent source review of the cleanup response found no actionable findings;
+review did not reproduce Linux checks, Windows behavior or the CI failure.
