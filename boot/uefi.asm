@@ -572,6 +572,8 @@ stop_cpu:
 
 %include 'kernel/arch/x86_64/entry.inc'
 %include 'kernel/arch/x86_64/descriptors.inc'
+%include 'kernel/arch/x86_64/acpi.inc'
+%include 'kernel/arch/x86_64/acpi-start.inc'
 %include 'kernel/mm/map.inc'
 %include 'kernel/mm/ranges.inc'
 %include 'kernel/mm/candidates.inc'
@@ -677,6 +679,7 @@ machine_check_top:
 exception_guard: resb 4096
 exception_stack: resb 16384
 exception_top:
+acpi_cpu_records: resb 256*16
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

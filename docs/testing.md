@@ -149,3 +149,13 @@ guard decisions and eight integer nonvolatile sentinels across all four helpers.
 It does not execute LTR or exception delivery: normal ISO/FAT and nine fault QEMU
 runs cover target evidence. TR cached attributes are not used as the memory busy-bit
 check; the kernel checks the descriptor after LTR before announcing TSS_READY.
+
+`tests/Test-Acpi.ps1` calls the exact Assembly range reader and RSDP/XSDT/MADT parser
+through native host wrappers and owned synthetic identity tables. Its 1,131 cases
+include 500 seeded CPU-list oracles, extension/unknown records, all checksums, full
+64-KiB MADT, adjacent coverage, RP/wrong types/unmapped or wrong/user translations,
+nonexistent pointers, duplicate/missing topology, capacities and eight integer ABI
+sentinels. Snapshots require no source-table writes and cleared failure readiness.
+It does not simulate away production read checks. Normal QEMU ISO/FAT additionally
+requires real OVMF BSP0/two enabled records and a nonzero local-APIC base; controller
+access, AP startup, physical ACPI compatibility and interrupt delivery remain untested.

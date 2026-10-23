@@ -281,3 +281,36 @@ to identify a restart instruction; guard CR2 is profile evidence only.
 No handler returns. Same-IST nesting can overwrite earlier frames; independent
 stacks do not establish general reentrancy, NMI/MC recovery, early-transition
 containment or physical qualification. See exception-stacks-design.md.
+
+## Validated ACPI topology discovery
+
+After owned paging/lifecycle checks, `acpi_topology_start` identifies the BSP via
+CPUID0Bh EDX when available/nonempty, otherwise CPUID1 EBX[31:24]. Leaf1 APIC support
+is required. No APIC mode/base MSR, MMIO, PIC ports or interrupt enable is changed.
+`acpi_topology_build(RCX=trusted ACPI_CONTEXT)` consumes boot-info/map/root pointers,
+a caller-owned 256-record array/capacity and 32-bit BSP ID. No boot-info ABI changes.
+Each internal 16-byte CPU record stores APIC ID, ACPI UID, original flags and kind.
+
+`acpi_readable(RCX=context,RDX=address,R8=length)` accepts 1..65,536 bytes only when
+nonzero, no overflow, inside physical/low-canonical bounds, fully covered by type9/
+10 map descriptors without RP, and present supervisor identity translations at every
+page. Headers are proved before reading lengths; full declared ranges are proved
+before checksumming/parsing. The map/root/context are trusted earlier-stage inputs.
+
+The parser requires ACPI2+ RSDP length36..4096 with both checksums and an XSDT.
+XSDT entries are eight-byte/divisible and capped at256; each child header is proved
+before signature inspection. Exactly one checksummed MADT length44..65536 is consumed.
+Unrelated child payloads/checksums are not consumed or certified. MADT records must
+fit enclosing bounds with length>=2; known minimum lengths apply, extensions and
+unknown records are skipped. Active type0/type9 CPU IDs/UIDs must be unique and
+one enabled record must match BSP. Online-capable-only records do not authorize AP
+startup. One optional type5 address override replaces the header local-APIC base;
+its final page must be aligned/nonzero/in-range. PCAT_COMPAT is recorded only.
+
+EAX=0 publishes ACPI_READY_MAGIC. EAX=1 unreadable, 2 root/signature, 3 checksum,
+4 layout, 5 topology, 6 capacity; start also returns7 for missing CPUID/APIC support.
+Failure clears ready/count/enabled; staged output is not consumable. Helpers preserve
+all eight firmware integer nonvolatile registers and perform no firmware calls/SIMD.
+Entry prints ACPI_FAILURE CODE before stop, or ACPI_TOPOLOGY_READY with BSP, CPU and
+enabled counts and local APIC base before the normal checkpoint. No controller
+programming, IOAPIC/ISO/NMI routing, AML or physical qualification is implied.

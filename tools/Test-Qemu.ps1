@@ -73,7 +73,7 @@ try {
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
     $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')
-    if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK') }
+    if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY') }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
@@ -100,6 +100,9 @@ try {
     }
     Invoke-Qmp 'qmp_capabilities' | Out-Null
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
+    if ($ownedExpected) {
+        if ($log -notmatch 'JOSHUA:ACPI_TOPOLOGY_READY BSP=0000000000000000 CPUS=0000000000000002 ENABLED=0000000000000002 LAPIC=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Unexpected QEMU BSP/ACPI topology.' }
+    }
     if ($ExpectedFault -eq 'None') {
         if ($log -notmatch 'JOSHUA:MEMORY_CANDIDATES_READY COUNT=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Expected nonempty memory candidates on the QEMU profile.' }
         if ($log -notmatch 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Allocator checkpoint missing or exhausted.' }

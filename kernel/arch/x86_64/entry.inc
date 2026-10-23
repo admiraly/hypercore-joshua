@@ -257,6 +257,11 @@ fault_test_instruction:
     jnz kernel_fault
     lea rcx,[debug_lifecycle]
     call debug_write
+    mov rcx,r12
+    lea rdx,[owned_paging]
+    call acpi_topology_start
+    test eax,eax
+    jnz kernel_fault
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]

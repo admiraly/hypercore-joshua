@@ -172,3 +172,12 @@ See [mapping lifecycle design](mapping-lifecycle-design.md) and the boot ABI.
 The broad low identity map still exists. This is neither ring-3 isolation nor a
 complete general virtual-memory manager. SMP shootdowns, page-table reclamation,
 separate address spaces, executable loading and recoverable faults remain later work.
+
+## ACPI table read boundary
+
+Topology discovery reads retained ACPI type9/type10 memory only after complete map
+coverage and owned supervisor identity translation checks. It proves headers before
+length reads and full bounded ranges before checksums or parsing. Adjacent ACPI
+descriptors may cover a range; RP, unknown classes, unproven pages and pointer/length
+overflow stop discovery. ACPI storage stays reserved. Parser success grants no MMIO
+mapping, controller programming or firmware-memory reclamation authority.

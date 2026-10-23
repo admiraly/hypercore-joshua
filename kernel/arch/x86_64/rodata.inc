@@ -79,3 +79,8 @@ debug_base: db ' BASE=',0
 %if JOSHUA_FAULT_TEST
 debug_fixture_old_rsp: db 'JOSHUA:FIXTURE_OLD_RSP=',0
 %endif
+debug_acpi_ready: db 'JOSHUA:ACPI_TOPOLOGY_READY BSP=',0
+debug_acpi_cpus: db ' CPUS=',0
+debug_acpi_enabled: db ' ENABLED=',0
+debug_acpi_lapic: db ' LAPIC=',0
+debug_acpi_failure: db 'JOSHUA:ACPI_FAILURE CODE=',0
