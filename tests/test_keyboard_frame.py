@@ -37,12 +37,18 @@ class Fixture:
         check(call(C.addressof(self.ctx),address,root,0)==expected,'policy/ABI')
         check(bytes(self.ctx)==ctx_before and bytes(self.frame)==frame_before,'read-only policy')
 
-for phase in [1,2]:
-    for flags in [0x202,0x602]:
-        f=Fixture();f.ctx.phase=phase;f.ctx.flags=flags;f.reset_frame();f.run()
+for phase,flags in [(1,0x202),(1,0x602),(2,0x202)]:
+    for rf in [0,0x10000]:
+        f=Fixture();f.ctx.phase=phase;f.ctx.flags=flags;f.reset_frame();f.frame[21]|=rf;f.run()
         for offset in range(19,24):
             for bit in range(64):
-                f=Fixture();f.ctx.phase=phase;f.ctx.flags=flags;f.reset_frame();f.frame[offset]^=1<<bit;f.run(1)
+                f=Fixture();f.ctx.phase=phase;f.ctx.flags=flags;f.reset_frame();f.frame[21]|=rf
+                f.frame[offset]^=1<<bit;f.run(0 if offset==21 and bit==16 else 1)
+# Metadata never grants RF; draining requires normalized202h even after a DF wait.
+for phase in [1,2]:
+    for flags in [0x10202,0x10602,0x246,0x2000000000202]:
+        f=Fixture();f.ctx.phase=phase;f.ctx.flags=flags;f.reset_frame();f.run(1)
+f=Fixture();f.ctx.phase=2;f.ctx.flags=0x602;f.reset_frame();f.run(1)
 for name,values in {'ready':[0,1], 'phase':[0,3,4,(1<<64)-1], 'root':[0,1,0x2001],
     'low':[0,1], 'high':[0,1], 'wait_rsp':[0,1], 'code':[0,1,0x5b,0x5c,0x10000,0x60],
     'data':[0,1,0x63,0x64,0x10000,0x58], 'flags':[0,2,0x200,0x203,0x246,0x402,0x702,0x240202],
@@ -59,7 +65,7 @@ for phase in [1,2]:
 # Random exact old-RSP/frame relationships, including old_RSP == high and 8-byte skew.
 rng=random.Random(38)
 for _ in range(500):
-    f=Fixture();f.ctx.phase=rng.choice([1,2]);f.ctx.flags=rng.choice([0x202,0x602])
+    f=Fixture();f.ctx.phase=rng.choice([1,2]);f.ctx.flags=rng.choice([0x202,0x602]) if f.ctx.phase==1 else 0x202
     f.ctx.wait_rsp=f.ctx.high-rng.randrange(0,1024)*8;f.reset_frame();f.run()
     f.frame[22]^=8;f.run(1)
 # Insufficient helper reserve rejects before frame access, even with plausible RIP.

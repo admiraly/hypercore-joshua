@@ -572,3 +572,42 @@ helper and its build/CI/documentation integration without running tests. Windows
 actual IRQ/IRETQ behavior, nested helper-stack accounting, input-window timer/drain
 retirement and complete live-stage regressions remain open. No real key delivery,
 complete driver, shell, physical compatibility or milestone completion is claimed.
+
+
+## Experimental live keyboard window (issue #38, incomplete qualification)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: current-source Text, Df and
+Missing each pass ISO/FAT; Text additionally passes forced x2APIC ISO/FAT with
+actual mode2 evidence. Text/Df snapshots contain ordered events97,65,66,3,256,8,13
+(`a`, `A`, `B`, Ctrl-C, Left, Backspace, Enter),23 actual keyboard IRQs with23 EOIs,
+and60–61 timer deliveries/EOIs. Both Missing snapshots have no input, exactly16
+timer deliveries/EOIs and terminal deadline status1. All eight windows finish phase3
+with controller stage11/scanning off, valid empty queue indices, the physical
+IOAPIC low entry masked/vector44 and actual LAPIC masked/vector40, zero timer counts
+and empty ISR/IRR. Active DF fixtures capture402h after CLI; all15 GPR sentinels are
+checked immediately after each active IRETQ. These passes exercise real emulated
+PS2/IOAPIC/IRQ input, not direct host calls into the decoder. None exercised a
+nonempty drain window; forced pending-delivery tests remain mandatory.
+
+Two early strict-frame Missing invocations stopped before any timer EOI because
+TCG saved RFLAGS10202h (architectural RF), despite matching root/location/selectors/
+oldRSP/RIP. They remain failed invocations. Reviewed refinement permits only RF in
+addition to the exact hardware flags, preserves it for IRETQ, prohibits RF in
+metadata and normalizes/checks metadata202h before drain. New host frame fixtures
+pass5,996 assertions across RF absent/present and all other flag-bit corruptions.
+
+Decoder180,744, authority1,890 and modeled-controller503 host assertions pass again.
+Shared actual-target LAPIC/queue predicates pass8,338 cumulative mutation checks.
+Normal images still stop at masked preparation: current normal ISO/FAT private-root,
+ELF and keyboard-prepared snapshot checks pass. Build/media20,790 assertions,
+normal two-build EFI/FAT/ISO/manifest reproducibility and corrupt-PE rejection pass.
+
+Independent source review found no additional runtime defect, with maximum200-byte
+helper depth below the saved frame. Findings were addressed: terminal pendingIRQ44
+must not recollect/disable twice or allow deadline overwrite; strict drain metadata;
+independent actual LAPIC retirement; queue-index invariants; immediate Windows
+native-Python CI exit checking; normal-versus-fixture documentation. Reviewers ran
+no tests. Windows CI and complete current-source regressions remain pending.
+Overflow/reentry, forced pending40/44/both, drain exhaustion and invalid/out-of-window
+frame target gates remain open. No complete driver, shell, physical compatibility,
+issue/milestone completion or merge is claimed. Speech work remains separate.

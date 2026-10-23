@@ -31,7 +31,9 @@ validation; local campaigns pass and Windows CI qualification remains open. This
 A strict embedded ELF64 profile now loads one RX code page and one RW/NX data/BSS
 page into those private contexts; it is not a general ELF loader.
 A bounded i8042 preparation checkpoint now validates firmware authority and configures
-the keyboard with scanning disabled and its IRQ masked; live input is unfinished.
+the keyboard with scanning disabled and its IRQ masked. Explicit experimental
+fixtures open a bounded PS2 IRQ input window with ordered-event, DF and deadline
+checks; live lifecycle qualification and the interactive shell remain unfinished.
 There is no general task scheduler, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 

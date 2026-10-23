@@ -86,16 +86,18 @@ keyboard_frame_check:
     ja .bad
     cmp [rdx+184],r9
     jne .bad
-    mov eax,0x202
-    cmp qword [rcx+KEYBOARD_WINDOW.phase],2
-    je .flags
     mov rax,[rcx+KEYBOARD_WINDOW.flags]
-    cmp rax,0x202
-    je .flags
+    cmp qword [rcx+KEYBOARD_WINDOW.phase],2
+    je .drain_flags
     cmp rax,0x602
+    je .flags
+.drain_flags:
+    cmp rax,0x202
     jne .bad
 .flags:
-    cmp [rdx+168],rax
+    mov r9,[rdx+168]
+    and r9,~0x10000             ; architectural RF only; preserve hardware frame
+    cmp r9,rax
     jne .bad
     xor eax,eax
     ret

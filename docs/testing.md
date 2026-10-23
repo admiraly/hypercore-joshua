@@ -268,14 +268,28 @@ These counts are cumulative assertions, not independent scenarios or real IRQ ev
 
 Normal QEMU ISO/FAT now require KEYBOARD_PREPARED and capture the actual controller,
 authority and decoder records. Snapshot mutations include scanning/IRQ12/GSI/modifier
-corruption. The selected IOAPIC route stays masked; no QMP key injection or input
-window has been implemented yet. Full user/fault/APIC regressions and real delivery/
+corruption. In normal images the selected IOAPIC route stays masked. Explicit
+KeyboardTest images exercise the input window and QMP key injection described below. Full user/fault/APIC regressions and real delivery/
 retirement negatives remain mandatory when the live IRQ stage is wired.
 
 The Linux `Test-KeyboardFrame.ps1` suite executes the actual read-only IRQ-frame
 checker with eight integer nonvolatile sentinels. It checks exact frame location,
 4-KiB helper reserve, current root, phase-specific continuation, CS/SS, old RSP and
-normalized flags, including the explicit DF variant. Invalid frame pointers are
-rejected before dereference, including a protected unreadable page. Its 4,694
+normalized metadata flags, optional architectural RF in hardware frames, and the
+explicit DF variant. Invalid frame pointers are
+rejected before dereference, including a protected unreadable page. Its 5,996
 cumulative checks are host policy evidence; they do not establish actual IRQ or
-IRETQ behavior. The checker is assembled into the image but has no live call site yet.
+IRETQ behavior. Explicit keyboard fixtures call it before any EOI or return. Normal boot still
+leaves the keyboard prepared and masked.
+
+
+Experimental live fixtures use separate outputs: build with `-KeyboardTest Text`,
+`Df` or `Missing`, then run `tools/Test-KeyboardRuntime.ps1 -OutputDirectory <path>`
+(and `-BootMedia Fat`). Text/Df inject actual QMP PS2 key events and require ordered
+`a`, `A`, `B`, Ctrl-C, Left, Backspace and Enter. Missing injects no key and requires
+exactly16 deadline deliveries/EOIs before quiescence. Physical QMP capture checks
+window/controller/decoder storage, queue index invariants, the masked IOAPIC low
+entry and actual LAPIC timer mask/counts/empty ISR+IRR. Post-CLI DF flags are captured
+from memory. The shared target predicates have8,338 cumulative mutation checks.
+This target suite complements rather than replaces the private-root/user/fault
+campaign. Forced pending/drain/overflow and invalid-frame negatives remain open.

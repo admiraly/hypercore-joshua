@@ -534,6 +534,11 @@ owned_fault_instruction:
     mov edx,280
     mov r8d,0x00e0e0e0
     call draw_line
+%if JOSHUA_KEYBOARD_TEST != 0
+    call keyboard_window_run
+    test eax,eax
+    jnz kernel_fault
+%endif
     lea rcx,[debug_halted]
     call debug_write
     jmp stop_cpu

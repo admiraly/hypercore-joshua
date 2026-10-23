@@ -5,6 +5,9 @@ default rel
 %include 'sdk/user.inc'
 %include 'sdk/elf.inc'
 %include 'sdk/keyboard.inc'
+%ifndef JOSHUA_KEYBOARD_TEST
+ %define JOSHUA_KEYBOARD_TEST 0
+%endif
 %ifndef JOSHUA_ELF_TEST
  %define JOSHUA_ELF_TEST 0
 %endif
@@ -638,6 +641,9 @@ stop_cpu:
 %include 'kernel/input/ports.inc'
 %include 'kernel/input/start.inc'
 %include 'kernel/input/frame.inc'
+%if JOSHUA_KEYBOARD_TEST != 0
+%include 'kernel/input/window.inc'
+%endif
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -709,6 +715,10 @@ debug_map_failure: db 'JOSHUA:BOOT_FAILURE',13,10,0
 %include 'kernel/input/keymap.inc'
 times 0x1000-($-$$) db 0
 %include 'kernel/user/elf-image.inc'
+debug_keyboard_window: db 'JOSHUA:KEYBOARD_WINDOW ADDRESS=',0
+debug_keyboard_decoder: db ' DECODER=',0
+debug_keyboard_controller: db ' CONTROLLER=',0
+debug_keyboard_done: db 'JOSHUA:KEYBOARD_WINDOW_DONE',13,10,0
 times PE_RODATA_SIZE-($-$$) db 0
 
 section .reloc start=PE_BSS_RVA vstart=PE_RELOC_RVA
@@ -766,6 +776,8 @@ keyboard_io_window: resq 1
 keyboard_io_selector: resq 1
 keyboard_saved_low: resd 1
 keyboard_saved_high: resd 1
+keyboard_window: resb KEYBOARD_WINDOW_size
+keyboard_return_flags: resq 1
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384

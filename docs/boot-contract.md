@@ -501,3 +501,24 @@ The controller/authority/decoder occupy previously reserved context-metadata sto
 Future live input must implement the reviewed vector44h frame/EOI contract and
 joint40h/44h deadline/drain ownership before using the queue. No shell input or
 physical keyboard compatibility is established by preparation alone.
+
+
+### Experimental explicit keyboard window
+
+Only KeyboardTest Text/Df/Missing images open the bounded owned input window after
+trusted/private contexts finish. IRQ44 and deadline40 use the shared192-byte saved
+frame and Microsoft integer ABI, with exact frame location, owned root/CS/SS/oldRSP,
+phase-specific RIP and4-KiB helper reserve checked before frame use/EOI/IRETQ.
+Metadata flags are202h (or602h for active Df); drain sets/checks202h. Hardware RF may
+additionally be set and remains unchanged for IRETQ; no other saved flag is accepted.
+All15 GPRs and post-CLI2h/402h flags are checked around each active wait. Handler
+helpers consume at most200 bytes below the frame. Partial failures stop IF0.
+
+The active consumer stores at most64 events. Text/Df have a512-delivery deadline;
+Missing requires16 deliveries without input. Cleanup stops/masks40, masks44,
+disables controller IRQ generation/first interface, flushes at most32 bytes and
+retains joint drain ownership until actual ISR/IRR are empty (maximum1024 windows).
+A terminal overflow failure suppresses repeated collection/disable and deadline
+failure overwrite if another owned interrupt was already pending. Stage3 rejects
+subsequent keyboard-window timer/keyboard entries. This does not establish the
+still-pending overflow, forced-pending, drain-exhaustion or invalid-frame target gates.

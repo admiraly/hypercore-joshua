@@ -165,7 +165,9 @@ keyboard_controller_enable:
     pop rbx
     ret
 
-; Caller stops deadline timer/masks IOAPIC before this IF0 terminal operation.
+; Caller stops deadline timer/masks IOAPIC before normal IF0 retirement.
+; Emergency ISR use instead requires proved active window plus actual ISR44 ownership;
+; that caller marks failure, sends EOI once and resumes only the cleanup continuation.
 ; No readback transaction after F4. Ready is retired; restart requires fresh proof.
 keyboard_controller_disable:
     push rbx

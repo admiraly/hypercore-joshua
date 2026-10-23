@@ -1,6 +1,6 @@
 # Owned PS/2 keyboard foundation (issue #38)
 
-Status: proposed driver design, not runtime evidence. The first input driver targets
+Status: experimental implementation contract; runtime evidence is in docs/validation.md. The first input driver targets
 an explicit ACPI PC/i8042 profile and QEMU q35, not arbitrary USB/I2C/Latitude input.
 It advances the real interactive-shell roadmap; firmware input and host terminal
 emulation are not substitutes. No shell, USB stack or physical qualification is claimed.
@@ -106,8 +106,9 @@ After that proof, require saved oldRSP equals recorded_wait_RSP, SS equals owned
 kernel data, CS equals owned kernel code, and RIP is exactly keyboard_wait_close
 (active phase) or keyboard_drain_close (draining phase). Each owned loop normalizes
 IF0 flags immediately before STI;HLT;CLI or STI;NOP;CLI, so saved RFLAGS must be
-exactly202h, or602h in the explicit DF preservation fixture only. No RF/IOPL/NT/VM/
-AC/ID or other flag is accepted. The wait stack position is frozen across each
+exactly202h, or602h in the explicit DF preservation fixture only. Only architectural RF may additionally appear in the hardware-saved image; it is
+preserved untouched for IRETQ. No IOPL/NT/VM/AC/ID or other flag is accepted.
+Metadata flags stay exactly202h/602h while active and become202h before drain. The wait stack position is frozen across each
 interrupt-enabled interval; consumer/helper calls occur only after CLI/CLD. Check
 invalid RIP/SS/RFLAGS/oldRSP/frame-address/CR3 and out-of-phase fixtures before EOI
 or IRETQ. Bound all nested handler/helper stack consumption below4KiB by static
@@ -205,8 +206,54 @@ behavior. Integration and the full target/negative/drain campaign remain open.
 
 The exact frame helper now has a 288-byte trusted KEYBOARD_WINDOW metadata contract.
 It accepts only active/draining phases and the exact 192-byte frame derived from
-recorded wait RSP. Read-only host fixtures cover 4,694 cumulative assertions,
+recorded wait RSP. Read-only host fixtures now cover 5,996 cumulative assertions,
 including protected unreadable-frame rejection and eight integer ABI sentinels.
 Independent source review found no actionable findings under trusted metadata and
 proved-readable-stack preconditions. No privileged adapter, actual interrupt return,
 helper-stack audit or deadline retirement is established by this component review.
+
+
+## Live-window RF refinement
+
+The first TCG deadline run stopped before EOI because the exact hardware frame
+contained RFLAGS10202h instead of202h. Its location, root, selectors, old RSP and
+wait continuation matched. The refined policy retains expected metadata202h/602h
+(active) or202h (drain), but permits hardware RF bit16 in addition; no other flag
+may differ. The frame stays unchanged for IRETQ. RF controls instruction-breakpoint
+restart rather than privilege; this is the same hardware-image distinction already
+used by trusted kernel workers. PUSHFQ's RF-cleared image still permits exact2h/402h
+post-CLI register/DF checks. See Intel SDM Vol3A6.12.1.3 and Vol3B18.3.1.1:
+https://cdrdv2-public.intel.com/812386/253668-sdm-vol-3a.pdf
+https://cdrdv2-public.intel.com/671427/253669-sdm-vol-3b.pdf
+Design review accepted RF-only hardware tolerance. Its two implementation findings
+are addressed: drain metadata becomes202h and is checked, and an already-pending
+IRQ44 after terminal failure only validates actual ownership and EOIs, without
+collecting or disabling twice. Deadline handling preserves the original failure.
+Live overflow/pending-reentry and full drain qualification remain required.
+
+Normal controller disable requires the deadline stopped and IOAPIC route masked.
+Emergency ISR disable instead requires the exact active frame and actual ISR44
+ownership proved, then failure publication before the same bounded write-only
+IRQ-off/AD operation. It performs no IOAPIC access; one EOI follows successful
+quiescence, and only the exact wait CLI/cleanup continuation may resume. Failure
+stops without EOI/return. A pending owned timer may still return through the same
+wait boundary until cleanup stops it; no new input source is re-enabled.
+
+
+## First live adapter checkpoint
+
+Explicit Text/Df/Missing images now install IRQ44 after private processes finish,
+prove unchanged masked route state, publish owned window metadata, complete F4,
+unmask the fixed physical BSP route and stage OBF before STI. Normal images retain
+the masked prepared checkpoint. A 512-delivery deadline bounds Text/Df; Missing
+uses16. Consumer operations run IF0 and wait through normalized STI/HLT/CLI with
+all15 GPR sentinels and exact post-CLI DF checks. Return only follows timer stop,
+route mask, write-only controller disable, bounded output flush and joint drain.
+
+Source review found no runtime defect after RF/pending-reentry responses. Static
+helper accounting gives a maximum200 bytes below the saved frame for emergency
+disable,136 for collection/decoder and56 for timer stop; all are below the4-KiB
+reserve. No SIMD is live. Oracle findings about actual LAPIC retirement and queue
+indices are addressed with physical/HMP capture plus shared-predicate mutations.
+The remaining forced-pending, overflow/reentry, exhaustion, bad-frame and unexpected
+IRQ tests are mandatory before calling the live lifecycle qualified.
