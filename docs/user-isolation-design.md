@@ -365,3 +365,16 @@ Normal FAT, x2APIC ISO and two-build reproducibility pass. Intel-host KVM also
 checks disabled SYSCALL (#UD) and null-CS SYSENTER (#GP0), bringing the current
 exact campaign to16 TCG plus4 Intel-host KVM profiles. Pending-timer/drain negatives, QMP
 private-root walks, full regressions and final review are still pending. The broad issue and milestone remain open.
+
+
+## Qualification follow-up
+
+Forced pending exit/fault and stop-only drain fixtures now implement the edge
+contracts above. Descriptor target fixtures reject injected callable code and a
+live copied selector, prove LDTR retirement with a user far-call #GP(4), and keep
+kernel-origin gate faults stop-only. Focused independent source review found no
+actionable defects. QMP physical snapshots and an independent Python decoder now
+check private translations and whole paging ownership; review's parent-cache and
+large-leaf reserved-bit findings were fixed and follow-up cleared. Mutation tests
+exercise those actual oracle paths. Final campaign/CI evidence is tracked in
+validation.md; previous open-gate statements above describe earlier checkpoints.

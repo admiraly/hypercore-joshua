@@ -75,6 +75,9 @@ user_payload_start:
 %if JOSHUA_USER_TEST != 0
     test qword [rdi+8],1        ; processB always executes the independent success path
     jnz user_payload_start.exit
+%if JOSHUA_USER_TEST = 18 || JOSHUA_USER_TEST = 20 || JOSHUA_USER_TEST = 21
+    jmp user_payload_start.exit
+%endif
 %if JOSHUA_USER_TEST = 1 || JOSHUA_USER_TEST = 2
     mov rax,[rdi+24]            ; deliberately public fixture probe, not a syscall ptr
 %elif JOSHUA_USER_TEST = 3
@@ -95,6 +98,10 @@ user_payload_start:
     push qword [rdi+40]
     mov rax,USER_BASE
     push rax
+%elif JOSHUA_USER_TEST = 24
+    mov rax,USER_BASE
+    mov [rdi+56],rax
+    mov word [rdi+64],7
 %elif JOSHUA_USER_TEST = 16
     mov rsp,USER_BASE+0x2000
 %endif
@@ -127,7 +134,9 @@ user_payload_fixture:
     retfq
 %elif JOSHUA_USER_TEST = 16
     int 0x80
-%elif JOSHUA_USER_TEST = 17
+%elif JOSHUA_USER_TEST = 24
+    call far [rdi+56]
+%elif JOSHUA_USER_TEST = 17 || JOSHUA_USER_TEST = 19
     ud2
 %endif
     jmp user_payload_start.failed

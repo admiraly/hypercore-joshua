@@ -50,6 +50,7 @@ user_launch_entry:
     mov qword [user_context+USER_CONTEXT.phase],1
     mov qword [r13+USER_PROCESS.state],1
     mov qword [user_transition_step],3
+    mov qword [user_pending_seen],0
     mov [user_context+USER_CONTEXT.bootstrap_frame],r12
     mov rdi,[r13+USER_PROCESS.kernel_high]
     mov [kernel_tss+4],rdi       ; RSP0
@@ -106,12 +107,25 @@ user_gate_entry:
     jnz user_bad_return
     mov rax,[r12+160]
     mov [rbx+USER_PROCESS.last_cs],rax
+%if JOSHUA_USER_TEST = 25
+    cmp qword [user_context+USER_CONTEXT.active],1
+    jne .kernel_fault_done
+..@user_gate_kernel_fault:
+    ud2
+.kernel_fault_done:
+%endif
     cmp qword [r12+144],0
-    je .exit
+    je user_gate_entry.exit
     inc qword [rbx+USER_PROCESS.unknown_calls]
     mov qword [r12+144],-38
     irq_restore
 .exit:
+%if JOSHUA_USER_TEST = 18 || JOSHUA_USER_TEST = 20 || JOSHUA_USER_TEST = 21
+    cmp qword [user_context+USER_CONTEXT.active],1
+    jne .exit_ready
+    call user_force_pending
+.exit_ready:
+%endif
     mov rdx,[r12+96]
     mov ecx,3
     jmp user_terminate
@@ -144,6 +158,12 @@ user_exception_entry:
     mov [rbx+USER_PROCESS.fault_cr2],rax
     mov rax,[r12+24]
     mov [rbx+USER_PROCESS.last_cs],rax
+%if JOSHUA_USER_TEST = 19
+    cmp qword [user_context+USER_CONTEXT.active],1
+    jne .fault_ready
+    call user_force_pending
+.fault_ready:
+%endif
     mov ecx,4
     xor edx,edx
     jmp user_terminate
@@ -220,6 +240,9 @@ user_timer_stop:
 user_drain_continuation:
     mov qword [user_transition_step],7
     mov qword [user_drain_windows],0
+%if JOSHUA_USER_TEST = 21
+    int 0x40                    ; deliberate unexpected CPL0 timer; must reject
+%endif
 .window:
     call apic_pending_clear
     test eax,eax
@@ -227,7 +250,9 @@ user_drain_continuation:
     cmp qword [user_drain_windows],1024
     jae user_stop
     inc qword [user_drain_windows]
+%if JOSHUA_USER_TEST != 20
     sti
+%endif
     nop
 user_drain_close:
     cli
@@ -306,6 +331,36 @@ user_stop:
     call debug_write
     mov rcx,[user_transition_step]
     call debug_hex
+    lea rcx,[debug_user_pending]
+    call debug_write
+    mov rcx,[user_pending_seen]
+    call debug_hex
+    lea rcx,[debug_user_windows]
+    call debug_write
+    mov rcx,[user_drain_windows]
+    call debug_hex
+    lea rcx,[debug_user_result_eois]
+    call debug_write
+    xor ecx,ecx
+    xor esi,esi
+    mov rax,[user_context+USER_CONTEXT.active]
+    dec rax
+    cmp rax,USER_PROCESS_COUNT
+    jae .no_owner
+    imul rax,USER_PROCESS_size
+    lea rdx,[user_processes]
+    lea rsi,[rdx+rax]
+    mov rcx,[rsi+USER_PROCESS.eois]
+.no_owner:
+    call debug_hex
+    lea rcx,[debug_user_result_ticks]
+    call debug_write
+    xor ecx,ecx
+    test rsi,rsi
+    jz .no_ticks
+    mov rcx,[rsi+USER_PROCESS.ticks]
+.no_ticks:
+    call debug_hex
     lea rcx,[debug_newline]
     call debug_write
     jmp kernel_fault
@@ -322,9 +377,19 @@ user_smoke:
     push r15
     sub rsp,40
     mov qword [user_transition_step],1
+%if JOSHUA_USER_TEST = 23
+    mov rax,0x00cf93000000ffff
+    mov [kernel_gdt+8],rax
+    mov ax,8
+    mov ds,ax                   ; wrong live selector must reject before retirement
+%endif
     call user_descriptor_retire
     test eax,eax
     jnz .bad
+%if JOSHUA_USER_TEST = 22
+    mov rax,0x00affb000000ffff
+    mov [kernel_gdt+8],rax       ; post-retirement callable authority must be rejected
+%endif
     lea rcx,[kernel_gdt]
     movzx edx,word [kernel_gdtr]
     inc edx
@@ -362,6 +427,14 @@ user_smoke:
     mov [rax+4096+32],rdx
     movzx edx,word [kernel_code_selector]
     mov [rax+4096+40],rdx
+%if JOSHUA_USER_TEST = 25
+    lea rcx,[debug_fixture_rip]
+    call debug_write
+    lea rcx,[..@user_gate_kernel_fault]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
+%endif
     mov r12d,1
 .run:
     mov eax,r12d
@@ -401,10 +474,18 @@ user_smoke:
     user_result_field debug_error,USER_PROCESS.fault_error
     user_result_field debug_rip,USER_PROCESS.fault_rip
     user_result_field debug_cr2,USER_PROCESS.fault_cr2
+    lea rcx,[debug_user_pending]
+    call debug_write
+    mov rcx,[user_pending_seen]
+    call debug_hex
+    lea rcx,[debug_user_windows]
+    call debug_write
+    mov rcx,[user_drain_windows]
+    call debug_hex
     lea rcx,[debug_newline]
     call debug_write
     mov ecx,3
-%if JOSHUA_USER_TEST != 0
+%if JOSHUA_USER_TEST != 0 && JOSHUA_USER_TEST != 18
     cmp r12d,1
     jne .expected_state
 %if JOSHUA_USER_TEST = 9
@@ -479,3 +560,38 @@ user_smoke:
     shr rax,16
     mov [rdx+8],eax
     ret
+
+%if JOSHUA_USER_TEST >= 18 && JOSHUA_USER_TEST <= 21
+; Controlled target fixture: require a real owned timer bit in IRR under IF0.
+; Never infer pending delivery from elapsed time or a software interrupt.
+user_force_pending:
+    push rbx
+    sub rsp,32
+    mov qword [user_transition_step],10
+    call user_timer_stop
+    mov ecx,0x120                ; vector40h ISR word, bit0 must not be owned here
+    call lapic_read
+    test eax,1
+    jnz user_stop
+    mov ecx,0x320
+    mov edx,0x40
+    call lapic_write
+    mov ecx,0x380
+    mov edx,1
+    call lapic_write
+    mov ebx,1000000
+.poll:
+    mov ecx,0x220                ; vector40h IRR word
+    call lapic_read
+    test eax,1
+    jnz .seen
+    pause
+    dec ebx
+    jnz .poll
+    jmp user_stop
+.seen:
+    mov qword [user_pending_seen],1
+    add rsp,32
+    pop rbx
+    ret
+%endif

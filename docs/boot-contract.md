@@ -426,12 +426,32 @@ CR3, masks/stops the timer and enters an exact owned stack/text DRAINING window;
 only a timer at that window may return to CPL0, without rearm. The drain stack
 reserves64 bytes below its top; its saved IRQ frame is exactly high-256. Up to1024
 STI/NOP/CLI windows may clear pending ISR/IRR, then the separately parked kernel
-frame is revalidated and restored with IF0. Forced pending/drain-negative fixtures
-are still an open gate; ordinary early exits do not prove those edge cases.
+frame is revalidated and restored with IF0. Forced PendingExit/PendingFault fixtures require an observed IRR bit under IF0,
+one drain EOI beyond delivered ticks, and independent B continuation. DrainExhaust
+and KernelTimer must stop before EOI or B launch; they test the 1024-window bound
+and rejection outside the exact kernel return window.
 
 USER_RESULT logs saved user CS/private root/state/unknown-call count/ticks/EOIs and
 fault vector/error/RIP/CR2. USER_PAIR_RETURNED is emitted only after actual bootstrap
 resumption and both independent private data/progress checks. The host listing/PE
 oracle checks exact applicable fault identity and timeout8/8; this does not replace
-the pending independent QMP private-root walk. No full issue/M2/M4, speculative
+the independent QMP private-root walk described in docs/testing.md. No full issue/M2/M4, speculative
 isolation, FPU, SMP, DMA or physical qualification is established by this draft.
+
+
+### Independent private-paging evidence
+
+After QMP stop, physical page captures include both private paths, metadata, exact
+allocation records, private code/data and identity walk paths for every whole
+paging allocation. The Python oracle independently decodes permissions, reserved
+bits, per-page PAT selectors, ownership, separate backing, guard absence, payload
+bytes, zero padding and terminal metadata. Private parent PWT/PCD must be zero;
+large kernel leaves retain PAT bit12 while rejecting level-specific reserved bits.
+The oracle checks structural invariants of captured trusted metadata; it is not an
+independent proof of all runtime code, arbitrary-process security or hardware.
+
+InheritedCode and LiveSelector fixtures require rejection before user launch.
+InheritedLdt installs an owned test LDT before machine preflight and requires the
+subsequent user far call to fault #GP(4) after LLDT0, followed by B continuation.
+KernelFault injects kernel-origin UD2 inside INT80: exact #UD/RIP on IST4, no user
+result or B continuation, and permanent stop under A's still-active private root.

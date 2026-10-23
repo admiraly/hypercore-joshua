@@ -440,3 +440,24 @@ fixed by isolated default UserTest directories; follow-up review found no action
 findings. Reviews did not execute tests. Full pending-timer/drain negatives,
 independent QMP private-root/ownership walks, full host/fault regressions and final
 review remain open; neither issue #32 nor a milestone is complete.
+
+### Issue #32 final qualification delta
+
+Forced pending exit/fault now pass local exact oracles with one drain EOI and B
+continuation. Drain exhaustion and an unexpected CPL0 timer stop before EOI/B.
+Target authority fixtures reject injected callable code/live DS, clear an inherited
+owned LDT before a user #GP(4), and preserve permanent stop for a kernel-origin #UD
+inside INT80. All four authority targets pass locally. Independent source reviews
+found no remaining actionable findings; they did not execute tests.
+
+Physical QMP snapshots pass independent private-root/backing/permission/cache and
+whole paging-allocation alias checks. The actual decoder rejects47 corrupted
+snapshots and49 synthetic reserved/cache-policy mutations. Review findings about
+parent PWT/PCD and large-leaf reserved bits were explicitly fixed and re-reviewed.
+
+Windows CI at bd5ecb5 exposed a DoubleFault parser collision with earlier user-result
+CR2 fields. The parser now selects the standalone vector8/error0 report; the local
+DoubleFault target passes with CR2 inside the intended ordinary-stack guard. Fault
+logs are now uploaded by CI. The final28-profile campaign, complete regressions and
+new-head Windows CI are still running/pending at this checkpoint. No planned test
+is counted as passing, and no issue or milestone completion is claimed here.

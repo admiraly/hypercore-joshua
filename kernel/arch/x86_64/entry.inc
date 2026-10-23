@@ -410,6 +410,9 @@ fault_test_instruction:
     inc ebx
     cmp ebx,USER_PROCESS_COUNT
     jb .user_stack_marker
+%if JOSHUA_USER_TEST = 24
+    call user_fixture_ldt
+%endif
     lea rcx,[user_context]
     call user_machine_prepare
     test eax,eax

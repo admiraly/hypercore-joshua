@@ -206,7 +206,7 @@ leaves. Effective stack writability requires RW at every traversed level.
 ## Draft ring3 transition campaign (issue #32)
 
 `Test-Qemu.ps1` now requires host Python3 for the exact user-result oracle on normal
-boots. `tests/Test-UserRuntime.ps1` builds16 separate TCG profiles with immutable
+boots. `tests/Test-UserRuntime.ps1` builds24 separate TCG profiles (including five expected-stop cases) with immutable
 fixture identity in each manifest, then verifies actual CPL3/roots, precise fault
 vector/error/RIP/applicable CR2, watchdog8/8 and independent B continuation.
 It uses isolated `out/user-*` folders, including when Build's UserTest is used alone.
@@ -221,7 +221,19 @@ added to normal images. TCG's Alignment and Stack fixtures deliberately fail the
 exact expected-vector oracles; they must not be counted as passes just because B
 continued. Intel KVM supplies the actual #AC/#SS vector evidence.
 
-The bounded drain implementation has source review but forced pending-timer exit/
-fault, drain-exhaustion and unexpected kernel-timer negative tests remain pending.
-Independent QMP private-root walks and final whole-issue regressions remain open.
-The exact-result oracle supplements, not replaces, those gates. PR #35 remains draft.
+PendingExit/PendingFault force actual IRR pending under IF0 and require drain EOI
+plus B progress. DrainExhaust/KernelTimer require bounded stop before EOI. The
+InheritedCode/LiveSelector rejection, InheritedLdt #GP(4) and KernelFault #UD stop
+fixtures exercise descriptor and saved-CS authority. With four Intel KVM profiles,
+the full campaign has28 profiles; TCG's two mismatching SS/AC cases are excluded.
+
+Normal boots capture physical memory after QMP stop into
+`qemu-<media>-user-paging.json`. `tests/test_user_paging.py` independently checks
+private roots/permissions/cache selectors, complete paging-allocation aliases,
+exact backing ownership, code bytes, padding and terminal metadata. Run
+`python3 tests/test_user_paging_mutations.py out/user-none` after the campaign;
+Windows uses `python`. It requires the baseline to pass, then rejects47 corrupted
+snapshots and49 synthetic reserved/cache-policy mutations through actual oracle
+code. These counts describe mutations, not hardware qualification. CI runs the
+same mutation suite. Source review closed parent-cache/reserved-bit findings.
+Final whole-issue regressions and Windows CI remain pending; PR #35 remains draft.

@@ -57,7 +57,7 @@ debug_error: db ' ERROR=',0
 debug_rip: db ' RIP=',0
 debug_cr2: db ' CR2=',0
 debug_newline: db 13,10,0
-%if JOSHUA_FAULT_TEST || JOSHUA_CONTEXT_TEST = 3
+%if JOSHUA_FAULT_TEST || JOSHUA_CONTEXT_TEST = 3 || JOSHUA_USER_TEST = 25
 debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
 debug_fixture_target: db 'JOSHUA:FIXTURE_TARGET=',0
 %endif
@@ -141,3 +141,6 @@ debug_user_result_state: db ' STATE=',0
 debug_user_result_unknown: db ' UNKNOWN=',0
 debug_user_result_ticks: db ' TICKS=',0
 debug_user_result_eois: db ' EOIS=',0
+debug_user_pending: db ' PENDING=',0
+debug_user_windows: db ' WINDOWS=',0
+debug_user_ldt: db 'JOSHUA:USER_INHERITED_LDT_SET',13,10,0

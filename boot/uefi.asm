@@ -624,6 +624,7 @@ stop_cpu:
 %include 'kernel/user/frame.inc'
 %include 'kernel/user/retire.inc'
 %include 'kernel/user/start.inc'
+%include 'kernel/user/fixtures.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -741,6 +742,8 @@ user_processes: resb USER_PROCESS_COUNT*USER_PROCESS_size
 user_transition_step: resq 1
 user_terminal_state: resq 1
 user_drain_windows: resq 1
+user_pending_seen: resq 1
+user_test_ldt: resb 16
 resb 4096-($-context_metadata)
 user_entry1_guard: resb 4096
 user_entry1_stack: resb 16384
