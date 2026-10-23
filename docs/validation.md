@@ -286,3 +286,37 @@ nesting/reentrancy, early-transition fault containment, recovery, process isolat
 SMP or physical qualification is established. IF remains clear. The memory exit
 audit keeps M2 open, and keyboard/shell functionality remains future work. Windows
 execution for this revision is left to CI; no merge was performed.
+
+## Bounded ACPI topology discovery — 23 October 2026
+
+Issue #26 validates ACPI2+ RSDP/XSDT/MADT through an explicit retained-ACPI-memory
+and owned-identity translation boundary before any firmware byte reads. It publishes
+bounded normalized active CPU records and requires an enabled BSP matching CPUID,
+with a unique optional local-APIC base override. No controller is programmed.
+RX capacity and static CPU-record storage grow with exact PE/reservation fixtures;
+boot-info layouts, cache policy and firmware reservations remain unchanged.
+
+Actually run on Linux PowerShell7.4.6, native NASM2.16.03, QEMU10.2.2 and the same
+OVMF profile used above:
+
+- Build/two-build reproducibility passed 20,734 media assertions, identical EFI/
+  FAT/ISO/manifest hashes, relative assembler invocation and corrupted-PE rejection.
+- Normal ISO/FAT boots passed real OVMF topology discovery: BSP0, two enabled CPU
+  records, local APIC base FEE00000, plus existing TR/IST/memory/lifecycle/pixel checks.
+- 1,131 ACPI host cases passed, including 500 seeded normalized CPU-list oracles,
+  predereference nonexistent-pointer rejection, adjacent coverage, RP/type/identity/
+  U/S failures, both RSDP and description-table checksum failures, malformed lengths,
+  capacities/duplicates/BSP/overrides, a 64-KiB MADT and eight integer ABI sentinels.
+  Snapshots asserted no firmware source writes and invalidated failed publication.
+- Existing suites passed: 24 map, 6,425 reservation, 250 inventory, 6,297 allocator,
+  1,061 owned-map, 6,249 lifecycle and 1,470 descriptor/TSS/guard cases.
+- Independent design/code reviews found no actionable findings. Reviews were source-
+  only and did not independently reproduce parent test results. CPUID startup is
+  exercised by QEMU, not the parser/read-predicate host harness.
+
+All nine final fault regressions passed with selected IST/frame evidence, exact
+ordinary fault fields and controlled double-fault guard evidence. Unknown child
+payloads/checksums are neither interpreted nor certified. IOAPIC/ISO/NMI routing,
+APIC mode/MSR/MMIO/cache setup, AP startup, interrupts/timer delivery, physical ACPI
+compatibility, isolation and performance remain unqualified. IF stays clear; all
+ACPI memory remains reserved. Windows execution is left to CI; no merge performed.

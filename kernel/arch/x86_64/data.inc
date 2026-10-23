@@ -28,3 +28,5 @@ kernel_tss: times 104 db 0
 stack_guards: times 5 dq 0
 ist_tops: times 4 dq 0
 kernel_tss_selector: dw 0
+align 8
+acpi_context: times ACPI_CONTEXT_size db 0

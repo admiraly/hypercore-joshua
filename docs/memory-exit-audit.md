@@ -12,15 +12,16 @@ QEMU and reproducibility. This audit records evidence without marking M2 complet
 | Allocator/translation stress | 6,297 frame, 6,249 lifecycle, 1,061 owned-map checks plus boot smoke | Full live-record and hardware stress not established |
 | Fault injection | Seven controlled QEMU fixtures through #23 | Controlled invalid-normal-RSP and failed-PF-delivery cases now pass in #24; arbitrary nesting/NMI/MC remain unqualified |
 | Isolation | Supervisor W^X protection fixtures only | Separate user address spaces, entry/syscalls and process crash isolation missing |
-| Build/media correctness | Build/repro/normal ISO/FAT through #24 locally pass; #21 CI passed | #24 CI pending; latest physical qualification absent |
+| Build/media correctness | Build/repro/normal ISO/FAT through #26 locally pass; #25 CI passed | #26 CI pending; latest physical qualification absent |
 
 No PR has been merged by the agent. Parent issue acceptance and milestone closure
 remain maintainer decisions; green checks do not establish the missing isolation.
 M0/M1 hardware inventory/repeated cold boots remain explicit owner gates.
 
 Owned TSS with guarded exception stacks (#24) now supplies controlled stop-only
-fault-stack evidence. Next dependencies are reviewed single-core interrupt/timer/
-context contracts and ring-3 address spaces.
+fault-stack evidence. Bounded ACPI topology discovery (#26) now validates firmware pointers and BSP
+identity without controller access. Next dependencies are reviewed single-core
+interrupt/timer/context contracts and ring-3 address spaces.
 Keeping M2 open does not require delaying those dependencies. SMP, storage, network,
 speech and AI remain outside this release path. The checkpoint still halts; keyboard
 input and a functional WOPR-inspired command shell remain required future work.

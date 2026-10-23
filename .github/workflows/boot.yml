@@ -73,3 +73,6 @@ jobs:
       - name: Decode descriptor/TSS/IST and guard policy fixtures
         shell: pwsh
         run: ./tests/Test-Descriptors.ps1
+      - name: Validate ACPI roots, bounded reads and BSP topology
+        shell: pwsh
+        run: ./tests/Test-Acpi.ps1

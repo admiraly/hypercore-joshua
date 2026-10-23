@@ -52,11 +52,11 @@ endstruc
  %error Invalid boot-info size
 %endif
 ; PE layout constants are shared by the handwritten headers and image checks.
-%define PE_TEXT_SIZE 0x4000
-%define PE_DATA_RVA 0x5000
-%define PE_RODATA_RVA 0x6000
-%define PE_BSS_RVA 0x7000
-%define PE_BSS_SIZE 0xce000
+%define PE_TEXT_SIZE 0x6000
+%define PE_DATA_RVA 0x7000
+%define PE_RODATA_RVA 0x8000
+%define PE_BSS_RVA 0x9000
+%define PE_BSS_SIZE 0xcf000
 %define PE_RELOC_RVA (PE_BSS_RVA + PE_BSS_SIZE)
 %define PE_IMAGE_SIZE (PE_RELOC_RVA + 0x1000)
 %define CANDIDATE_CAPACITY 8192
@@ -141,6 +141,22 @@ struc MAPPING_RECORD
  .pages: resq 1
  .owner: resq 1
  .state: resq 1
+endstruc
+
+%define ACPI_READY_MAGIC 0x314950434153484a
+struc ACPI_CONTEXT
+ .ready: resq 1
+ .boot: resq 1
+ .builder: resq 1
+ .records: resq 1
+ .capacity: resq 1
+ .bsp_id: resq 1
+ .count: resq 1
+ .enabled: resq 1
+ .lapic: resq 1
+ .pcat: resq 1
+ .xsdt: resq 1
+ .madt: resq 1
 endstruc
 
 %define BOOT_MAGIC 0x004F464E4948534A
