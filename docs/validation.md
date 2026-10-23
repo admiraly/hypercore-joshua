@@ -133,3 +133,30 @@ were not run; small-capacity exhaustion and source ABI review were performed.
 LA57, recursive mappings and unreadable firmware tables remain unsupported. No
 allocator, CR3 switch, paging ownership, process isolation or new physical-machine
 evidence is claimed. CI results for this slice are pending publication.
+
+## M2b ownership-tracked frame allocation
+
+On the same Linux/PowerShell 7.4.6/NASM 2.16.03/QEMU 10.2.2/OVMF setup:
+
+- Frame host suite passed 6,297 ownership/oracle checks including 6,000 seeded
+  mixed operations, physical and metadata exhaustion, malformed initialization,
+  immutable failures, zeroing, coalescing and reserved-gap checks. Distinct
+  register sentinels verified eight integer nonvolatile registers around alloc/free.
+- Build and reproducibility passed exact PE/image checks, 20,710 media assertions,
+  identical artifacts, relative invocation and corrupted-PE rejection.
+- Normal ISO and FAT boots passed the allocator checkpoint after paging exclusions:
+  two owners, one- and three-page allocations, 16-KiB alignment, all-qword zero
+  checks, pattern writes/reads, wrong-owner/double-free rejection and restored
+  free/total counters. Captured/final CR3 remained unchanged.
+- All 6,425 reservation, 250 paging and 24 map checks plus Ud2/Gp boots passed again.
+- Independent design review found no actionable issues. Source review found no
+  runtime issues and identified two stale testing-document statements about no
+  allocation; both were corrected to describe the new smoke check. Reviewers did
+  not independently execute tests.
+
+The initial randomized fixture count varied with host ASLR alignment; mapping
+pools at a consistent 64-KiB alignment made seeded outcomes repeatable. This was
+a host-test determinism adjustment, not a runtime workaround. Full 4,096-live-record
+load, SIMD sentinels, SMP, fault recovery and new physical qualification are not
+claimed. This is a bounded BSP allocator under inherited paging; M2 and process
+isolation remain incomplete. Remote CI for this slice is pending publication.

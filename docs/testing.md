@@ -51,11 +51,12 @@ that additional USB must be an explicit separate action, never an automatic disk
 Static checks prove structure, not firmware behavior. QEMU success does not prove
 Ventoy or Dell compatibility, DMA confinement, memory isolation, SMP correctness,
 or useful workload performance. Bare-metal testing must be performed by the owner.
-The initial checkpoint deliberately stops before physical frame allocation.
+The checkpoint now performs a bounded physical allocate/write/free smoke check
+and then halts; it does not yet switch to owned page tables.
 The full M0 and M1 exit criteria remain open until review and real-machine results.
 
 Firmware-menu keyboard commands, watchdog failure, invalid map-key retry, oversized
-maps, unsupported GOP formats, and exception/NMI injection are not yet automated.
+maps, unsupported GOP formats, and NMI injection are not yet automated.
 Those paths require additional fixtures; do not infer their dynamic correctness
 from the successful default boot path.
 
@@ -87,7 +88,8 @@ and runs this suite; Windows CI exercises the validator through normal QEMU boot
 firmware-ABI range/candidate routines, then uses a Python ctypes oracle. It checks
 6,425 cases including 6,400 seeded random cuts, plus image coverage and candidate
 selection/exclusion. Python and the ELF wrappers are host-only. The fixed QEMU
-profile additionally requires a nonempty candidate count; no frame is allocated.
+profile additionally requires a nonempty candidate count before the subsequent
+allocator smoke check allocates and releases test frames.
 
 `tests/Test-PagingInventory.ps1` runs the exact Assembly paging walker and table
 exclusion routines through Linux host wrappers. Its 250 checks include 100 seeded
@@ -97,3 +99,13 @@ capacity failure and range exclusion. Host snapshots assert the walker does not
 write synthetic tables. This does not emulate privileged CR3/CR4/EFER reads: normal
 ISO/FAT QEMU boots exercise those and compare captured/final CR3. No LA57 or
 malformed real-firmware injection is claimed; unsupported modes stop.
+
+`tests/Test-Frames.ps1` exercises the exact Assembly frame allocator via Linux
+wrappers and a Python oracle. It verifies ownership, arbitrary contiguous counts,
+alignment, whole-allocation zeroing, reservation gaps, accounting, failure without
+mutation, exhaustion, metadata capacity, coalescing and 6,000 seeded mixed
+operations. Host pools are aligned to 64 KiB so ASLR does not change allocation
+outcomes. Distinct integer-register sentinels check all eight firmware nonvolatile
+registers around allocation/free. This does not test SMP or recovery from faults.
+Normal QEMU ISO/FAT boots also allocate, inspect and write RAM, reject wrong/double
+frees and restore counters before the FRAME_ALLOCATOR_OK marker.

@@ -568,6 +568,8 @@ stop_cpu:
 %include 'kernel/mm/ranges.inc'
 %include 'kernel/mm/candidates.inc'
 %include 'kernel/mm/paging-inventory.inc'
+%include 'kernel/mm/frames.inc'
+%include 'kernel/mm/frame-check.inc'
 times PE_TEXT_SIZE-($-$$) db 0
 
 section .data start=PE_DATA_RVA vstart=PE_DATA_RVA
@@ -644,6 +646,7 @@ kernel_gdt: resb 65536
 
 candidate_ranges: resb CANDIDATE_CAPACITY*16
 paging_tables: resb PAGING_TABLE_CAPACITY*16
+frame_records: resb FRAME_ALLOCATION_CAPACITY*24
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

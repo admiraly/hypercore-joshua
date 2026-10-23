@@ -56,7 +56,8 @@ disable it aborts the application rather than silently allowing a timed reset.
 
 ## Memory and ownership invariants
 
-- No physical frame allocator exists yet; no firmware memory is reclaimed.
+- Physical frame allocation starts only after all reservation stages; no firmware
+  memory is reclaimed.
 - Loader, stack, boot-info, IDT, and map remain within the loaded PE image.
 - Framebuffer writes are bounded by validated width, height, stride and byte size.
 - The loader does not open Block I/O, Disk I/O, Simple File System, or network protocols.
@@ -163,3 +164,27 @@ Tables are bounded to 16,384 entries in 256 KiB of BSS inside the image reservat
 Only known readable RAM below the low canonical identity boundary is inspected.
 Recursive mappings and cross-level sharing are deliberately unsupported. This
 implements inventory and reservation, not page-table ownership or fault recovery.
+
+## Physical allocation ABI
+
+`frame_allocator_init`: RCX=unready FRAME_ALLOCATOR, RDX=completed RANGE_SET,
+R8=owned records, R9=capacity (1–4,096). EAX=0 success, 1 invalid with no writes.
+The caller owns/excludes metadata and guarantees writable retained identity RAM.
+After initialization, only the allocator may mutate its range set; reservation
+helpers must not be called on that live set.
+
+`frame_alloc`: RCX=ready allocator, RDX=pages, R8=nonzero owner, R9=power-of-two
+page alignment. EAX=0 returns base in RDX; EAX=1 invalid, 2 physical exhaustion,
+3 metadata capacity, all with RDX=0 and unchanged state/RAM. Successful allocation
+zeroes the entire span. `frame_free`: RCX=allocator, RDX=exact base, R8=exact pages,
+R9=exact owner. EAX=0 succeeds, 1 rejects without mutation. Every helper preserves
+firmware-ABI nonvolatile registers; no firmware or SIMD is used. BSP-only and
+interrupts-disabled are caller preconditions. Internal owner tags grant no user
+authority. No generation-based public handle ABI is defined here.
+
+`frame_allocator_check` runs after active paging exclusions: allocate two owners
+and alignments, check every allocated qword is zero, write/read patterns, reject
+a wrong owner, free, reject a repeated free, and verify counters restored. Only
+then emit `JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=...` and continue to the checkpoint.
+The allocator remains initialized for subsequent owned-paging work. A fault during
+clearing or failed boot self-check halts; it does not recover into usable state.

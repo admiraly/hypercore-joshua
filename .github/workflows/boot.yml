@@ -61,3 +61,6 @@ jobs:
       - name: Exercise paging inventory and exclusion fixtures
         shell: pwsh
         run: ./tests/Test-PagingInventory.ps1
+      - name: Exercise frame ownership and allocation oracle
+        shell: pwsh
+        run: ./tests/Test-Frames.ps1

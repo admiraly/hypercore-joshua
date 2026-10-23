@@ -82,3 +82,6 @@ paging_inventory: dq 0,0,PAGING_TABLE_CAPACITY,0,0,0,0,0,0
 paging_cr3: dq 0
 debug_paging: db 'JOSHUA:PAGING_RESERVED CR3=',0
 debug_table_count: db ' TABLES=',0
+align 8
+frame_allocator: times FRAME_ALLOCATOR_size db 0
+debug_frames: db 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=',0
