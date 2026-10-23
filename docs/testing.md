@@ -117,6 +117,11 @@ conversion, allocation/chunk ownership, poisoned failures, physical single-page
 fallback and metadata exhaustion. Cache fixtures require no promotion across
 inherited 4-KiB leaves, plus retained/subdivided large leaves and selector equality.
 It does not execute privileged activation or the policy orchestration helper.
-Normal ISO/FAT boots and three #PF fixtures exercise those paths in QEMU, checking
+Normal ISO/FAT boots and four #PF fixtures exercise those paths in QEMU, checking
 new/final CR3, CR0.WP, EFER.NXE and PCID/global-page policy. Physical compatibility,
 initial-PCID-enabled firmware and unusual PAT/MTRR layouts remain unqualified.
+
+The ConstWrite fixture writes the immutable screen title after owned activation.
+It requires #PF vector 14/error 3, the exact write instruction RIP and constant
+address CR2. Exact PE tests check all five section names, bounds and flags,
+including RO/non-executable `.rodata`; the boot proof checks every image page.

@@ -184,9 +184,18 @@ owned_paging_start:
     jmp .bound
 .data:
     mov rax,[r12+OWNED_PAGING.image_base]
+    add rax,PE_RODATA_RVA
+    cmp rbx,rax
+    jb .writable
+    mov rax,[r12+OWNED_PAGING.image_base]
+    add rax,PE_BSS_RVA
+    cmp rbx,rax
+    jb .read_only
+    mov rax,[r12+OWNED_PAGING.image_base]
     add rax,PE_RELOC_RVA
     cmp rbx,rax
     jae .reloc
+.writable:
     test qword [rsi+32],0x21000
     jnz .bad
     mov r15,PTE_NX|3
@@ -265,9 +274,18 @@ owned_paging_start:
     jmp .check_image
 .verify_data:
     mov rax,[r12+OWNED_PAGING.image_base]
+    add rax,PE_RODATA_RVA
+    cmp rbx,rax
+    jb .verify_writable
+    mov rax,[r12+OWNED_PAGING.image_base]
+    add rax,PE_BSS_RVA
+    cmp rbx,rax
+    jb .check_image
+    mov rax,[r12+OWNED_PAGING.image_base]
     add rax,PE_RELOC_RVA
     cmp rbx,rax
     jae .check_image
+.verify_writable:
     mov r8,PTE_NX|3
 .check_image:
     mov rcx,r12

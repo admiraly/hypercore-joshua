@@ -24,7 +24,7 @@ are explicitly outside this implementation. Host tools write only project files.
 The experimental M2 path now activates owned supervisor page tables with W^X/NX,
 CR0.WP and a stack guard after frame accounting. QEMU protection fixtures do not
 establish process isolation, full pointer validation, stack-overflow recovery or
-physical qualification. Dedicated read-only constant storage, mapping lifecycle,
+physical qualification. Immutable assets use dedicated RO/NX storage. Mapping lifecycle,
 TSS/IST and an audited CPU mitigation policy remain open. Other CR4 mitigations
 are preserved during the switch; PCID/global optimizations are disabled.
 M4 must introduce ring-3 isolation and authenticated handles before agents or

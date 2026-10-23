@@ -117,11 +117,10 @@ Failure poisons the root and halts; no partial root is activated or reclaimed.
 
 Known readable RAM is mapped at physical identity addresses. Eligible conventional
 RAM is RW/NX; other retained RAM is RO/NX. The image uses RX text, RO/NX headers
-and relocation, RW/NX data/BSS, and an absent page below the kernel stack. Page
+constants and relocation, RW/NX data/BSS, and an absent page below the kernel stack. Page
 zero is absent. Firmware WP/RO/XP attributes are not relaxed for image permissions.
-No user/global mappings or alternate virtual aliases are introduced. Constants
-currently stored in mutable data share its RW/NX page; a separate read-only
-constant region remains a hardening task before broader qualification.
+No user/global mappings or alternate virtual aliases are introduced. Immutable strings, GUIDs and font bytes occupy a dedicated `.rodata` page.
+Mutable buffers, descriptor state and memory metadata remain in data/BSS.
 
 Each mapping is bounded by a policy segment and a covering inherited leaf.
 Retain/subdivide leaves only; never promote across inherited boundaries without
