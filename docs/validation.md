@@ -713,3 +713,34 @@ expected. Those images still exercise the existing checkpoint, not the unused
 console helpers. Linux CI now includes both component suites but has not reported
 results here. Prompt/model/parser/IRQ integration, interactive target campaigns,
 Windows and physical qualification remain open. No merge/milestone completion.
+
+## Console command and response checkpoint (23 October 2026)
+
+Issue #40/PR #41 now has pure Assembly command parsing and diagnostic response
+components, with no boot call sites yet. `Test-ConsoleCommand.ps1` passed95,317
+cumulative checks against an independent grammar model: case permutations,
+argument precedence,127-byte boundaries,15,000 seeded mixed inputs, whole-editor
+corruption, overlap, guards and eight-register sentinels. A design P2 requiring
+an exact result readiness value was fixed and re-reviewed before coding.
+Independent read-only parser implementation review found no actionable findings.
+
+`Test-ConsoleResponse.ps1` passed28,687 cumulative checks: independent complete
+text/schema/JSON expectations, command-combination validation,1,000 seeded facts
+snapshots, unsigned64 extremes, input preservation/zero tails, overlap/corruption,
+protected extents and actual internal append capacity/overflow checks. Response
+design and implementation reviews found no actionable findings. Static audit
+bounds the deepest formatter stack at288 bytes below entry (296 including its
+incoming return address); all calls align and provide shadow space. Reviewers
+made no edits and did not independently reproduce tests or inspect artifacts.
+The editor and grid regressions passed344,659 and5,055 checks respectively.
+Counts are cumulative assertions, not independent scenarios.
+
+Current-source reproducibility invoked two builds passing20,790 static assertions
+each, with identical EFI/FAT/ISO/manifest hashes and corrupt-PE rejection. Normal
+QEMU ISO and FAT runs passed private paging/ownership, actual CPL3/continuation
+and the expected ring0 halt. They exercise the existing boot checkpoint, not the
+unused console components. Linux CI includes all four console suites; no CI result
+is asserted here. No snapshot boot adapter, prompt/transcript model, real keyboard
+console lifecycle or interactive ISO is delivered by these host component tests.
+Windows, physical qualification, full console target/regression campaigns and
+issue/milestone completion remain open. No merge.

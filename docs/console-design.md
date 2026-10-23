@@ -1,6 +1,6 @@
 # Native BSP development console (issue #40)
 
-Status: editor and renderer implementations host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
+Status: editor, renderer, parser and response implementations host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
 The destination is an interactive, non-installing development preview, not the full
 user-space shell/capability system in the specification. Runtime stays Assembly.
 No speech, storage/network/AI, firmware-after-exit, process restart or merge changes.
@@ -295,3 +295,163 @@ pixel output; this has been visually inspected as a host-surface font preview,
 not a boot or interactive-console screenshot. Source-only independent review found
 no actionable runtime/oracle defect; the final guard/preview/CI additions also passed
 a read-only follow-up review with no actionable findings. No prompt/model/parser/IRQ integration is implied.
+
+## Exact parser contract (review before implementation)
+
+`command_parse(RCX editor,RDX result)` accepts an entire checked editor state,
+using only its submitted buffer/length. The caller proves trusted mapped canonical,
+backing-disjoint extents (including physical aliases), serialized BSP/IF0/DF0.
+Helpers reject null, unaligned, wrapping or directly overlapping extents before
+reads driven by submitted text or result stores. The result is40 bytes, aligned8,
+five qwords: ready, command, status, json, action. `COMMAND_MAGIC` is
+0x31444e4d43484f4a; every successful parse publishes exactly this ready value
+last. Later result consumers must validate this magic and all field combinations
+against the grammar before indexing or executing a clear/halt request. Explicit parsing replaces any
+previous result, including corrupt storage, only after complete input validation;
+readiness is published last. All successes return EAX0/EDX0, including usage/unknown/
+unavailable results. Invalid input/pointers return EAX1/EDX0 with both extents
+unchanged. Preserve all eight integer nonvolatile registers and existing stack ABI.
+
+Command IDs are0 empty;1 help;2 about;3 status;4 mem;5 ps;6 devices;7 clear;8 halt;
+9 files;10 net;11 model;12 agents;13 grant;14 revoke;15 bench;16 logs;17 shutdown;
+255 unknown. Names match ASCII letters case-insensitively, exactly, with no prefixes.
+Only ASCII space32 separates tokens; no quoting, escapes, expansion or punctuation
+syntax exists. Submitted bytes already satisfy the editor's printable32..126 and
+zero-tail rules. Trim leading/trailing spaces; multiple interior spaces collapse
+as separators. Never change the original submitted text or truncate tokens.
+
+Precedence is exact: all-space/empty => command0/status0/json0/action0. Otherwise
+identify the first token's command ID, then count remaining tokens. More than one
+argument => status2 for every command, including unknown. With zero/one argument:
+unknown=>status127 regardless of its single argument; unavailable IDs9..17=>69
+only without an argument, otherwise2; implemented IDs1..8=>0 without arguments;
+only IDs3..6 accept the single exactly case-sensitive argument `--json`, yielding
+status0/json1. Every other implemented single argument =>2. json is zero for all
+other outcomes. Action is1 clear or2 halt only for successful IDs7/8, otherwise0.
+Empty input does not request clearing or halting. The parser performs neither
+operation, reads no hardware, and never executes a response or command pointer.
+
+The fixed-size result remains authoritative independently of bounded transcript
+wrapping. Response generation will consume a fresh checked result plus an owned
+snapshot into a separately bounded buffer; exact snapshot/schema/append contracts
+must be reviewed before implementing that later helper. This parser slice does
+not itself generate JSON, read hardware or expose a public shell ABI.
+
+## Planned response snapshot boundary
+
+Responses will use immutable labels plus decimal unsigned integers copied from
+owned records while IF0. They will not trust input as a format string or reread
+firmware tables. The exact fixed snapshot layout and JSON key schemas remain a
+review gate; no response helper is implemented by the parser checkpoint. All
+responses must fit a4095-byte payload plus terminator. The authoritative result
+record survives transcript wrapping, and long text is wrapped into the bounded
+transcript rather than claiming the visible final screen contains the whole reply.
+
+
+Parser design response: readiness now has the exact named COMMAND_MAGIC value
+0x31444e4d43484f4a, published last on every successful parse. Rejected calls retain
+the full previous result; later consumers validate all combinations as well as magic.
+
+
+## Parser implementation checkpoint
+
+`kernel/console/command.inc` and its immutable name table implement only parsing,
+not responses or actions. The actual Assembly helper passed95,317 cumulative host
+checks against an independent Python grammar model: command case permutations,
+exact option spelling, token precedence,127-byte boundaries,15,000 seeded mixed
+inputs, complete editor corruption rejection, direct overlap, protected extents
+and all eight integer nonvolatile sentinels. Source-only independent review found
+no actionable runtime/oracle findings; it did not reproduce the test run. Linux
+CI now invokes this suite; CI execution remains pending. The readiness-design P2
+was fixed and re-reviewed before coding. No boot call site exists yet.
+
+## Exact response contract (review before implementation)
+
+`CONSOLE_FACTS` is128 bytes, aligned8, with sixteen qwords: ready, image_bytes,
+free_pages, live_allocations, candidate_ranges, owned_table_pages, enabled_cpus,
+apic_mode, timer_eois, keyboard_irqs, keyboard_eois, keyboard_drops,
+process_a_state, process_a_status, process_b_state, process_b_status.
+`FACTS_MAGIC=0x3154434146484f4a`. Nonzero image_bytes/owned_table_pages,
+enabled_cpus1..256, apic_mode1/2, process states0..5 and keyboard_eois<=keyboard_irqs
+are required; all other values are unsigned64. Status values are raw unsigned64,
+not pointers or signed formatting directives. Boot adapter copies from current
+owned BOOT_INFO/image bounds, FRAME_ALLOCATOR.free_pages/count, its RANGE_SET.count,
+OWNED_PAGING.table_count, ACPI_CONTEXT.enabled, APIC_CONTEXT.mode/eois,
+KEYBOARD_WINDOW IRQ/EOI counters, decoder drops and both USER_PROCESS state/status
+records. It must check source readiness, source count bounds and stable IF0 before
+publishing the snapshot. Pure response tests do not qualify that future adapter.
+
+`CONSOLE_RESPONSE` is4112 bytes, aligned8: ready and length qwords, then4096 bytes.
+`RESPONSE_MAGIC=0x3150534552484f4a`; length0..4095, body bytes printable32..126 or
+LF10, then zero bytes through body[4095]. No arbitrary pointers/reserved fields.
+`response_build(RCX command,RDX facts,R8 response)` validates all three complete
+extents, alignment, nonwrapping arithmetic and pairwise direct virtual disjointness
+before mutation. Caller proves canonical mapped stable backing disjointness,
+including physical aliases, BSP/IF0/DF0 and exclusive output. Previous output may
+be corrupt and is intentionally replaced. Every error returns EAX1/EDX0 with all
+three extents unchanged. Success returns EAX0/EDX0, leaves inputs unchanged, zeroes
+unused output, and publishes readiness last. Preserve eight integer nonvolatiles
+and aligned shadow space, no SIMD/red zone.
+
+Command validation is exact, independent of magic: ID0 only status0/json0/action0;
+IDs1..8 permit status0 or2; status2 requires json0/action0. Successful IDs3..6 allow
+json0/1, others require0; successful ID7 action1, ID8 action2, all others action0.
+IDs9..17 allow69 or2 with json0/action0; ID255 allows127 or2 with json0/action0.
+All other combinations reject. A forged clear/halt action on an error never passes.
+The response builder only produces data; it never clears, halts or dispatches code.
+
+Output is bounded before publication: perform a deterministic measuring pass using
+only validated immutable template labels and snapshot integers, rejecting any append
+above4095 before touching output. Then zero output and repeat the identical emission
+with the proved exact length; inputs and templates remain stable under the caller's
+ownership preconditions. Per-number scratch is at most20 digits; decimal zero emits
+one digit, unsigned2^64-1 emits20. Every append checks available capacity in the
+measuring pass; no unbounded strlen or unchecked input interpolation exists. The
+emission pass uses the proved length without a recoverable failure after stores.
+The owned mappings are trusted: hardware faults are permanent-stop events, not
+rollback. Response stack usage must be audited before foreground integration.
+
+Exact human output uses LF endings. Empty command emits empty body. Help emits
+`HELP ABOUT STATUS MEM PS DEVICES CLEAR HALT\nSTATUS|MEM|PS|DEVICES --json\n`.
+About emits `JOSHUA / HYPERCORE\nBSP DEVELOPMENT CONSOLE\nASSEMBLY RUNTIME. NO AI EXECUTION.\nQEMU EVIDENCE; PHYSICAL QUALIFICATION OPEN.\n`.
+Clear emits `CONSOLE CLEARED\n`; halt emits `HALTING: QUIESCING KEYBOARD\n`, never
+claiming that hardware has halted before retirement. Errors use exactly
+`USAGE ERROR (2)\n`, `UNAVAILABLE (69)\n` or `UNKNOWN COMMAND (127)\n`, never echoing
+input into labels or formats.
+
+Diagnostic field order is fixed:
+- status: image_bytes, enabled_cpus, apic_mode, timer_eois.
+- mem: free_pages, live_allocations, candidate_ranges, owned_table_pages.
+- ps: process_a_state, process_a_status, process_b_state, process_b_status.
+- devices: apic_mode, enabled_cpus, keyboard_irqs, keyboard_eois, keyboard_drops.
+
+Human diagnostic output is the uppercase command name plus LF, then each exact
+field name followed by `=`, unsigned decimal and LF. JSON output is one object
+with no spaces: `{"command":"<lowercase name>","status":0,<fields>}\n`, where
+<fields> is the same ordered flat set of quoted field names and unsigned decimal
+integers. No array, escape, arbitrary user string or optional key is emitted.
+Schemas distinguish process A/B explicitly; they do not claim a task-list syscall.
+The fixed result/response remain authoritative even if old rows scroll offscreen.
+These precise schemas supersede the earlier generic error-JSON suggestion: usage,
+unknown and unavailable results have json0 and the exact constant human errors.
+
+
+## Response implementation checkpoint
+
+The pure Assembly response builder passed28,687 cumulative checks against an
+independent Python byte/schema oracle. Coverage includes command/status/json/action
+combinations,1,000 seeded snapshots, raw unsigned64 extremes, JSON decoding, complete
+zero tails and immutable inputs, all overlap/pointer/semantic rejection paths and
+protected boundaries. A focused adapter invokes the actual internal append gate at
+4095-byte and unsigned-overflow boundaries; it does not substitute a modeled gate.
+All public builder calls use eight integer nonvolatile sentinels. Current fixed
+responses cannot fill the full4095-byte buffer; the separate append tests cover
+that capacity boundary. Independent source review found no actionable findings.
+The reviewer did not run tests or independently reproduce results.
+
+Static stack audit is288 bytes below response-builder entry RSP (296 including
+its incoming return address), deepest through format/number/append. Decimal scratch
+is outside shadow space. No ISR calls this formatter. Actual foreground integration
+must establish sufficient owned stack reserve and stable source provenance. No
+snapshot adapter or boot call site exists yet, and `CONSOLE CLEARED` must be
+published to the visible transcript only after the model clear succeeds.

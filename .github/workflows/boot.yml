@@ -137,6 +137,12 @@ jobs:
       - name: Validate checked console framebuffer grid
         shell: pwsh
         run: ./tests/Test-ConsoleGrid.ps1
+      - name: Validate bounded console command grammar
+        shell: pwsh
+        run: ./tests/Test-ConsoleCommand.ps1
+      - name: Validate bounded console diagnostic responses
+        shell: pwsh
+        run: ./tests/Test-ConsoleResponse.ps1
   keyboard:
     runs-on: windows-latest
     timeout-minutes: 15
