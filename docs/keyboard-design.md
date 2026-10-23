@@ -172,7 +172,7 @@ P2 deadline retirement: stop/mask both sources first, retain exact drain ownersh
 for40h/44h, require both ISR/IRR empty, and test individual/simultaneous pending and
 exhaustion. P2 frame contract: exact phase-specific RIP, selectors, normalized flags,
 oldRSP and align_down(oldRSP,16)-192 relationship precede EOI/return; malformed-frame
-fixtures and a4KiB helper-reserve audit are mandatory. No runtime has been authored.
+fixtures and a4KiB helper-reserve audit are mandatory. Live IRQ/window runtime remains open.
 
 
 ## Pure component interfaces and evidence
@@ -201,3 +201,12 @@ configuration without readback and disables the first interface. It cannot unmas
 IOAPIC or grant interrupt-window ownership. Current503 modeled-port checks exercise
 actual policy code through host-only callbacks; they establish no real port/IRQ
 behavior. Integration and the full target/negative/drain campaign remain open.
+
+
+The exact frame helper now has a 288-byte trusted KEYBOARD_WINDOW metadata contract.
+It accepts only active/draining phases and the exact 192-byte frame derived from
+recorded wait RSP. Read-only host fixtures cover 4,694 cumulative assertions,
+including protected unreadable-frame rejection and eight integer ABI sentinels.
+Independent source review found no actionable findings under trusted metadata and
+proved-readable-stack preconditions. No privileged adapter, actual interrupt return,
+helper-stack audit or deadline retirement is established by this component review.

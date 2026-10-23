@@ -43,4 +43,29 @@ struc KEYBOARD_CONTROLLER
  .scanning: resq 1
  .discarded: resq 1
 endstruc
+%define KEYBOARD_WINDOW_MAGIC 0x3157424b48534f4a
+struc KEYBOARD_WINDOW
+ .ready: resq 1
+ .phase: resq 1                ; 0 inactive,1 active,2 draining,3 complete
+ .root: resq 1
+ .wait_rsp: resq 1
+ .stack_low: resq 1
+ .stack_high: resq 1
+ .wait_rip: resq 1
+ .drain_rip: resq 1
+ .code_selector: resq 1
+ .data_selector: resq 1
+ .flags: resq 1                ; active202h or explicit DF fixture602h
+ .text_start: resq 1
+ .text_end: resq 1
+ .ticks: resq 1
+ .keyboard_irqs: resq 1
+ .keyboard_eois: resq 1
+ .timer_eois: resq 1
+ .failure: resq 1
+ .drain_windows: resq 1
+ .event_count: resq 1
+ .events: resw 64
+endstruc
+
 %endif

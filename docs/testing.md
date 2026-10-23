@@ -271,3 +271,11 @@ authority and decoder records. Snapshot mutations include scanning/IRQ12/GSI/mod
 corruption. The selected IOAPIC route stays masked; no QMP key injection or input
 window has been implemented yet. Full user/fault/APIC regressions and real delivery/
 retirement negatives remain mandatory when the live IRQ stage is wired.
+
+The Linux `Test-KeyboardFrame.ps1` suite executes the actual read-only IRQ-frame
+checker with eight integer nonvolatile sentinels. It checks exact frame location,
+4-KiB helper reserve, current root, phase-specific continuation, CS/SS, old RSP and
+normalized flags, including the explicit DF variant. Invalid frame pointers are
+rejected before dereference, including a protected unreadable page. Its 4,694
+cumulative checks are host policy evidence; they do not establish actual IRQ or
+IRETQ behavior. The checker is assembled into the image but has no live call site yet.

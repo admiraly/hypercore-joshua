@@ -125,3 +125,6 @@ jobs:
       - name: Validate bounded keyboard command/reply policy
         shell: pwsh
         run: ./tests/Test-KeyboardController.ps1
+      - name: Validate exact keyboard IRQ return frames
+        shell: pwsh
+        run: ./tests/Test-KeyboardFrame.ps1

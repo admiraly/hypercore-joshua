@@ -637,6 +637,7 @@ stop_cpu:
 %include 'kernel/input/controller.inc'
 %include 'kernel/input/ports.inc'
 %include 'kernel/input/start.inc'
+%include 'kernel/input/frame.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'

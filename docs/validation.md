@@ -554,3 +554,21 @@ are resolved in the contract; the live implementation and its required tests rem
 
 No issue/milestone, complete keyboard driver, interactive shell, USB or physical
 compatibility claim follows. Speech branches/artifacts remain separate and unchanged.
+
+
+## Keyboard exact-frame policy checkpoint (issue #38)
+
+The actual Assembly frame checker passes4,694 cumulative host assertions with
+integer ABI sentinels, exact active/drain continuations, root/selector/flags/old-RSP
+mutations, checked helper-reserve bounds and a protected unreadable proposed frame.
+It is assembled into the production image and registered in the manifest; Linux CI
+runs the host suite. There is still no live adapter call site or IRQ44 gate.
+
+Current-source Linux PowerShell7.4.6/NASM2.16.03 build passes20,790 media assertions;
+two builds reproduce EFI/FAT/ISO/manifest hashes and reject corrupt PE. Normal ISO
+and FAT QEMU10.2.2/OVMF boots both pass prepared/scanning-off keyboard capture and
+existing private ELF/root/ownership checks. Independent source reviews cleared the
+helper and its build/CI/documentation integration without running tests. Windows CI,
+actual IRQ/IRETQ behavior, nested helper-stack accounting, input-window timer/drain
+retirement and complete live-stage regressions remain open. No real key delivery,
+complete driver, shell, physical compatibility or milestone completion is claimed.
