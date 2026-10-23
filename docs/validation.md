@@ -532,3 +532,134 @@ and the independent physical oracle. Thus all four KVM cases have current ISO
 execution evidence, while the failed first launches and unqualified one-shot full
 IncludeKvm command remain reliability limits. No source change was used to obtain
 that retry result; neither firmware timeout is reclassified as success.
+
+## Keyboard prepared checkpoint (issue #38)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: actual controller preparation
+reaches GSI1/config65h with scanning disabled and the IOAPIC entry unchanged/masked.
+Normal ISO and FAT pass existing private ELF continuation/protection checks plus
+independent capture of fresh controller/authority/decoder metadata. Build passes
+20,790 media assertions; EFI/FAT/ISO/manifest reproducibility and corrupt-PE rejection
+pass. The actual snapshot oracle rejects54 corruptions and49 synthetic level-policy
+mutations. There is no real keyboard IRQ/delivery evidence at this checkpoint.
+
+Host policy suites pass180,744 decoder assertions (40,000 mixed operations),1,890
+ACPI/ISA/GSI assertions (500 generated maps) and503 modeled-port assertions. Independent
+reviews found no remaining actionable findings in design, decoder, authority,
+controller policy, masked preparation or target evidence checks. Reviews were source
+only and did not independently reproduce parent-run tests. Authority review's coverage
+fixture now places a readable FADT header before an unproved PROT_NONE payload page.
+Design findings about command/input races, deadline retirement and exact IRQ frames
+are resolved in the contract; the live implementation and its required tests remain open.
+
+No issue/milestone, complete keyboard driver, interactive shell, USB or physical
+compatibility claim follows. Speech branches/artifacts remain separate and unchanged.
+
+
+## Keyboard exact-frame policy checkpoint (issue #38)
+
+The actual Assembly frame checker passes4,694 cumulative host assertions with
+integer ABI sentinels, exact active/drain continuations, root/selector/flags/old-RSP
+mutations, checked helper-reserve bounds and a protected unreadable proposed frame.
+It is assembled into the production image and registered in the manifest; Linux CI
+runs the host suite. There is still no live adapter call site or IRQ44 gate.
+
+Current-source Linux PowerShell7.4.6/NASM2.16.03 build passes20,790 media assertions;
+two builds reproduce EFI/FAT/ISO/manifest hashes and reject corrupt PE. Normal ISO
+and FAT QEMU10.2.2/OVMF boots both pass prepared/scanning-off keyboard capture and
+existing private ELF/root/ownership checks. Independent source reviews cleared the
+helper and its build/CI/documentation integration without running tests. Windows CI,
+actual IRQ/IRETQ behavior, nested helper-stack accounting, input-window timer/drain
+retirement and complete live-stage regressions remain open. No real key delivery,
+complete driver, shell, physical compatibility or milestone completion is claimed.
+
+
+## Experimental live keyboard window (issue #38, incomplete qualification)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: current-source Text, Df and
+Missing each pass ISO/FAT; Text additionally passes forced x2APIC ISO/FAT with
+actual mode2 evidence. Text/Df snapshots contain ordered events97,65,66,3,256,8,13
+(`a`, `A`, `B`, Ctrl-C, Left, Backspace, Enter),23 actual keyboard IRQs with23 EOIs,
+and60–61 timer deliveries/EOIs. Both Missing snapshots have no input, exactly16
+timer deliveries/EOIs and terminal deadline status1. All eight windows finish phase3
+with controller stage11/scanning off, valid empty queue indices, the physical
+IOAPIC low entry masked/vector44 and actual LAPIC masked/vector40, zero timer counts
+and empty ISR/IRR. Active DF fixtures capture402h after CLI; all15 GPR sentinels are
+checked immediately after each active IRETQ. These passes exercise real emulated
+PS2/IOAPIC/IRQ input, not direct host calls into the decoder. None exercised a
+nonempty drain window; forced pending-delivery tests remain mandatory.
+
+Two early strict-frame Missing invocations stopped before any timer EOI because
+TCG saved RFLAGS10202h (architectural RF), despite matching root/location/selectors/
+oldRSP/RIP. They remain failed invocations. Reviewed refinement permits only RF in
+addition to the exact hardware flags, preserves it for IRETQ, prohibits RF in
+metadata and normalizes/checks metadata202h before drain. New host frame fixtures
+pass5,996 assertions across RF absent/present and all other flag-bit corruptions.
+
+Decoder180,744, authority1,890 and modeled-controller503 host assertions pass again.
+Shared actual-target LAPIC/queue predicates pass8,338 cumulative mutation checks.
+Normal images still stop at masked preparation: current normal ISO/FAT private-root,
+ELF and keyboard-prepared snapshot checks pass. Build/media20,790 assertions,
+normal two-build EFI/FAT/ISO/manifest reproducibility and corrupt-PE rejection pass.
+
+Independent source review found no additional runtime defect, with maximum200-byte
+helper depth below the saved frame. Findings were addressed: terminal pendingIRQ44
+must not recollect/disable twice or allow deadline overwrite; strict drain metadata;
+independent actual LAPIC retirement; queue-index invariants; immediate Windows
+native-Python CI exit checking; normal-versus-fixture documentation. Reviewers ran
+no tests. Windows CI and complete current-source regressions remain pending.
+Overflow/reentry, forced pending40/44/both, drain exhaustion and invalid/out-of-window
+frame target gates remain open. No complete driver, shell, physical compatibility,
+issue/milestone completion or merge is claimed. Speech work remains separate.
+
+
+## Keyboard lifecycle and rejection campaign (issue #38)
+
+The final frozen-source `Test-KeyboardCampaign.ps1 -IncludeX2` run passes40 actual
+QEMU10.2.2/OVMF target invocations:17 profiles each on ISO/FAT, plus Text,
+PendingBoth and OverflowPending on x2APIC ISO/FAT. This is18 successful-window
+checks and22 exact permanent-stop checks, not40 independent hardware platforms.
+Pending40/44/both prove actual IRR1h/10h/11h before normal source retirement and
+nonempty drain returns with exact EOIs/no active ticks. DrainExhaust stops at1025
+attempts before any EOI with IRR64 retained. Six frame/address/root defects and
+both out-of-window vectors stop with exact saved state/current CR3 and actual ISR
+ownership, without EOI or normal continuation. An arbitrary fault cannot pass.
+
+Overflow snapshots all64 old sentinel events and valid metadata before real input,
+then requires one dropped make with unchanged old storage/indices/count and no
+consumer. Controlled OverflowPending requires exactly32 actual data-port reads,
+16 decoded `a` events, post-baseline actual IRQ44 reentry/EOIs, one emergency disable,
+a timer EOI observing failure2 with zero ticks, then quiet output/masked route/
+stopped timer/empty ISR+IRR and phase3/failure2 permanent stop. All four xAPIC/x2APIC
+ISO/FAT cases pass with sticky timeout0, both actual-OBF refill acknowledgments and
+actual OBF recorded at zero budget. WINDOW_DONE/normal HALTED are forbidden there.
+
+The earlier62-event single-batch attempt failed: only16 collector bytes/eight make
+events arrived, no emergency disable occurred, and the512-tick deadline fired.
+It remains failure evidence. Mode17 alone now uses two finite producer-refill waits
+after reads16/32, with host injection only after physically observing each threshold.
+The normal32-read budget is unchanged, and no data/OBF/decoder outcome is synthesized.
+This qualifies controlled exhaustion/reentry branches, not natural input rates or
+production ISR latency. A source-review P2 second-refill-timeout false pass is closed
+by sticky timeout, real-OBF acknowledgments and zero-budget status. The actual port
+response must match the full byte-port64 response, rejecting unsupported-command
+errors that contain the address. Shared actual-oracle mutations pass8,373 checks.
+
+Regression runs pass24 user execution/fault/watchdog profiles, nine fault fixtures,
+x2APIC ISO/FAT plus missing-EOI rejection, context launch/rejection/guard fixtures,
+and both malformed-ELF targets. Twenty host suites pass, including keyboard decoder
+180,744, authority1,890, controller503, exact-frame5,996 and15 host stack-walker
+fixtures. The existing physical snapshot oracle rejects54 mutations plus49 synthetic
+reserved/cache-policy cases. Normal ISO/FAT and stable normal EFI/FAT/ISO/manifest
+reproducibility/corrupt-PE rejection pass. All61 tested boot variants were rebuilt
+against final runtime source with identical EFI/FAT/ISO hashes; a subsequent frozen
+40-target run uses the final checker and final source throughout.
+
+Independent read-only reviews cleared pending/rejection code and overflow/refill
+logic after the recorded findings were addressed. Normal helper depth remains200
+bytes maximum; the instrumented refill branch consumes120 (decoder136). Reviewers
+ran no tests. Documentation now distinguishes window phase3 from fixture stage3,
+armed fixture stage2 from window phase1, and the final8,373 mutation count from
+historical counts. Windows CI and physical Latitude/input qualification remain open.
+No issue/milestone completion, full input-stack/shell claim or merge follows. Issue
+#40 owns the next native WOPR/Joshua console; speech branches remain unchanged.

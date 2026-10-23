@@ -482,3 +482,56 @@ Current PE bounds supersede prior checkpoint layouts: text RVA1000h/sizeA000h,
 data B000h/1000h, constants C000h/4000h, BSS10000h/E5000h, relocation F5000h and
 image F6000h. The expanded constant section holds the authored ELF envelope; no
 external loader or interpreter runs in HyperCore.
+
+## Keyboard preparation checkpoint (issue #38, incomplete driver)
+
+After the normal private ELF pair has returned and before the halted status display,
+IF0 preparation requires the owned root, completed trusted contexts and the validated
+APIC state. A separate authority record checks FADT8042 and MADT ISA/GSI ownership
+before port access. The selected IOAPIC entry must already be masked and use an
+eligible maskable delivery mode; its low/high words are unchanged by this checkpoint.
+No new interrupt gate, unmask or STI is introduced here.
+
+Bounded real60h/64h commands prepare translation/set2 and verify final configuration
+while keyboard scanning is disabled. KEYBOARD_PREPARED reports that checkpoint;
+it is not KEYBOARD_READY or evidence of delivered input. Failure stops under IF0
+with a controller stage diagnostic. Normal image sizes and stack guards are unchanged.
+The controller/authority/decoder occupy previously reserved context-metadata storage.
+
+Future live input must implement the reviewed vector44h frame/EOI contract and
+joint40h/44h deadline/drain ownership before using the queue. No shell input or
+physical keyboard compatibility is established by preparation alone.
+
+
+### Experimental explicit keyboard window
+
+Explicit KeyboardTest images open the bounded owned input window after
+trusted/private contexts finish. IRQ44 and deadline40 use the shared192-byte saved
+frame and Microsoft integer ABI, with exact frame location, owned root/CS/SS/oldRSP,
+phase-specific RIP and4-KiB helper reserve checked before frame use/EOI/IRETQ.
+Metadata flags are202h (or602h for active Df); drain sets/checks202h. Hardware RF may
+additionally be set and remains unchanged for IRETQ; no other saved flag is accepted.
+All15 GPRs and post-CLI2h/402h flags are checked around each active wait. Handler
+helpers consume at most200 bytes below the frame. Partial failures stop IF0.
+
+The active consumer stores at most64 events. Text/Df have a512-delivery deadline;
+Missing requires16 deliveries without input. Cleanup stops/masks40, masks44,
+disables controller IRQ generation/first interface, flushes at most32 bytes and
+retains joint drain ownership until actual ISR/IRR are empty (maximum1024 windows).
+A terminal overflow failure suppresses repeated collection/disable and deadline
+failure overwrite if another owned interrupt was already pending. Window phase3 rejects
+subsequent keyboard-window timer/keyboard entries. The controlled lifecycle campaign below exercises overflow, forced-pending,
+drain-exhaustion and invalid-frame gates; docs/validation.md records results and
+qualification limits.
+
+
+Target-only lifecycle fixtures now exercise actual pending40/44/both, suppressed-STI
+drain exhaustion, single-field/proposed-address/root rejection, both out-of-window
+vectors, full-queue drop-newest and controlled-producer32-read exhaustion/reentry.
+The144-byte evidence record does not grant hardware authority. Refill waits exist
+only in OverflowPending after reads16/32 under armed stage2 of the fixture record;
+the driver window remains active phase1. Sticky timeout, real-OBF acknowledgments
+and actual zero-budget OBF proof are mandatory. Normal returning ISR work remains
+bounded without producer waits. WINDOW_DONE follows positive checks, while terminal
+failure2 remains a permanent stop after physical retirement. These fixtures establish
+neither arbitrary hardware timing nor physical compatibility.

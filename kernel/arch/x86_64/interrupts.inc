@@ -40,6 +40,10 @@
 
 apic_timer_entry:
     irq_save
+%if JOSHUA_KEYBOARD_TEST != 0
+    cmp qword [keyboard_window+KEYBOARD_WINDOW.phase],0
+    jne keyboard_timer_saved
+%endif
     cmp qword [user_context+USER_CONTEXT.phase],0
     jne user_timer_saved
     cmp qword [kernel_context+KERNEL_CONTEXT.state],1

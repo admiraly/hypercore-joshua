@@ -48,6 +48,9 @@ jobs:
             out/*.json
             out/*.log
             out/*.png
+            out/keyboard-*/*.log
+            out/keyboard-*/*.bin
+            out/keyboard-*/*.json
             out/elf-*/*.log
             out/elf-*/*.json
             out/fault-*/*.log
@@ -116,3 +119,35 @@ jobs:
       - name: Validate bounded ELF plans and failure-atomic copies
         shell: pwsh
         run: ./tests/Test-Elf.ps1
+      - name: Validate set1 keyboard decoding and bounded events
+        shell: pwsh
+        run: ./tests/Test-Keyboard.ps1
+      - name: Validate ACPI keyboard and ISA route authority
+        shell: pwsh
+        run: ./tests/Test-KeyboardAuthority.ps1
+      - name: Validate bounded keyboard command/reply policy
+        shell: pwsh
+        run: ./tests/Test-KeyboardController.ps1
+      - name: Validate exact keyboard IRQ return frames
+        shell: pwsh
+        run: ./tests/Test-KeyboardFrame.ps1
+  keyboard:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Fetch verified host tools
+        run: ./tools/Get-Toolchain.ps1 -IncludeQemu
+      - name: Validate actual keyboard input, retirement and exact rejections
+        run: ./tests/Test-KeyboardCampaign.ps1 -IncludeX2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: joshua-keyboard-diagnostics
+          path: |
+            out/keyboard-*/*.log
+            out/keyboard-*/*.bin
+            out/keyboard-*/*.json

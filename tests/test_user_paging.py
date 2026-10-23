@@ -28,7 +28,10 @@ for i in range(struct.unpack_from('<H',image,pe+6)[0]):
     sections[image[offset:offset+8].rstrip(b'\0').decode()]=struct.unpack_from('<IIII',image,offset+8)
 tss=int(re.search(r'TSS_READY SELECTOR=[0-9A-F]+ BASE=([0-9A-F]+)',log)[1],16)
 base=tss-sections['.data'][1]-symbol('kernel_tss')
-seed={'elfPlan':base+sections['.bss'][1]+symbol('user_elf_plan'),
+seed={'keyboardController':base+sections['.bss'][1]+symbol('keyboard_controller'),
+      'keyboardAuthority':base+sections['.bss'][1]+symbol('keyboard_authority'),
+      'keyboardDecoder':base+sections['.bss'][1]+symbol('keyboard_decoder'),
+      'elfPlan':base+sections['.bss'][1]+symbol('user_elf_plan'),
       'processes':base+sections['.bss'][1]+symbol('user_processes'),
       'context':base+sections['.bss'][1]+symbol('user_context'),
       'allocator':base+sections['.data'][1]+symbol('frame_allocator'),
@@ -57,6 +60,14 @@ def qword(address):
 
 def words(address,count):return [qword(address+8*i) for i in range(count)]
 
+controller=words(seed['keyboardController'],7)
+authority=words(seed['keyboardAuthority'],6)
+decoder=words(seed['keyboardDecoder'],11)
+assert controller[0:4]==[0x3143424b48534f4a,0,8,seed['keyboardAuthority']]
+assert controller[4]&~12==0x61 and controller[5:]==[0,0]
+assert authority[0]==0x3141554b48534f4a and authority[2:]==[1,0,1,0]
+assert decoder==[0x3144424b48534f4a]+[0]*10
+assert words(seed['keyboardDecoder']+88,16)==[0]*16
 elf_file=sections['.rodata'][3]+symbol('user_elf_start')
 elf_source=base+sections['.rodata'][1]+symbol('user_elf_start')
 co,_,_,cz,_,_=struct.unpack_from('<QQQQQQ',image,elf_file+72)
