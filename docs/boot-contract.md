@@ -219,3 +219,33 @@ ReadOnly/Nx/Guard fixture images fault after this marker: #PF errors 3/0x11/0,
 with exact expected instruction RIP and CR2 target. The NX fixture allocates and
 writes its target under the owned root. Ud2/Gp fixtures remain before memory
 bring-up. Fixture images are isolated test artifacts, not normal boot images.
+
+## Active kernel virtual arena ABI
+
+The initial arena is `0xffff800000000000` through the next 2 MiB (exclusive).
+`lifecycle_prepare(RCX=context,RDX=inactive owned builder,R8=zero record array)`
+creates three table pages in existing paging-owned chunks before activation and
+whole-chunk cache/ownership proof. It does not activate the root. All 512 leaves
+start absent. MAPPING_CONTEXT and 40-byte MAPPING_RECORD are internal kernel
+structures, not boot-info extensions. Record states: 0 unused, 1 staged, 2 live,
+3 quarantined, 4 retiring. Capacity is 64 records; empty tables remain reserved.
+
+`lifecycle_alloc` takes RCX=context, RDX=1..512 pages and R8=nonzero caller owner.
+EAX=0/RDX=base VA succeeds. EAX=1 rejects invalid arguments, 2 reports arena/record/
+physical exhaustion, 3 reports physical allocator metadata exhaustion and 4 disables
+the context on invariant failure. Every failure returns RDX=0. Private physical
+owner FRAME_OWNER_MAPPING separates the backing frames from paging chunks.
+`lifecycle_free` takes RCX=context, RDX=exact base VA, R8=exact pages, R9=exact caller
+owner. EAX=0 succeeds, 1 rejects unchanged and 4 quarantines/disables. Physical
+ownership is retained on fatal failure; callers stop. All eight firmware integer
+nonvolatile registers are preserved; no firmware calls, SIMD or user callbacks.
+
+Both active operations require the owned root current, IF clear and PCIDE/PGE off.
+The privileged adapter checks these conditions and executes INVLPG. Allocation
+preflights identity/cache/permissions, publishes RW/NX supervisor 4-KiB aliases,
+invalidates locally, then returns. Release preflights the exact record/leaves,
+clears the entire run, invalidates every VA, then frees exact physical ownership.
+A/D updates are accepted. No frame or VA is reusable before those invalidations.
+This contract is BSP-only and must change before enabling interrupts or SMP.
+`JOSHUA:MAPPING_LIFECYCLE_OK` follows actual high-half write/read/release/reallocation
+and zeroing checks, restores allocator accounting, and leaves every arena leaf absent.

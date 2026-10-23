@@ -119,7 +119,8 @@ Known readable RAM is mapped at physical identity addresses. Eligible convention
 RAM is RW/NX; other retained RAM is RO/NX. The image uses RX text, RO/NX headers
 constants and relocation, RW/NX data/BSS, and an absent page below the kernel stack. Page
 zero is absent. Firmware WP/RO/XP attributes are not relaxed for image permissions.
-No user/global mappings or alternate virtual aliases are introduced. Immutable strings, GUIDs and font bytes occupy a dedicated `.rodata` page.
+The boot identity map introduces no user/global mappings. Immutable strings, GUIDs
+and font bytes occupy a dedicated `.rodata` page.
 Mutable buffers, descriptor state and memory metadata remain in data/BSS.
 
 Each mapping is bounded by a policy segment and a covering inherited leaf.
@@ -135,11 +136,12 @@ chunk page's writable identity/cache compatibility, and framebuffer mapping befo
 activation. Enable EFER.NXE/CR0.WP, select PCID zero if needed, disable PCIDE/PGE to
 flush translations while preserving other CR4 bits, and load the new root. The
 normal QEMU test observes distinct captured/owned CR3, WP/NXE and the final screen.
-Dedicated fixtures exercise text write, NX execution and guard-read page faults.
+Dedicated fixtures exercise text/constant writes, NX execution, guard reads and
+released-arena reads.
 
-This is BSP-only bootstrap paging, not process isolation or a complete mapping
-lifecycle. Unmapping, TLB shootdowns, owned TSS/IST and recoverable user faults need
-separate contracts/tests. No inherited firmware memory is reclaimed. See the
+This is BSP-only paging, not process isolation or a general mapping lifecycle.
+Local bounded unmapping is described below; cross-core TLB shootdowns, owned TSS/IST
+and recoverable user faults need separate contracts/tests. No inherited firmware memory is reclaimed. See the
 [owned paging design](owned-paging-design.md) for review findings and responses.
 
 ## Failures and qualification
@@ -155,3 +157,18 @@ fault injection. Repeat normal ISO/FAT boot and reproducibility for runtime chan
 Keep QEMU correctness, physical compatibility and workload performance distinct.
 Ring-3 isolation is a later gate requiring separate address spaces and validated
 entry/syscall paths; owned kernel page tables alone do not establish it.
+
+## Active mapping lifecycle stage
+
+A bounded high-half arena now manages trusted kernel RW/NX allocations with exact
+virtual and physical ownership records. Allocation preserves each physical identity
+leaf's PAT selector; no executable alias or user mapping is accepted. All arena
+tables are prepared and included in whole-chunk proof before CR3 activation.
+Releasing a run clears all leaves and performs local INVLPG before any physical
+free. Invalid ownership requests leave existing state intact; internal inconsistency
+quarantines ownership and permanently disables the context. Tables are not reclaimed.
+See [mapping lifecycle design](mapping-lifecycle-design.md) and the boot ABI.
+
+The broad low identity map still exists. This is neither ring-3 isolation nor a
+complete general virtual-memory manager. SMP shootdowns, page-table reclamation,
+separate address spaces, executable loading and recoverable faults remain later work.

@@ -217,3 +217,37 @@ Independent design and implementation reviews found no actionable findings.
 Reviews were read-only and did not independently reproduce test results.
 This slice does not establish mapping lifecycle, process isolation,
 fault recovery, SMP or physical qualification. Windows execution remains CI work.
+
+## Active kernel mapping lifecycle — 23 October 2026
+
+Issue #22 adds a bounded 2-MiB high-half arena with 64 exact virtual records and
+allocator-owned physical backing. Tables are prepared before owned-root activation
+and included in whole-chunk proof. RW/NX aliases preserve physical cache selectors.
+Release clears the full run and invalidates all former VAs before physical free;
+internal inconsistency permanently quarantines ownership and disables the context.
+
+Tests actually run with Linux PowerShell 7.4.6, native NASM 2.16.03 and QEMU 10.2.2,
+using the same OVMF firmware profile as the owned paging evidence above:
+
+- Build and two independent reproducibility builds passed all 20,718 media
+  assertions, identical EFI/FAT/ISO/manifest hashes and corrupted-PE rejection.
+- Normal ISO/FAT boots passed the real high-half write/read, invalid-release,
+  retirement, reallocation/zeroing and accounting-restoration smoke. All arena
+  leaves were absent at its completion; both logs emitted MAPPING_LIFECYCLE_OK.
+- All seven controlled faults passed: Ud2, Gp, code write, NX, guard, constant write
+  and released-arena read. The last reported #PF vector 14/error 0, exact instruction
+  RIP and CR2 FFFF800000000000, then halted ring 0 with IF clear.
+- The lifecycle host oracle passed 6,249 operations including 6,000 seeded mixed
+  operations, ownership/zeroing, ordinary failure atomicity, capacity/exhaustion,
+  all PAT selectors, A/D updates, unchanged boot tables, quarantine and eight
+  integer-register ABI sentinels. The host logs invalidation ordering; target
+  privileged checks and INVLPG are exercised by QEMU.
+- Existing suites passed: 24 map, 6,425 reservation, 250 inventory, 6,297 allocator
+  and 1,061 owned-map checks.
+- Independent design and implementation reviews found no actionable findings.
+  Reviews were read-only and did not independently run the reported tests.
+
+No table reclamation, general virtual manager, cross-core shootdown, user isolation,
+fault recovery, physical qualification or performance claim follows. Low identity
+aliases and old firmware reservations remain. Windows execution is left to CI for
+this revision. M2 remains incomplete; this is the initial bounded lifecycle stage.

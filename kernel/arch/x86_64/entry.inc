@@ -206,6 +206,11 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    call lifecycle_smoke
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_lifecycle]
+    call debug_write
 %if JOSHUA_FAULT_TEST >= 3
 %if JOSHUA_FAULT_TEST = 4
     lea rcx,[frame_allocator]
@@ -218,6 +223,9 @@ fault_test_instruction:
     mov byte [rdx],0xc3
     mov r14,rdx
     mov r15,rdx
+%elif JOSHUA_FAULT_TEST = 7
+    mov r14,MAPPING_ARENA_BASE
+    lea r15,[owned_fault_instruction]
 %elif JOSHUA_FAULT_TEST = 6
     lea r14,[screen_title]
     lea r15,[owned_fault_instruction]
@@ -243,6 +251,8 @@ fault_test_instruction:
 owned_fault_instruction:
 %if JOSHUA_FAULT_TEST = 4
     call r14
+%elif JOSHUA_FAULT_TEST = 7
+    mov rax,[r14]
 %elif JOSHUA_FAULT_TEST = 6
     mov byte [screen_title],0x58
 %elif JOSHUA_FAULT_TEST = 5

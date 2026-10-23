@@ -124,6 +124,25 @@ struc OWNED_PAGING
  .ready: resq 1
 endstruc
 
+%define FRAME_OWNER_MAPPING 0x4d415050
+%define MAPPING_MAGIC 0x3150414d53484a
+%define MAPPING_ARENA_BASE 0xffff800000000000
+%define MAPPING_RECORD_CAPACITY 64
+struc MAPPING_CONTEXT
+ .ready: resq 1
+ .builder: resq 1
+ .pt: resq 1
+ .records: resq 1
+ .count: resq 1
+endstruc
+struc MAPPING_RECORD
+ .virtual: resq 1
+ .physical: resq 1
+ .pages: resq 1
+ .owner: resq 1
+ .state: resq 1
+endstruc
+
 %define BOOT_MAGIC 0x004F464E4948534A
 
 %endif
