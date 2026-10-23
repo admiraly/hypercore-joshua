@@ -1037,3 +1037,18 @@ output below ignored out/reference-evidence, rejects network/reparse paths, and
 validates scalar/array leaves and missing-evidence values before serialization.
 Eight added Linux rejection checks passed, including nested private objects and
 symlink redirects. Windows mapped-drive/junction execution remains unverified.
+
+## Reference-evidence Windows cleanup response — 2026-10-23
+
+PR #43's Windows provider job on9279394 failed in the junction fixture's
+Remove-Item cleanup with a NullReferenceException, before the CIM provider smoke.
+The fixture now uses nonrecursive Directory.Delete for the Windows junction
+entry, retaining Remove-Item for the Linux symlink. Two added assertions require
+the redirect to be absent and its target directory/ISO hash to remain intact.
+Linux PowerShell7.4.6 passes47 synthetic projection/privacy/binding checks and
+redirect cleanup. This does not reproduce Windows junction semantics or provider
+execution; the new-head Windows CI rerun remains required. Production collector
+and runtime code are unchanged, and no hardware/boot qualification is inferred.
+
+Independent source review of the cleanup response found no actionable findings;
+review did not reproduce Linux checks, Windows behavior or the CI failure.

@@ -96,7 +96,16 @@ try {
         New-Item -ItemType $linkType -Path $link -Target $directory | Out-Null
         Reject { Write-ReferenceEvidence -Inventory $inventory -ImagePath $image -OutputDirectory (Join-Path $link 'escaped') }
         Reject { Write-ReferenceEvidence -Inventory $inventory -ImagePath (Join-Path $link 'fixture.iso') -OutputDirectory (Join-Path $directory 'linked-image') }
-    } finally { if (Test-Path -LiteralPath $link) { Remove-Item -LiteralPath $link -Force } }
+    } finally {
+        if (Test-Path -LiteralPath $link) {
+            # Windows PowerShell 5.1 Remove-Item can throw on a directory junction.
+            # Delete only the link entry, never recursively traverse its target.
+            if ($env:OS -eq 'Windows_NT') { [IO.Directory]::Delete($link) }
+            else { Remove-Item -LiteralPath $link -Force }
+        }
+    }
+    Require (-not (Test-Path -LiteralPath $link)) 'Redirect fixture was not removed.'
+    Require ((Test-Path -LiteralPath $directory) -and (Get-FileHash -LiteralPath $image -Algorithm SHA256).Hash -eq $before) 'Redirect cleanup changed its target.'
     if ($CollectHost) {
         if ($env:OS -ne 'Windows_NT') { throw 'CollectHost requires Windows.' }
         & (Join-Path $root 'tools/Collect-ReferenceEvidence.ps1') -ImagePath $image -OutputRoot (Join-Path $directory 'host')
