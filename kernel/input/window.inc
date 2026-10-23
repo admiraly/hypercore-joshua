@@ -249,6 +249,9 @@ keyboard_irq_entry:
     call lapic_read
     test eax,0x10
     jz kernel_fault
+%if JOSHUA_CONSOLE_TEST = 3
+    inc qword [console_fixture_irqs]
+%endif
 %if JOSHUA_CONSOLE
     keyboard_saturate keyboard_window+KEYBOARD_WINDOW.keyboard_irqs
 %else

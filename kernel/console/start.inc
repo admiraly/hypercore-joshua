@@ -40,6 +40,14 @@ console_run:
     test eax,eax
     jnz .bad
     keyboard_window_activate .wait_close,.drain_close,0x202,.bad
+%if JOSHUA_CONSOLE_TEST = 3
+    mov qword [console_editor+CONSOLE_EDITOR.submissions],-2
+    mov qword [console_editor+CONSOLE_EDITOR.rejected],-2
+    mov qword [console_editor+CONSOLE_EDITOR.cancellations],-2
+    mov qword [console_model+CONSOLE_MODEL.completed],-2
+    mov qword [keyboard_window+KEYBOARD_WINDOW.keyboard_irqs],-2
+    mov qword [keyboard_window+KEYBOARD_WINDOW.keyboard_eois],-2
+%endif
     lea rcx,[debug_console_ready]
     call debug_write
     lea rcx,[console_model]
@@ -61,6 +69,24 @@ console_run:
 %unmacro console_address 2
     lea rcx,[debug_newline]
     call debug_write
+%if JOSHUA_CONSOLE_TEST != 0
+    lea rcx,[debug_console_fixture]
+    call debug_write
+    mov ecx,JOSHUA_CONSOLE_TEST
+    call debug_hex
+%if JOSHUA_CONSOLE_TEST = 2 || JOSHUA_CONSOLE_TEST = 3
+    lea rcx,[debug_console_fixture_source]
+    call debug_write
+%if JOSHUA_CONSOLE_TEST = 2
+    lea rcx,[acpi_context+ACPI_CONTEXT.enabled]
+%else
+    lea rcx,[console_fixture_irqs]
+%endif
+    call debug_hex
+%endif
+    lea rcx,[debug_newline]
+    call debug_write
+%endif
 .consume:
     cmp qword [keyboard_window+KEYBOARD_WINDOW.failure],0
     jne .failed_retire
@@ -70,6 +96,10 @@ console_run:
     je .wait
     test eax,eax
     jnz .bad
+%if JOSHUA_CONSOLE_TEST = 1
+    ; Preserve the actual token in EDX; the checked helper must reject this state.
+    mov qword [console_editor+CONSOLE_EDITOR.length],128
+%endif
     lea rcx,[console_editor]
     call editor_event
     test eax,eax
@@ -98,6 +128,9 @@ console_run:
     call command_parse
     test eax,eax
     jnz .bad
+%if JOSHUA_CONSOLE_TEST = 2
+    mov qword [acpi_context+ACPI_CONTEXT.enabled],0
+%endif
     call console_facts_capture
     test eax,eax
     jnz .bad

@@ -1,13 +1,15 @@
-param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$FaultTest = 'None', [ValidateSet('None', 'X2', 'MissingEoi')][string]$TimerTest = 'None', [ValidateSet('None', 'InheritedId', 'BadFrame', 'WorkerGuard')][string]$ContextTest = 'None', [ValidateSet('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Stack','Alignment','Np','FarTransfer','BadReturn','Ud2','AlignmentKvm','StackKvm','SyscallKvm','SysenterKvm','PendingExit','PendingFault','DrainExhaust','KernelTimer','InheritedCode','LiveSelector','InheritedLdt','KernelFault')][string]$UserTest = 'None', [ValidateSet('None','BadMagic','BadEntry')][string]$ElfTest = 'None', [ValidateSet('None','Text','Df','Missing','Pending40','Pending44','PendingBoth','DrainExhaust','BadRip','BadSs','BadFlags','BadRsp','BadAddress','BadRoot','UnexpectedTimer','UnexpectedKeyboard','Overflow','OverflowPending')][string]$KeyboardTest = 'None', [switch]$Console)
+param([string]$NasmPath, [string]$OutputDirectory, [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$FaultTest = 'None', [ValidateSet('None', 'X2', 'MissingEoi')][string]$TimerTest = 'None', [ValidateSet('None', 'InheritedId', 'BadFrame', 'WorkerGuard')][string]$ContextTest = 'None', [ValidateSet('None','KernelRead','KernelWrite','CodeWrite','Nx','Guard','Io','Cli','Fpu','Spin','Syscall','Sysenter','Stack','Alignment','Np','FarTransfer','BadReturn','Ud2','AlignmentKvm','StackKvm','SyscallKvm','SysenterKvm','PendingExit','PendingFault','DrainExhaust','KernelTimer','InheritedCode','LiveSelector','InheritedLdt','KernelFault')][string]$UserTest = 'None', [ValidateSet('None','BadMagic','BadEntry')][string]$ElfTest = 'None', [ValidateSet('None','Text','Df','Missing','Pending40','Pending44','PendingBoth','DrainExhaust','BadRip','BadSs','BadFlags','BadRsp','BadAddress','BadRoot','UnexpectedTimer','UnexpectedKeyboard','Overflow','OverflowPending')][string]$KeyboardTest = 'None', [switch]$Console, [ValidateSet('None','BadEditor','BadFacts','Saturation')][string]$ConsoleTest = 'None')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot -Parent
+if ($ConsoleTest -ne 'None' -and -not $Console) { throw 'ConsoleTest requires the separate Console profile.' }
 if ($Console -and ($FaultTest -ne 'None' -or $ContextTest -ne 'None' -or $UserTest -ne 'None' -or $ElfTest -ne 'None' -or $KeyboardTest -ne 'None' -or $TimerTest -eq 'MissingEoi')) { throw 'Console is exclusive with fault/context/user/ELF/keyboard and missing-EOI fixtures.' }
 
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $root 'out'
     if ($Console) { $OutputDirectory = Join-Path $OutputDirectory $(if ($TimerTest -eq 'X2') { 'console-x2' } else { 'console' }) }
+    if ($ConsoleTest -ne 'None') { $OutputDirectory = Join-Path $root ('out/console-test-' + $ConsoleTest.ToLowerInvariant() + $(if ($TimerTest -eq 'X2') { '-x2' } else { '' })) }
     if ($KeyboardTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('keyboard-' + $KeyboardTest.ToLowerInvariant()) }
     if ($ElfTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('elf-' + $ElfTest.ToLowerInvariant()) }
     if ($UserTest -ne 'None') { $OutputDirectory = Join-Path $OutputDirectory ('user-' + $UserTest.ToLowerInvariant()) }
@@ -59,6 +61,7 @@ try {
     $defines += ('-DJOSHUA_ELF_TEST=' + [Array]::IndexOf(@('None','BadMagic','BadEntry'),$ElfTest))
     $defines += ('-DJOSHUA_KEYBOARD_TEST=' + [Array]::IndexOf(@('None','Text','Df','Missing','Pending40','Pending44','PendingBoth','DrainExhaust','BadRip','BadSs','BadFlags','BadRsp','BadAddress','BadRoot','UnexpectedTimer','UnexpectedKeyboard','Overflow','OverflowPending'),$KeyboardTest))
     if ($Console) { $defines += '-DJOSHUA_CONSOLE=1' }
+    $defines += ('-DJOSHUA_CONSOLE_TEST=' + [Array]::IndexOf(@('None','BadEditor','BadFacts','Saturation'),$ConsoleTest))
     & $NasmPath @defines -f bin -Wall -w-reloc-rel-dword -w-reloc-abs-dword -Werror -l (Join-Path $OutputDirectory 'boot.lst') -o $efi boot/uefi.asm
     if ($LASTEXITCODE -ne 0) { throw 'Assembly failed; no image was packaged.' }
     & (Join-Path $root 'tests/Test-Pe.ps1') -EfiPath $efi
@@ -75,6 +78,7 @@ try {
     $manifest = [ordered]@{
         stage = 'M0/M1 boot prototype - unsigned, no installer'
         console = [bool]$Console
+        consoleTest = $ConsoleTest
         faultTest = $FaultTest
         timerTest = $TimerTest
         contextTest = $ContextTest

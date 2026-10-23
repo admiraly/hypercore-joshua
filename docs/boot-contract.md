@@ -557,3 +557,16 @@ hardware, disables and flushes the controller and drains before the visible HALT
 row and permanent IF0 marker. See docs/console-design.md for exact helper records,
 source provenance and failure policies. QEMU smoke is narrower than the full
 interactive/negative/regression exit gates and does not qualify physical machines.
+
+## Isolated console rejection and counter fixtures
+
+Explicit ConsoleTest profiles are compile-time instrumentation in separate media.
+BadEditor writes length128 immediately before checked editor_event, retaining the
+actual EDX token. BadFacts writes owned enabled-CPU count0 after parse and before
+facts-source validation. Both fail permanently before output publication; phase1
+and IF0 are stop-only evidence, not successful hardware retirement. Saturation seeds
+selected foreground and keyboard counters at MAX-1 before READY, with normal queue,
+root and permissions. Its separate finite actual-ISR44 trace is updated only after
+exact frame and hardware ISR ownership proof. Neither injection nor trace exists
+in normal Console images. No versioned ABI or image bounds change. See the exact
+fixture/source evidence expectations in console-design.md and testing.md.

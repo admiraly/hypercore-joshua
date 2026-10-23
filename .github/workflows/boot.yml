@@ -186,6 +186,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Console pixel mutation checks failed.' }
       - name: Exercise real keyboard console from FAT
         run: ./tools/Test-Console.ps1 -Features -BootMedia Fat
+      - name: Validate isolated console rejection and saturation on both media
+        run: |
+          foreach ($fixture in @('BadEditor','BadFacts','Saturation')) {
+            ./tools/Build.ps1 -Console -ConsoleTest $fixture
+            ./tools/Test-Console.ps1 -Fixture $fixture -TimeoutSeconds 180
+            ./tools/Test-Console.ps1 -Fixture $fixture -BootMedia Fat -TimeoutSeconds 180
+          }
       - name: Build and exercise x2APIC console
         run: |
           ./tools/Build.ps1 -Console -TimerTest X2

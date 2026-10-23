@@ -681,3 +681,54 @@ CI job is wired but Windows execution remains pending. Full command breadth,
 negative console fixtures, counter saturation targets, independent full pixel/
 snapshot mutations and physical qualification are open; issue #40 and milestones
 remain incomplete. Earlier host-only checkpoint descriptions above are historical.
+
+## Isolated console rejection and saturation fixtures
+
+Add `Build.ps1 -Console -ConsoleTest BadEditor|BadFacts|Saturation` with default
+`out/console-test-<lowercase mode>` directories and a manifest `consoleTest` value.
+Default is None and is rejected unless Console is selected; existing conflicting
+fixture exclusions remain. Normal Console has no injection instructions or fixture
+markers. No new public ABI, BSS allocation, runtime recovery or privilege authority
+is introduced. Only compile-time branches in trusted foreground IF0/DF0 code are
+used. Test media must never qualify as the normal interactive profile.
+
+BadEditor corrupts only editor.length to128 after an actual token is popped and
+immediately before editor_event. The helper must reject before indexing/mutation,
+then CONSOLE_FAILURE and KERNEL_FAULT lead to permanent CPL0/IF0/HLT. Capture all
+editor bytes before input; require exactly the authored length mutation afterward,
+unchanged model/grid/command/response/facts, zero completed submissions, phase1,
+owned CR3 and matching IRQ/EOI accounting. No HALTED marker or retirement claim is
+allowed: stop-only failure may retain active masked-IF sources.
+
+BadFacts changes only owned ACPI_CONTEXT.enabled to0 immediately before the first
+console_facts_capture, after actual `status` and Enter have passed editor/parser.
+The target marker exposes the fixed source qword address; capture its valid value
+before input and zero afterward. Capture the rendered live status prompt before
+Enter; require that grid remain unchanged after rejection. Require command=status, model/completed unchanged,
+response/facts still all zero, and editor containing exactly the submitted status
+with cleared live input. Physical CPL0/IF0/HLT, expected root, phase1, matching IRQ/
+EOI and no HALTED are mandatory. This tests the adapter's source rejection, not
+untrusted ACPI resistance. No allocation ownership is poisoned by this fixture.
+
+Saturation seeds only editor.submissions/rejected/cancellations, model.completed,
+and window.keyboard_irqs/keyboard_eois to unsigned64 MAX-1 after activation and
+before READY while IF0. Queue indexes/events/drops and all permissions remain normal.
+The actual-key Features campaign must perform multiple successful submissions,
+multiple cancellations and at least two rejected full-line insertions. Require the
+seeded counters reach MAX and remain MAX, never wrap; command/response/action state
+must still reflect each actual completion. Capture IRQ/EOI MAX after at least two
+real IRQs, preserve equality, and require safe physical source retirement and
+visible HALTED. A separate fixture-only qword counts actual ISR44-owned entries
+after frame/ISR proof and is captured through the fixed marker source address. Its
+zero baseline and growth prove first and subsequent real deliveries independently
+of saturated counters. It is bounded by the finite host campaign, not used by normal
+images. This is a controlled near-limit test, not proof of 2^64 deliveries.
+
+Test wrappers require exact manifest/profile and artifact identity. Negative
+success summaries are invalidated at startup and published only after exact physical
+terminal evidence and clean QEMU exit0. An expected-stop profile cannot pass through
+a timeout, unrelated exception, absence of readiness, or normal HALTED. Positive
+pixel/ownership/idle assertions are retained for Saturation. The first fixture slice
+leaves active-timer rejection, forced console drain/exhaustion, broader corruption
+and source/transcript provenance gates open; inherited keyboard fixtures alone do
+not qualify those console-specific paths.

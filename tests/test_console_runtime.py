@@ -12,6 +12,7 @@ import socket
 import struct
 import subprocess
 import time
+import sys
 from console_pixels import validate_pixels
 from keyboard_runtime_oracle import validate_lapic, validate_output_quiet, validate_queue_indices
 
@@ -23,13 +24,19 @@ p.add_argument('--boot-media',choices=['Iso','Fat'],default='Iso')
 p.add_argument('--cpu',default='qemu64')
 p.add_argument('--timeout',type=int,default=120)
 p.add_argument('--idle-seconds',type=int,default=30)
+p.add_argument('--fixture',choices=['None','BadEditor','BadFacts','Saturation'],default='None')
 p.add_argument('--features',action='store_true',help='exercise command grammar through real PS2 input')
 a = p.parse_args()
+MAX=(1<<64)-1
+if a.fixture=='Saturation':
+    a.features=True
+seed=MAX-1 if a.fixture=='Saturation' else 0
 assert 30 <= a.idle_seconds <= 120,'idle evidence requires at least30 seconds'
 out = a.output.resolve()
 summary_path = out/('console-'+a.boot_media.lower()+'-summary.json')
 summary_path.unlink(missing_ok=True) # stale success never survives a failed rerun
 manifest = json.loads((out/'manifest.json').read_text())
+assert manifest.get('consoleTest','None')==a.fixture,'exact console fixture identity'
 assert manifest.get('console') is True,'requires separately built Console profile'
 for field in ['faultTest','contextTest','userTest','elfTest','keyboardTest']:
     assert manifest.get(field)=='None','conflicting console fixture: '+field
@@ -96,6 +103,16 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         match = re.search(r'CONSOLE_READY MODEL=([0-9A-F]{16}) GRID=([0-9A-F]{16}) EDITOR=([0-9A-F]{16}) COMMAND=([0-9A-F]{16}) RESPONSE=([0-9A-F]{16}) FACTS=([0-9A-F]{16}) WINDOW=([0-9A-F]{16}) DECODER=([0-9A-F]{16}) CONTROLLER=([0-9A-F]{16})',log())
         assert match,'complete evidence addresses'
         addresses = dict(zip(['model','grid','editor','command','response','facts','window','decoder','controller'],[int(x,16) for x in match.groups()]))
+        if a.fixture!='None':
+            marker='JOSHUA:CONSOLE_FIXTURE ID='
+            while not re.search(r'CONSOLE_FIXTURE ID=[0-9A-F]{16}(?: SOURCE=[0-9A-F]{16})?\r?\n',log()):
+                healthy_fixture=process.poll() is None and time.monotonic()<deadline
+                assert healthy_fixture,'fixture readiness deadline'
+                time.sleep(.02)
+            fixture_match=re.search(r'CONSOLE_FIXTURE ID=([0-9A-F]{16})(?: SOURCE=([0-9A-F]{16}))?',log())
+            assert int(fixture_match[1],16)==['None','BadEditor','BadFacts','Saturation'].index(a.fixture),'target fixture identity'
+            if fixture_match[2]:
+                addresses['source']=int(fixture_match[2],16)
         def physical(name,size,suffix):
             path = out/(tag+'-'+suffix+'-'+name+'.bin')
             qmp('pmemsave',val=addresses[name],size=size,filename=str(path))
@@ -119,6 +136,8 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             qmp('stop')
             values = {name:physical(name,size,suffix) for name,size in
                       [('model',64),('grid',4904),('editor',1568),('command',40),('response',4112),('facts',128),('window',288),('decoder',216),('controller',56)]}
+            if 'source' in addresses:
+                values['source']=physical('source',8,suffix)
             regs = registers()
             (out/(tag+'-'+suffix+'-registers.log')).write_text(regs)
             lapic = qmp('human-monitor-command',**{'command-line':'info lapic'})
@@ -141,7 +160,11 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                 qmp('cont')
             return values
         baseline = snapshot('ready')
-        assert struct.unpack('<8Q',baseline['model'])==(0x314c444f4d484f4a,2,0,0,0,0,0,0),'initial model'
+        assert struct.unpack('<8Q',baseline['model'])==(0x314c444f4d484f4a,2,0,seed,0,0,0,0),'initial model'
+        if a.fixture=='Saturation':
+            assert struct.unpack_from('<3Q',baseline['editor'],72)==(seed,seed,seed),'counter seed baseline'
+            assert struct.unpack_from('<2Q',baseline['window'],112)==(seed,seed),'IRQ seed baseline'
+            assert baseline['source']==bytes(8),'independent actual IRQ trace baseline'
         start = time.monotonic()
         while time.monotonic()-start<a.idle_seconds:
             healthy()
@@ -166,6 +189,51 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert length<=127 and cursor<=length,'bounded editor'
             assert data[96+length:224]==b'\0'*(128-length),'editor zero tail'
             return data[96:96+length].decode('ascii'),cursor
+        if a.fixture in ('BadEditor','BadFacts'):
+            assert baseline['facts']==bytes(128) and baseline['response']==bytes(4112),'unpublished baseline outputs'
+            if a.fixture=='BadFacts':
+                assert struct.unpack('<Q',baseline['source'])[0]==2,'valid facts source before poisoning'
+                type_text('status')
+                before_reject=snapshot('pre-rejection')
+                key('ret')
+            else:
+                before_reject=baseline
+                key('a')
+            while 'JOSHUA:CONSOLE_FAILURE' not in log() or not re.search(r'(?m)^JOSHUA:KERNEL_FAULT\r?$',log()):
+                assert process.poll() is None and time.monotonic()<deadline,'exact rejection deadline: '+log()
+                time.sleep(.02)
+            qmp('stop')
+            failed={name:physical(name,len(data),'rejected') for name,data in baseline.items()}
+            regs=registers()
+            (out/(tag+'-rejected-registers.log')).write_text(regs)
+            assert 'HLT=1' in regs and 'CPL=0' in regs and not(int(re.search(r'RFL=([0-9A-Fa-f]+)',regs)[1],16)&0x200),'exact IF0 CPL0 stop'
+            assert int(re.search(r'CR3=([0-9A-Fa-f]+)',regs)[1],16)==struct.unpack_from('<Q',baseline['window'],16)[0],'owned root at rejection'
+            assert log().count('JOSHUA:CONSOLE_FAILURE')==1 and log().count('JOSHUA:KERNEL_FAULT')==1,'no unrelated fault'
+            assert 'JOSHUA:CONSOLE_HALTED' not in log() and 'JOSHUA:KERNEL_HALTED' not in log(),'no false success'
+            for name in ['model','grid','response','facts']:
+                assert failed[name]==before_reject[name],'rejection preserves '+name
+            assert failed['facts']==bytes(128) and failed['response']==bytes(4112),'no premature publication at rejection'
+            w=struct.unpack('<20Q64H',failed['window'])
+            assert w[1]==1 and w[14]==w[15] and w[14]>=1 and w[13]==w[16]==w[17]==0,'active stop with owned IRQ accounting'
+            if a.fixture=='BadEditor':
+                expected=bytearray(baseline['editor'])
+                struct.pack_into('<Q',expected,8,128)
+                assert failed['editor']==expected and failed['command']==baseline['command'],'only authored editor mutation'
+            else:
+                assert failed['source']==bytes(8),'authored facts source rejection'
+                assert struct.unpack('<5Q',failed['command'])==(0x31444e4d43484f4a,3,0,0,0),'parsed status before source failure'
+                expected=struct.pack('<12Q',0x3152444553484f4a,0,0,1,1,0,0,0,6,1,0,0)
+                expected+=bytes(256)+b'status'.ljust(128,b'\0')+struct.pack('<8Q',6,0,0,0,0,0,0,0)+b'status'.ljust(1024,b'\0')
+                assert failed['editor']==expected,'exact submitted status state'
+            stream.write(b'{"execute":"quit"}\n')
+            stream.flush()
+            process.wait(timeout=5)
+            assert process.returncode==0,'clean expected-stop shutdown'
+            temporary=summary_path.with_suffix('.json.tmp')
+            temporary.write_text(json.dumps({'fixture':a.fixture,'bootMedia':a.boot_media,'cpu':a.cpu,'expectedStop':True,'checks':'exact owned rejection; no retirement claimed'},indent=2)+'\n')
+            temporary.replace(summary_path)
+            print('PASS: Console '+a.fixture+' '+a.boot_media+' exact expected stop, unchanged outputs, owned root and no success marker')
+            sys.exit(0)
         # Actual editing: statux + Backspace + s -> status, then JSON diagnostic.
         type_text('statux')
         key('backspace')
@@ -175,7 +243,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         key('ret')
         status = snapshot('status')
         m = struct.unpack('<8Q',status['model'])
-        assert m[3:]==(1,3,0,1,0),'fresh completed status result'
+        assert m[3:]==(min(MAX,seed+1),3,0,1,0),'fresh completed status result'
         assert struct.unpack('<5Q',status['command'])==(0x31444e4d43484f4a,3,0,1,0),'exact parser result'
         response = status['response']
         ready,length = struct.unpack_from('<2Q',response)
@@ -188,6 +256,9 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         assert f[7]==expected_mode and f[8]==16 and f[9]==f[10] and f[11]==0,'real interrupt facts'
         assert data=={'command':'status','status':0,'image_bytes':f[1],'enabled_cpus':f[6],'apic_mode':f[7],'timer_eois':f[8]},'exact JSON schema/values'
         assert editor_text(status['editor'])==('',0),'submitted input cleared'
+        if a.fixture=='Saturation':
+            assert struct.unpack_from('<Q',status['editor'],72)[0]==MAX and struct.unpack_from('<Q',status['source'])[0]>=2,'first saturation and independent real IRQ entries'
+            assert struct.unpack_from('<2Q',status['window'],112)==(MAX,MAX),'IRQ counters saturate'
         # History recall and cancellation must use actual device events too.
         key('up')
         history = snapshot('history')
@@ -195,8 +266,8 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         key('c','ctrl')
         cancelled = snapshot('cancelled')
         assert editor_text(cancelled['editor'])==('',0),'real Ctrl-C cancellation'
-        assert struct.unpack_from('<Q',cancelled['editor'],88)[0]==1,'cancellation count'
-        completed = 1
+        assert struct.unpack_from('<Q',cancelled['editor'],88)[0]==min(MAX,seed+1),'cancellation count'
+        completed = min(MAX,seed+1)
         if a.features:
             # Each result is observed before submitting the next command. No guest
             # memory writes or host-side command-string execution are used.
@@ -211,7 +282,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                 type_text(text)
                 key('ret')
                 values = snapshot('feature-'+str(index))
-                completed += 1
+                completed = min(MAX,completed+1)
                 action = 1 if command==7 and code==0 else 0
                 assert struct.unpack('<5Q',values['command']) == (0x31444e4d43484f4a,command,code,flag,action),'feature command: '+text
                 assert struct.unpack('<8Q',values['model'])[3:] == (completed,command,code,flag,action),'feature completion: '+text
@@ -260,10 +331,16 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             qmp('screendump',filename=str(out/(tag+'-full-line.ppm')))
             validate_pixels(full['grid'],(out/(tag+'-full-line.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
             rejected_before=struct.unpack_from('<Q',full['editor'],80)[0]
+            if a.fixture=='Saturation':
+                assert rejected_before==seed,'accepted input preserves rejection seed'
             key('b')
             rejected=snapshot('full-rejection')
             assert editor_text(rejected['editor'])==(capacity_text,127),'full insertion preserves text'
-            assert struct.unpack_from('<Q',rejected['editor'],80)[0]==rejected_before+1,'full rejection accounting'
+            assert struct.unpack_from('<Q',rejected['editor'],80)[0]==min(MAX,rejected_before+1),'full rejection accounting'
+            if a.fixture=='Saturation':
+                key('z')
+                again=snapshot('second-full-rejection')
+                assert editor_text(again['editor'])==(capacity_text,127) and struct.unpack_from('<Q',again['editor'],80)[0]==MAX,'rejected counter remains saturated'
             key('home')
             assert editor_text(snapshot('home')['editor'])==(capacity_text,0),'Home exact cursor'
             key('delete')
@@ -281,10 +358,15 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             healthy()
             time.sleep(.02)
         terminal = snapshot('halted',True)
+        if a.fixture=='Saturation':
+            assert struct.unpack_from('<3Q',terminal['editor'],72)==(MAX,MAX,MAX),'all editor counters remain saturated'
+            assert struct.unpack_from('<Q',terminal['model'],24)[0]==MAX,'completion remains saturated'
+            assert struct.unpack_from('<2Q',terminal['window'],112)==(MAX,MAX),'IRQ counters remain saturated'
+            assert struct.unpack('<Q',terminal['source'])[0]>struct.unpack('<Q',status['source'])[0],'independent subsequent IRQ entries'
         regs = registers()
         assert 'HLT=1' in regs and 'CPL=0' in regs and not(int(re.search(r'RFL=([0-9A-Fa-f]+)',regs)[1],16)&0x200),'permanent IF0 ring0 halt'
         m = struct.unpack('<8Q',terminal['model'])
-        assert m[3:]==(completed+1,8,0,0,2),'halt follows exact valid command'
+        assert m[3:]==(min(MAX,completed+1),8,0,0,2),'halt follows exact valid command'
         grid = terminal['grid']
         g = struct.unpack_from('<13Q',grid)
         assert g[0]==0x3144495247484f4a and g[9]==0 and g[12]==0,'rendered grid / disabled cursor'
@@ -341,10 +423,10 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         process.wait(timeout=5)
         assert process.returncode==0,'clean QEMU shutdown'
         temporary=summary_path.with_suffix('.json.tmp')
-        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':completed+1,'features':a.features,'checks':'real PS2 commands, editing/history, timer-free idle and full visible grid/display consistency; negative qualification pending'},indent=2)+'\n')
+        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':20 if a.features else 2,'fixture':a.fixture,'features':a.features,'checks':'real PS2 commands, editing/history, timer-free idle and full visible grid/display consistency; negative qualification pending'},indent=2)+'\n')
         temporary.replace(summary_path)
 
-        print(f'PASS: Console commands={completed+1} features={a.features} {a.boot_media} real PS2 editing/history/JSON, {a.idle_seconds}s timer-free idle, owned IRQs and physical IF0 halt retirement; broader campaign pending.')
+        print(f'PASS: Console commands={20 if a.features else 2} features={a.features} {a.boot_media} real PS2 editing/history/JSON, {a.idle_seconds}s timer-free idle, owned IRQs and physical IF0 halt retirement; broader campaign pending.')
     finally:
         if client:
             client.close()

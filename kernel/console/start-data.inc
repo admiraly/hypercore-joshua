@@ -14,3 +14,10 @@ console_halted_text_end:
 %if console_halted_text_end-console_halted_text > 48
  %error Halt label exceeds console row
 %endif
+
+%if JOSHUA_CONSOLE_TEST != 0
+debug_console_fixture: db 'JOSHUA:CONSOLE_FIXTURE ID=',0
+%if JOSHUA_CONSOLE_TEST = 2 || JOSHUA_CONSOLE_TEST = 3
+debug_console_fixture_source: db ' SOURCE=',0
+%endif
+%endif

@@ -882,3 +882,36 @@ and current named image retain SHA256
 `3dcdaed9167b8c94a50c8938c06ae1ccb5e488c18f5887ad85fc4995f48f8369`.
 Build/reproducibility and inherited regressions remain the previously recorded
 23a66e3 results; they were not rerun for this host-only validation change.
+
+### Isolated console rejection/saturation implementation
+
+Three separate ConsoleTest profiles add controlled BadEditor/BadFacts rejections
+and near-MAX counters. Each build passed20,822 static assertions. Design review
+cleared the slice; code review found two oracle gaps (early rejection-counter
+saturation and nonzero unpublished baseline outputs), both corrected and re-reviewed
+without remaining findings. Reviews were source-only, without reproducing results.
+First ISO invocations passed, but final stronger-oracle ISO/FAT reruns are pending
+at this checkpoint. Normal and interactive Console two-build reproducibility passed,
+including20,822 assertions per build and corrupt-PE rejection. No final target batch
+or Windows result is inferred here. Active console timer/drain negative fixtures,
+independent facts/transcript provenance, broader mutations and hardware gates remain
+open. No milestone/issue closure or merge is claimed.
+
+The final stronger-oracle batch subsequently passed all six xAPIC targets:
+BadEditor and BadFacts exact expected stops on ISO/FAT, and Saturation full20-command
+Features on ISO/FAT with near-limit transitions, independent ISR trace growth,
+visible pixels and physical retirement. All six commands exited0. Normal Test-Qemu
+ISO/FAT passed private paging/ownership/CPL3/continuation checks. Ordinary Console
+Features ISO/FAT passed again, and24 pixel mutations passed on its ISO capture.
+Normal, Console and all three fixture reproducibility profiles each passed two
+builds with20,822 assertions per build, identical artifacts and corrupted-PE
+rejection. Fixture reproducibility ran in separate output directories; their ISOs
+were byte-compared with the actual tested fixture media. The ordinary interactive
+ISO remains byte-identical to the frozen23a66e3 image. No fixture instrumentation
+was added to the user-facing image.
+
+Final source/CI/evidence review found no actionable findings; reviewers did not
+reproduce these tests. Windows execution and physical qualification remain open.
+The wider inherited regression results remain the earlier frozen-runtime evidence;
+they were not all rerun for these compile-time-only hooks. Active console timer/
+drain rejection and independent live facts/transcript oracles remain next gates.

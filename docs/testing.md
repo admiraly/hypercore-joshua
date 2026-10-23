@@ -357,3 +357,25 @@ ISO pass for24 baseline/mutation checks. Negative console fixtures, saturation,
 independent live transcript/source-facts oracles and broader snapshot mutations
 remain separate gates.
 The new Windows console CI job is wired; execution remains unverified here.
+
+## Isolated console rejection and saturation targets
+
+`./tools/Build.ps1 -Console -ConsoleTest BadEditor` creates separate
+`out/console-test-badeditor` media. Run `./tools/Test-Console.ps1 -Fixture BadEditor`
+and repeat with `-BootMedia Fat`; BadFacts and Saturation use the same commands
+with their own mode names and directories. Linux requires explicit QEMU/firmware
+paths as above. `Test-Reproducibility.ps1 -Console -ConsoleTest <mode>` can compare
+fixture builds without overwriting interactive artifacts. Explicit x2APIC profiles
+need matching output-directory/CPU arguments; no x2 fixture result is inferred.
+
+BadEditor requires only the authored invalid length mutation and no editor/output
+publication. BadFacts captures a valid source before poisoning, exact parser/editor
+submission state and zero facts/response after source rejection. Both require exact
+permanent owned-root CPL0/IF0 halt with phase1, no normal HALTED, and no unrelated
+fault. They do not claim source retirement. Saturation runs Features with near-limit
+seeds, observes MAX-1 then MAX and later MAX for submissions/rejections/cancellations,
+model completions and IRQ accounting. A separate fixture-only actual ISR44 trace
+provides delivery evidence independent of saturated counters. Pixel, idle and safe
+retirement assertions remain enabled. All modes check manifest/media isolation and
+publish final summaries only after clean QEMU exit0. These controlled fixtures do
+not qualify natural lifetime limits, active-timer/drain rejection or physical input.

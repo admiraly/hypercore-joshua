@@ -6,8 +6,17 @@ default rel
 %include 'sdk/elf.inc'
 %include 'sdk/keyboard.inc'
 %include 'sdk/console.inc'
+%ifndef JOSHUA_CONSOLE_TEST
+ %define JOSHUA_CONSOLE_TEST 0
+%endif
+%if JOSHUA_CONSOLE_TEST < 0 || JOSHUA_CONSOLE_TEST > 3
+ %error Invalid console fixture
+%endif
 %ifndef JOSHUA_CONSOLE
  %define JOSHUA_CONSOLE 0
+%endif
+%if JOSHUA_CONSOLE_TEST != 0 && JOSHUA_CONSOLE = 0
+ %error Console fixture requires Console
 %endif
 %ifndef JOSHUA_KEYBOARD_TEST
  %define JOSHUA_KEYBOARD_TEST 0

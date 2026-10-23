@@ -34,3 +34,8 @@ acpi_io_records: times 8*16 db 0
 controller_pt: dq 0
 cache_context: times CACHE_CONTEXT_size db 0
 apic_context: times APIC_CONTEXT_size db 0
+
+%if JOSHUA_CONSOLE_TEST = 3
+; Finite fixture trace only; incremented after frame and actual ISR44 ownership.
+console_fixture_irqs: dq 0
+%endif
