@@ -12,8 +12,9 @@ exits boot services, and enters an embedded HyperCore stub with its own stack,
 GDT, fault-stop IDT, and framebuffer text renderer. The stub deliberately halts.
 It validates the final memory map and records conservative memory candidates
 excluding the loaded image, page zero, framebuffer and inventoried active paging
-structures. The kernel still retains firmware page tables; no frame allocator
-is implemented.
+structures. A bounded physical frame allocator tracks exact ownership, zeroes
+allocations and checks allocate/write/free during boot. The kernel still retains
+firmware page tables.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 

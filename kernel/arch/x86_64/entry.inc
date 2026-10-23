@@ -188,6 +188,15 @@ fault_test_instruction:
     call debug_hex
     lea rcx,[debug_newline]
     call debug_write
+    call frame_allocator_check
+    test eax,eax
+    jnz kernel_fault
+    lea rcx,[debug_frames]
+    call debug_write
+    mov rcx,[frame_allocator+FRAME_ALLOCATOR.free_pages]
+    call debug_hex
+    lea rcx,[debug_newline]
+    call debug_write
     mov rdi,[r12+BOOT_INFO.framebuffer]
     mov ecx,[r12+BOOT_INFO.stride]
     mov [frame_stride_qword],rcx

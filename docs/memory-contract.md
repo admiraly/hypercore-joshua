@@ -1,7 +1,7 @@
 # M2 memory ownership contract draft
 
-Status: proposed implementation contract for issue #3; no allocator or owned
-paging is implemented by this document. Review each stage before runtime changes.
+Status: evolving implementation contract for issue #3; map, reservation and
+frame-allocation stages are implemented. Owned paging remains proposed. Review each stage before runtime changes.
 The 88-byte boot-info v0 definition and RDI register contract remain unchanged;
 the current loader/kernel explicitly exchange the 104-byte v1 extension.
 
@@ -31,9 +31,9 @@ is BSS inside the reserved image. Split capacity failure invalidates the whole
 result and stops boot. `range_reserve` is shared with a native host oracle suite.
 
 After candidate construction, the kernel inventories the active four-level
-paging structures and subtracts every discovered table frame. No allocator is
-implemented and no firmware memory is reclaimed. The resulting ledger is input
-to the next ownership-tracking stage, not evidence of process isolation.
+paging structures and subtracts every discovered table frame. The frame allocator
+consumes the completed exclusions. No firmware memory is reclaimed and this is
+not evidence of process isolation.
 
 ## Input validation and range accounting (M2a)
 
@@ -78,15 +78,33 @@ is explicitly modified, no table is reclaimed, and inherited paging remains live
 A nonconforming or unreadable firmware mapping may fault; there is no recovery.
 See [the paging inventory design](paging-inventory-design.md) for assumptions.
 
-## Frame allocator (M2b)
+## Implemented frame allocator (M2b)
 
-Choose a simple bitmap or range allocator after measuring metadata bounds, not a
-performance claim. Every frame has exactly one owner/state: unavailable, free,
-allocator metadata, page table or allocation. Allocation returns aligned owned
-frames or an explicit exhaustion result; no partial success without a documented
-rollback. Free validates exact allocation ownership and rejects reserved frames,
-misalignment and double free. Clear frames before exposing them across trust domains.
-Single bootstrap CPU only; synchronization must be redesigned before SMP use.
+`frame_allocator_init` accepts the completed excluded ranges and image-owned
+record storage. It validates range alignment, disjointness, metadata bounds and
+nonzero low-canonical physical addresses; initialization never clears RAM. It
+rejects reinitialization. All metadata must be owned by the trusted caller and
+excluded from candidates; initialization is not a public pointer-validation API.
+
+`frame_alloc` returns contiguous zeroed pages with power-of-two page alignment,
+recording exact base/page-count/nonzero internal owner. It distinguishes invalid
+requests, physical exhaustion and metadata limits, with no mutation on failure.
+Every success clears every allocated byte before returning. `frame_free` requires
+an exact live record and rejects wrong owner, wrong size, misalignment, reserved
+or unallocated addresses and double free. It coalesces adjacent free ranges.
+
+The range capacity invariant reserves room to return every live allocation:
+free-range count plus live-allocation count never exceeds range capacity. Up to
+4,096 simultaneous allocations use 96 KiB of image-owned records. This is a bounded
+bring-up implementation, not a performance claim or a general-purpose heap. Owner
+IDs are privileged internal tags, not authenticated user handles. Clearing faults
+are fatal; no rollback/recovery is promised for hardware faults. No freed frame
+crosses an ownership boundary without clearing on its next allocation.
+
+The BSP calls this with interrupts disabled, after paging-frame exclusion. No
+firmware memory is reclaimed and CR3 remains inherited. No concurrency is supported.
+Future address-space and user-capability APIs must add their own lifetime and
+validation rules. See [the allocator design](frame-allocator-design.md).
 
 ## Paging transition (M2c)
 
