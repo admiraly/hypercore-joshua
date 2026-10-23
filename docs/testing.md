@@ -435,3 +435,23 @@ draft at its saved cursor. Each Left/Right/Home/End/Delete/Backspace transition 
 captured separately, including exact whole-editor no-ops at line boundaries. It
 still submits20 commands; the larger replay count includes these added events and
 checkpoints, not additional independent corruption scenarios.
+
+## Process-owned handle policy foundation
+
+`./tests/Test-Handles.ps1` assembles the currently unlinked pure policy in
+kernel/user/handles.inc and runs a Linux host oracle. The1056-byte table, rights,
+40-bit generations, unique16-bit process-incarnation tag and internal ABI are
+frozen for this slice in handle-design.md. No public syscall ABI is frozen.
+
+The current suite passes41,585 cumulative helper/model/ABI/guard operations,
+including40 deterministic histories of1000 mixed operations, full32-slot capacity,
+rights attenuation, stale/foreign tokens, seeded maximum-generation retirement,
+revoke/no-op, dirty initialization and malformed whole-table state. Seeded lifetime
+boundaries do not represent a trillion actual close/reuse cycles. Every call checks
+eight integer nonvolatile sentinels and complete output/table bytes; guarded tables
+touch inaccessible lower/upper page boundaries in separate passes.
+
+These helpers have no boot include or privileged call site. Host execution does
+not establish CPL3 syscall behavior, active-process provenance, a nonreuse tag
+allocator, resource lifetime, Windows/physical correctness or general capabilities.
+Those remain mandatory before a separately reviewed gate integration.
