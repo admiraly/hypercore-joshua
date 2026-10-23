@@ -114,7 +114,7 @@ for trial in range(200):
 descriptors = (Descriptor * 7)(
     Descriptor(7, 0, 0, 0x100, 0xF),
     Descriptor(1, 0x100000, 0, 0x30, 8),
-    Descriptor(2, 0x130000, 0, 0xAA, 8),
+    Descriptor(2, 0x130000, 0, 0xB6, 8),
     Descriptor(7, 0x200000, 0, 0x100, 0x8000000000000008),
     Descriptor(7, 0x300000, 0, 0x100, 0),
     Descriptor(0xFFFFFFFF, 0x400000, 0, 0x100, 8),
@@ -125,7 +125,7 @@ boot.memory_map = C.addressof(descriptors)
 boot.memory_map_size = C.sizeof(descriptors)
 boot.descriptor_size = 40
 boot.image_base = 0x100000
-boot.image_size = 0xDA000
+boot.image_size = 0xE6000
 boot.framebuffer = 0x501123
 boot.framebuffer_size = 0x2111
 assert lib.host_image_check(C.byref(boot), 32) == 0
@@ -139,19 +139,19 @@ checks += 2
 descriptors[0] = Descriptor(7, 0, 0, 0x200, 8)
 array, context = make_set([], capacity=64)
 assert lib.host_candidates_build(C.byref(boot), C.byref(context), 32) == 0
-assert (0x1DA000, 0x200000) in actual(context)
-assert not any(left < 0x1DA000 and right > 0x100000 for left, right in actual(context))
+assert (0x1E6000, 0x200000) in actual(context)
+assert not any(left < 0x1E6000 and right > 0x100000 for left, right in actual(context))
 checks += 1
 
 # Image coverage must fail on gaps, wrong types, overflow and invalid sizes.
 descriptors[0] = Descriptor(7, 0, 0, 0x100, 8)
-for base, size in [(0, 0xDB000), (0x100001, 0xDB000), (0x100000, 0xD9000),
-                   (0x100000, 0xDA001), (0x100000, 0xDB000),
-                   (0xFFFFFFFFFFFFF000, 0xDA000)]:
+for base, size in [(0, 0xE7000), (0x100001, 0xE7000), (0x100000, 0xE5000),
+                   (0x100000, 0xE6001), (0x100000, 0xE7000),
+                   (0xFFFFFFFFFFFFF000, 0xE6000)]:
     boot.image_base, boot.image_size = base, size
     assert lib.host_image_check(C.byref(boot), 32) == 1
     checks += 1
-boot.image_base, boot.image_size = 0x100000, 0xDA000
+boot.image_base, boot.image_size = 0x100000, 0xE6000
 descriptors[2].type = 7
 assert lib.host_image_check(C.byref(boot), 32) == 1
 checks += 1

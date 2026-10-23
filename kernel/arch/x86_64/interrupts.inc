@@ -40,6 +40,8 @@
 
 apic_timer_entry:
     irq_save
+    cmp qword [kernel_context+KERNEL_CONTEXT.state],1
+    je context_timer_saved
     mov rax,APIC_READY_MAGIC
     cmp [apic_context+APIC_CONTEXT.ready],rax
     jne kernel_fault
@@ -98,7 +100,7 @@ apic_install_gates:
     mov [rdx+8],eax
     ret
 
-%macro irq_sentinels 1
+%macro irq_sentinels 1-2 irq_sentinel_values
 %assign irq_offset 0
 %rep 15
 %if irq_offset = 0
@@ -133,9 +135,9 @@ apic_install_gates:
  %define irq_reg r15
 %endif
 %ifidni %1,load
-    mov irq_reg,[irq_sentinel_values+irq_offset]
+    mov irq_reg,[%2+irq_offset]
 %else
-    cmp irq_reg,[irq_sentinel_values+irq_offset]
+    cmp irq_reg,[%2+irq_offset]
     jne .bad
 %endif
 %assign irq_offset irq_offset+8

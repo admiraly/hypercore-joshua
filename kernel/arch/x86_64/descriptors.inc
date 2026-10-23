@@ -100,12 +100,12 @@ descriptor_idt_build:
     pop rdi
     ret
 
-; RCX five guard starts, RDX cursor, R8 end -> RAX next boundary, R9D absent.
+; RCX STACK_GUARD_COUNT guard starts, RDX cursor, R8 end -> RAX next boundary, R9D absent.
 ; A guard covers [start,start+4096); skip exactly to its end when inside.
 stack_guard_boundary:
     mov rax,r8
     xor r9d,r9d
-    mov r10d,5
+    mov r10d,STACK_GUARD_COUNT
 .next:
     mov r11,[rcx]
     cmp rdx,r11

@@ -177,3 +177,27 @@ checks. `tests/Test-ApicTimer.ps1` additionally boots X2 fixtures from ISO and F
 with `qemu64,+x2apic`, and requires MissingEoi to fail the normal timer checkpoint.
 A timeout in that controlled negative fixture is expected rejection, not a passed
 boot. Physical compatibility, calibration, AP startup and scheduling remain open.
+
+
+## Guarded kernel context validation
+
+`tests/Test-KernelContext.ps1` executes the exact Assembly frame/scheduling policy
+against independently constructed host frames and a reference alternating schedule.
+It covers invalid pointers before frame reads, range/selector/flags/RSP rejection,
+worker RF acceptance/bootstrap RF rejection, failed-publication snapshots and eight
+integer ABI sentinels. Host pointer storage is caller-owned; no privileged adapter
+or IRETQ is executed by this suite.
+
+Normal ISO/FAT and existing X2 ISO/FAT fixtures now require64 switching ticks/EOIs/
+restore selections, nonzero progress from both workers and successful bootstrap
+resumption. QMP reads the actual owned page tables to check all seven absent guards
+and every stack page's supervisor RW/NX permissions. `tests/Test-ContextSwitch.ps1`
+checks InheritedId launch normalization, BadFrame rejection before publication or
+invalid IRETQ, and WorkerGuard exact #PF/error0/RIP/CR2 on IST4. These fixture images
+are separate from the normal distribution image. No recovery, arbitrary task API,
+FPU context, AP/SMP, user isolation or physical qualification is established.
+
+`tests/Test-QemuStackWalk.ps1` extracts the actual QEMU walk function by its
+PowerShell AST and supplies a read-only physical-memory model. Fifteen fixtures
+reject read-only/user ancestors at every level, handle absent entries and large
+leaves. Effective stack writability requires RW at every traversed level.

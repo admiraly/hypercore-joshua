@@ -20,9 +20,11 @@ guard and dedicated read-only constant storage, preserving inherited cache selec
 A bounded high-half kernel arena tracks allocations and invalidates translations
 before physical frame reuse. Bounded ACPI root/MADT validation identifies the BSP
 and local/IO APIC topology. A bounded BSP timer smoke check delivers sixteen
-local-APIC interrupts with EOI and IRETQ, then stops the timer and clears IF. These paths are QEMU-tested; the
+local-APIC interrupts with EOI and IRETQ. A subsequent bounded timer-driven check
+preempts two trusted kernel workers on separate guarded stacks and resumes the
+bootstrap context after64 deliveries, then stops the timer and clears IF. These paths are QEMU-tested; the
 new memory implementation has no physical qualification.
-There is no scheduler, process isolation, storage driver, network stack, shell,
+There is no general task scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.
 
 **Bare-metal status:** on 22 October 2026, the owner confirmed a flawless boot

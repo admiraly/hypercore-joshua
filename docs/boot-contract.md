@@ -345,3 +345,43 @@ enabled only in the STI/HLT/flags-snapshot wait sequence, then cleared. At compl
 the timer is masked/stopped, ISR/IRR are empty, and normal/fault checkpoints have
 IF clear. Memory APIs retain their IF-clear precondition. No scheduler, SIMD
 preservation contract, calibrated timing, SMP or hardware qualification is claimed.
+
+
+## Guarded BSP context switching (issue #30)
+
+After the independent16-delivery timer self-test, three fixed trusted context
+records identify parked bootstrap and two Assembly workers. Two additional16-KiB
+RW/NX stacks have absent lower guards; the guard policy now covers seven stacks.
+TSS/RSP0, exception ISTs and versioned boot-info remain unchanged. The PE text
+capacity grows to0x7000 bytes; data/rodata/BSS start at8000h/9000h/A000h, BSS is
+DB000h, relocations E5000h and image size E6000h. Scheduler metadata has its own
+BSS page; all stack/metadata pages stay reserved for image lifetime.
+
+`kernel/sched/context.inc` validates the fixed context configuration and incoming/
+selected192-byte frames before publication. The frame has32 bytes of shadow space,
+fifteen saved integer registers, then RIP/CS/RFLAGS/oldRSP/SS. It checks stack
+arithmetic/headroom/alignment before frame reads, disjoint proved stack allocations,
+text RIP, exact ring0 selectors and an explicit flags whitelist. Workers permit
+arithmetic/DF/IF/architectural RF with IF1; bootstrap requires IF0/RF0. TF/NT/VM/IOPL/
+AC/ID/reserved flags are rejected. The frame must equal align_down(oldRSP,16)-192;
+oldRSP==stack_high is valid. Caller-owned context/records and proved readable stack
+ranges are preconditions; this is not validation of arbitrary hostile pointers.
+
+INT42h launches only from prepared bootstrap state. CLI/PUSH2/POPFQ immediately
+before it normalizes inherited flags. The saved bootstrap continuation is parked;
+workers alternate on each of64 timer interrupts,32 interrupts each. Selection is
+failure-atomic; EOI/accounting/rearm finish before the terminal RSP change and
+irq_restore/IRETQ. Final delivery masks/stops the timer before EOI and restores the
+bootstrap frame. No RET crosses stacks, and no allocation/firmware/logging occurs
+on normal handler paths. Fatal rejection may emit bounded diagnostics with IF0.
+Maximum nested policy/adapter usage is below256 bytes, within a4-KiB lower reserve.
+CET is rejected; FS/GS, CR3 and descriptors are shared/unchanged, with no SIMD/x87
+context ABI. The trusted workers are not isolated processes.
+
+Success requires actual bootstrap resumption,64 ticks/EOIs/restore selections,
+32 per-worker interruptions, nonzero progress and distinct fifteen-register/RSP/DF
+sentinels, stopped timer, empty ISR/IRR and IF0. CONTEXT_SWITCH_OK logs bounded counts
+and progress; CONTEXT_STACK records expose bounds/counts for independent QEMU walks
+of all seven absent guards and every supervisor RW/NX stack page. A successful
+selection counter alone is not proof of IRETQ execution. The fixed smoke is not a
+fair scheduler, arbitrary kernel preemption API, user isolation or SMP support.

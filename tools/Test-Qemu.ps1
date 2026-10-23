@@ -4,7 +4,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')][string]$ExpectedFault = 'None',
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')][string]$ExpectedFault = 'None',
     [ValidateSet('qemu64', 'qemu64,+x2apic')][string]$CpuModel = 'qemu64',
     [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic'
 )
@@ -74,8 +74,9 @@ try {
     if ($stackBounds.Count -ne 4) { throw 'Expected four owned IST stacks.' }
     $previousIndex = -1
     $markers = @('UEFI_ENTRY', 'GOP_OK', 'TSS_READY', 'EBS_OK')
-    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')
+    $ownedExpected = $ExpectedFault -in @('None', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')
     if ($ownedExpected) { $markers += @('MEMORY_MAP_VALID', 'MEMORY_CANDIDATES_READY', 'PAGING_RESERVED', 'FRAME_ALLOCATOR_OK', 'OWNED_PAGING', 'MAPPING_LIFECYCLE_OK', 'ACPI_TOPOLOGY_READY', 'APIC_READY', 'TIMER_OK') }
+    if ($ownedExpected -and $ExpectedFault -ne 'WorkerGuard') { $markers += 'CONTEXT_SWITCH_OK' }
     if ($ExpectedFault -eq 'None') { $markers += 'KERNEL_HALTED' } else { $markers += 'KERNEL_FAULT' }
     foreach ($marker in $markers) {
         $index = $log.IndexOf('JOSHUA:' + $marker, [StringComparison]::Ordinal)
@@ -108,6 +109,7 @@ try {
         if ($ExpectedApicMode -eq 'X2apic') { $modeHex = '0000000000000002'; $ucPagesHex = '0000000000000001' }
         if ($log -notmatch ('JOSHUA:APIC_READY MODE=' + $modeHex + ' UC_PAGES=' + $ucPagesHex + ' IOAPICS=0000000000000001')) { throw 'Missing validated controller/cache/mode evidence.' }
         if ($log -notmatch ('JOSHUA:TIMER_OK MODE=' + $modeHex + ' TICKS=0000000000000010 EOIS=0000000000000010 RETURNS=0000000000000010')) { throw 'Timer delivery/EOI/return evidence incomplete.' }
+        if ($ExpectedFault -ne 'WorkerGuard' -and ($log -notmatch 'JOSHUA:CONTEXT_SWITCH_OK TICKS=0000000000000040 EOIS=0000000000000040 RETURNS=0000000000000040 PROGRESS1=([0-9A-F]{16}) PROGRESS2=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1],16) -eq 0 -or [Convert]::ToUInt64($Matches[2],16) -eq 0)) { throw 'Missing bounded context-switch/progress evidence.' }
         if ($log -notmatch 'JOSHUA:ACPI_TOPOLOGY_READY BSP=0000000000000000 CPUS=0000000000000002 ENABLED=0000000000000002 LAPIC=([0-9A-F]{16})' -or [Convert]::ToUInt64($Matches[1], 16) -eq 0) { throw 'Unexpected QEMU BSP/ACPI topology.' }
     }
     if ($ExpectedFault -eq 'None') {
@@ -138,7 +140,7 @@ try {
         $errorCode = '0000000000000000'
         if ($ExpectedFault -eq 'Gp') { $vector = '000000000000000D'; $errorCode = '000000000000FFFC' }
         $cr2Pattern = '[0-9A-F]{16}'
-        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault')) {
+        if ($ExpectedFault -in @('ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard')) {
             $vector = '000000000000000E'
             if ($ExpectedFault -in @('ReadOnly', 'ConstWrite')) { $errorCode = '0000000000000003' }
             if ($ExpectedFault -eq 'Nx') { $errorCode = '0000000000000011' }
@@ -183,6 +185,53 @@ try {
         if ($log -notmatch 'JOSHUA:OWNED_PAGING CR3=([0-9A-F]{16})') { throw 'Missing owned paging marker.' }
         $ownedCr3 = [Convert]::ToUInt64($Matches[1], 16)
         if ($ownedCr3 -eq $capturedCr3) { throw 'Owned CR3 did not change.' }
+        if ($ExpectedFault -ne 'WorkerGuard') {
+            function Read-PhysicalQword([uint64]$Address) {
+                $dump = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = ('xp /1gx 0x{0:x}' -f $Address) }
+                if ($dump -notmatch ':\s+0x([0-9a-fA-F]{16})') { throw 'Cannot decode physical page-table entry.' }
+                return [Convert]::ToUInt64($Matches[1],16)
+            }
+            function Get-OwnedLeaf([uint64]$Address) {
+                $table = $ownedCr3
+                foreach ($shift in @(39,30,21,12)) {
+                    $slot = ($Address -shr $shift) -band 511
+                    $leaf = Read-PhysicalQword ($table + $slot * 8)
+                    if (($leaf -band 1) -eq 0) { return [uint64]0 }
+                    if (($leaf -band 4) -ne 0) { throw 'User-accessible kernel stack translation.' }
+                    if (($leaf -band 2) -eq 0) { throw 'Read-only kernel stack translation.' }
+                    if ($shift -eq 12 -or (($shift -eq 30 -or $shift -eq 21) -and ($leaf -band 128) -ne 0)) { return $leaf }
+                    $table = $leaf -band [uint64]0x000ffffffffff000
+                }
+                throw 'Invalid page-table walk.'
+            }
+            $allStacks = @()
+            foreach ($index in 1..4) { $allStacks += ,$stackBounds[[uint64]$index] }
+            $contextStackCount = 0
+            foreach ($stack in [regex]::Matches($log, 'JOSHUA:CONTEXT_STACK INDEX=([0-9A-F]{16}) START=([0-9A-F]{16}) END=([0-9A-F]{16}) TICKS=([0-9A-F]{16})')) {
+                $index = [Convert]::ToUInt64($stack.Groups[1].Value,16)
+                $start = [Convert]::ToUInt64($stack.Groups[2].Value,16)
+                $end = [Convert]::ToUInt64($stack.Groups[3].Value,16)
+                $ticks = [Convert]::ToUInt64($stack.Groups[4].Value,16)
+                $size = 16384; $expectedTicks = 32
+                if ($index -eq 0) { $size = 65536; $expectedTicks = 0 }
+                if ($index -ne $contextStackCount -or $end -le $start -or $end - $start -ne $size -or ($start % 4096) -ne 0 -or $ticks -ne $expectedTicks) { throw 'Invalid context stack/count evidence.' }
+                foreach ($other in $allStacks) {
+                    if ($start -lt $other[1] -and $end -gt $other[0]) { throw 'Context/emergency stack overlap.' }
+                }
+                $allStacks += ,@($start,$end)
+                $contextStackCount++
+            }
+            if ($contextStackCount -ne 3 -or $allStacks.Count -ne 7) { throw 'Expected seven distinct guarded stacks.' }
+            $permissionMask = [Convert]::ToUInt64('8000000000000007',16)
+            $expectedPermission = [Convert]::ToUInt64('8000000000000003',16)
+            foreach ($stack in $allStacks) {
+                if ((Get-OwnedLeaf ($stack[0] - 4096)) -ne 0) { throw 'Stack guard is mapped.' }
+                for ($page = $stack[0]; $page -lt $stack[1]; $page += 4096) {
+                    if (((Get-OwnedLeaf $page) -band $permissionMask) -ne $expectedPermission) { throw 'Stack page is not supervisor RW/NX.' }
+                }
+            }
+        }
+
         if ($registers -notmatch 'CR3=([0-9A-Fa-f]+)' -or [Convert]::ToUInt64($Matches[1], 16) -ne $ownedCr3) { throw 'Final CR3 does not match owned root.' }
         if ($registers -notmatch 'CR0=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x10000) -eq 0) { throw 'CR0.WP is not enabled.' }
         if ($registers -notmatch 'EFER=([0-9A-Fa-f]+)' -or ([Convert]::ToUInt64($Matches[1], 16) -band 0x800) -eq 0) { throw 'EFER.NXE is not enabled.' }

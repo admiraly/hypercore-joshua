@@ -197,3 +197,14 @@ The BSP timer handler never calls allocation or mapping APIs. Those APIs still
 require IF clear and cannot be called inside the bounded interrupt-enabled timer
 wait. This stage does not add locks, SMP shootdowns, interrupt-safe allocation or
 process isolation.
+
+
+## Kernel context stack ownership (issue #30)
+
+Two image-owned16-KiB worker stacks and their4-KiB lower guards extend the existing
+five-stack proof to seven. A separate BSS page contains fixed context/record metadata.
+No stack is allocated, freed or remapped during the timer switching interval. Whole-
+image W^X/cache proof covers their RW/NX supervisor pages and absent guards before
+CR3 activation. Context frame arithmetic is checked only against these pre-proved
+ranges, with4KiB adapter headroom. Memory APIs remain IF-clear and cannot be invoked
+by the trusted workers or switching handler. Shared CR3 is not process isolation.

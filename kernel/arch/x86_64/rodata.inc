@@ -57,7 +57,7 @@ debug_error: db ' ERROR=',0
 debug_rip: db ' RIP=',0
 debug_cr2: db ' CR2=',0
 debug_newline: db 13,10,0
-%if JOSHUA_FAULT_TEST
+%if JOSHUA_FAULT_TEST || JOSHUA_CONTEXT_TEST = 3
 debug_fixture_rip: db 'JOSHUA:FIXTURE_RIP=',0
 debug_fixture_target: db 'JOSHUA:FIXTURE_TARGET=',0
 %endif
@@ -101,3 +101,26 @@ debug_timer_ok: db 'JOSHUA:TIMER_OK MODE=',0
 debug_timer_ticks: db ' TICKS=',0
 debug_timer_eois: db ' EOIS=',0
 debug_timer_returns: db ' RETURNS=',0
+
+debug_context_ok: db 'JOSHUA:CONTEXT_SWITCH_OK TICKS=',0
+debug_context_progress1: db ' PROGRESS1=',0
+debug_context_progress2: db ' PROGRESS2=',0
+align 8
+context_worker1_values:
+%assign context_value 0
+%rep 15
+ dq 0x123456789abc0000+context_value
+%assign context_value context_value+1
+%endrep
+context_worker2_values:
+%assign context_value 0
+%rep 15
+ dq 0xfedcba9876540000+context_value
+%assign context_value context_value+1
+%endrep
+
+debug_context_failure: db 'JOSHUA:CONTEXT_FAILURE STATE=',0
+debug_context_status: db 'JOSHUA:CONTEXT_STATUS=',0
+debug_context_current: db ' CURRENT=',0
+debug_context_id: db 'JOSHUA:CONTEXT_INHERITED_ID_SET',13,10,0
+debug_context_stack: db 'JOSHUA:CONTEXT_STACK INDEX=',0
