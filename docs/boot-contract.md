@@ -66,7 +66,7 @@ disable it aborts the application rather than silently allowing a timed reset.
 - Raw COM1 is enabled only for the explicitly recognized QEMU TCG vendor. Physical
   machines do not probe or program legacy UART ports. Early QEMU markers use the
   firmware-initialized UART; configuration is changed only after firmware exit.
-- The stub executes on the bootstrap CPU only and leaves maskable interrupts off.
+- The stub executes on the bootstrap CPU only and returns to the final checkpoint with maskable interrupts off.
 
 ## Deferred contracts
 
@@ -213,7 +213,8 @@ RCX=root/RDX=address and returns RAX=raw leaf, RDX=physical translation, R8=leaf
 then enables NXE/WP, flushes PCID/global translations and loads the root. PAT/MTRRs
 are never programmed; no leaf promotion across old boundaries is allowed. The
 OWNED_PAGING marker is emitted only on successful return under the new root.
-Old table frames remain reserved. Maskable interrupts stay disabled. The guard
+Old table frames remain reserved. Memory operations require IF clear. The timer smoke check described below temporarily
+enables interrupts only inside its wait sequence. The guard
 and four emergency-stack guards are deliberately absent pages; stop-only reporting
 is not stack-overflow recovery.
 
@@ -248,7 +249,7 @@ preflights identity/cache/permissions, publishes RW/NX supervisor 4-KiB aliases,
 invalidates locally, then returns. Release preflights the exact record/leaves,
 clears the entire run, invalidates every VA, then frees exact physical ownership.
 A/D updates are accepted. No frame or VA is reusable before those invalidations.
-This contract is BSP-only and must change before enabling interrupts or SMP.
+This contract is BSP-only and does not permit calls from the returning timer handler; enabling SMP requires a new contract.
 `JOSHUA:MAPPING_LIFECYCLE_OK` follows actual high-half write/read/release/reallocation
 and zeroing checks, restores allocator accounting, and leaves every arena leaf absent.
 
@@ -314,3 +315,33 @@ all eight firmware integer nonvolatile registers and perform no firmware calls/S
 Entry prints ACPI_FAILURE CODE before stop, or ACPI_TOPOLOGY_READY with BSP, CPU and
 enabled counts and local APIC base before the normal checkpoint. No controller
 programming, IOAPIC/ISO/NMI routing, AML or physical qualification is implied.
+
+
+## BSP APIC timer foundation (issue #28)
+
+ACPI discovery additionally requires one through eight unique type1 IOAPIC records,
+with checked ID, page base and GSI base. This extends internal ACPI_CONTEXT to120
+bytes, not boot-info. Controller authority and cache rules are specified in
+`docs/apic-timer-design.md`: a dedicated preallocated owned window accepts only
+identified controllers, scans every overlapping memory descriptor, rejects RAM and
+owned storage, preserves inherited identity/cache selectors and proves effective
+strict UC with a bounded read-only PAT/MTRR snapshot. Firmware map gaps grant no
+RAM ownership or general device authority. No cache control register is changed.
+
+With IF clear, preflight validates LAPIC ID/version/LVT capacity and IOAPIC ID,
+supported version11h or20h, redirection capacity and nonoverlapping GSI ranges
+before route programming. Unsupported IOAPIC versions stop before redirection
+reads. Maskable inherited routes and legacy PIC lines are masked; SMI/NMI routes
+are preserved. Unmasked unsupported delivery modes and pending ISR/IRR state stop.
+No ICR/IPI or AP startup is used. Normal boot retains inherited APIC mode; a
+separate X2 fixture enables x2APIC on a CPU advertising support.
+
+Vectors40h(timer),41h(software preservation check) andFFh(spurious) use returning
+IST0 gates. Timer entries save all fifteen integer registers and restore with
+IRETQ; they allocate nothing and call no firmware. The software check covers all
+integer registers, RSP and arithmetic/direction flags. The real timer check covers
+sixteen one-shot deliveries, matching ticks/EOIs/returns and integer state. IF is
+enabled only in the STI/HLT/flags-snapshot wait sequence, then cleared. At completion
+the timer is masked/stopped, ISR/IRR are empty, and normal/fault checkpoints have
+IF clear. Memory APIs retain their IF-clear precondition. No scheduler, SIMD
+preservation contract, calibrated timing, SMP or hardware qualification is claimed.

@@ -1,6 +1,9 @@
 bits 64
 default rel
 %include 'sdk/boot.inc'
+%ifndef JOSHUA_TIMER_TEST
+ %define JOSHUA_TIMER_TEST 0
+%endif
 %ifndef JOSHUA_FAULT_TEST
  %define JOSHUA_FAULT_TEST 0
 %endif
@@ -574,6 +577,13 @@ stop_cpu:
 %include 'kernel/arch/x86_64/descriptors.inc'
 %include 'kernel/arch/x86_64/acpi.inc'
 %include 'kernel/arch/x86_64/acpi-start.inc'
+%include 'kernel/arch/x86_64/controller-window.inc'
+%include 'kernel/arch/x86_64/cache-type.inc'
+%include 'kernel/arch/x86_64/cache-snapshot.inc'
+%include 'kernel/arch/x86_64/apic-access.inc'
+%include 'kernel/arch/x86_64/apic-start.inc'
+%include 'kernel/arch/x86_64/apic-policy.inc'
+%include 'kernel/arch/x86_64/interrupts.inc'
 %include 'kernel/mm/map.inc'
 %include 'kernel/mm/ranges.inc'
 %include 'kernel/mm/candidates.inc'
@@ -581,6 +591,7 @@ stop_cpu:
 %include 'kernel/mm/frames.inc'
 %include 'kernel/mm/frame-check.inc'
 %include 'kernel/mm/owned-map.inc'
+%include 'kernel/mm/paging-pat.inc'
 %include 'kernel/mm/owned-start.inc'
 %include 'kernel/mm/lifecycle.inc'
 %include 'kernel/mm/lifecycle-platform.inc'
@@ -680,6 +691,7 @@ exception_guard: resb 4096
 exception_stack: resb 16384
 exception_top:
 acpi_cpu_records: resb 256*16
+mtrr_snapshot: resb 4096
 %if ($-$$) != PE_BSS_SIZE
  %error BSS layout mismatch
 %endif

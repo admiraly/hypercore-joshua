@@ -84,3 +84,20 @@ debug_acpi_cpus: db ' CPUS=',0
 debug_acpi_enabled: db ' ENABLED=',0
 debug_acpi_lapic: db ' LAPIC=',0
 debug_acpi_failure: db 'JOSHUA:ACPI_FAILURE CODE=',0
+align 4
+apic_lvt_offsets: dd 0x330,0x340,0x350,0x360,0x370,0x2f0
+debug_apic_ready: db 'JOSHUA:APIC_READY MODE=',0
+debug_uc_pages: db ' UC_PAGES=',0
+debug_io_count: db ' IOAPICS=',0
+debug_apic_failure: db 'JOSHUA:APIC_FAILURE CODE=',0
+align 8
+irq_sentinel_values:
+%assign irq_value 1
+%rep 15
+    dq 0x123456789abcde00+irq_value
+%assign irq_value irq_value+1
+%endrep
+debug_timer_ok: db 'JOSHUA:TIMER_OK MODE=',0
+debug_timer_ticks: db ' TICKS=',0
+debug_timer_eois: db ' EOIS=',0
+debug_timer_returns: db ' RETURNS=',0

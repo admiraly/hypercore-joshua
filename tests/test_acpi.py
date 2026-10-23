@@ -169,12 +169,12 @@ import struct
 
 class AcpiContext(C.Structure):
     _fields_ = [(name,U64) for name in ['ready','boot','builder','records','capacity','bsp_id',
-                                      'count','enabled','lapic','pcat','xsdt','madt']]
+                                      'count','enabled','lapic','pcat','xsdt','madt','io_records','io_capacity','io_count']]
 class Cpu(C.Structure):
     _fields_ = [(name,C.c_uint32) for name in ['apic','uid','flags','kind']]
 lib.host_acpi_build.argtypes = [C.POINTER(AcpiContext)]
 lib.host_acpi_readable.argtypes = [C.POINTER(AcpiContext),U64,U64]
-assert C.sizeof(AcpiContext) == 96 and C.sizeof(Cpu) == 16
+assert C.sizeof(AcpiContext) == 120 and C.sizeof(Cpu) == 16
 
 def cpu(apic=0,uid=0,flags=1,x2=False,tail=b''):
     if x2: return struct.pack('<BBHIII',9,16+len(tail),0,apic,flags,uid)+tail
@@ -206,11 +206,14 @@ class AcpiFixture(Fixture):
         self.xsdt = self.acpi_base+0x2000
         self.madt = self.acpi_base+0x4000
         self.other = self.acpi_base+0x3000
+        self.io_records = (C.c_uint32*32)()
+        self.ctx.io_records=C.addressof(self.io_records)
+        self.ctx.io_capacity=8
         self.tables()
     def put(self,address,data): C.memmove(address,bytes(data),len(data))
     def tables(self,records=None,children=None,rsdp_length=36,base=0xfee00000):
         if records is None: records=cpu()+cpu(1,1)
-        madt = sdt(b'APIC',struct.pack('<II',base,1)+records)
+        madt = sdt(b'APIC',struct.pack('<II',base,1)+records+struct.pack('<BBBBII',1,12,2,0,0xfec00000,0))
         self.put(self.madt,madt)
         if children is None: children=[self.other,self.madt]
         # Unrelated payload/length is deliberately untrusted and not consumed.
@@ -230,7 +233,7 @@ class AcpiFixture(Fixture):
         status=lib.host_acpi_build(C.byref(self.ctx))
         assert status==expected,(status,expected)
         assert bytes(self.acpi_memory)==before and bytes(self.descriptors)==metadata
-        if status: assert self.ctx.ready==0 and self.ctx.count==0 and self.ctx.enabled==0
+        if status: assert self.ctx.ready==0 and self.ctx.count==0 and self.ctx.enabled==0 and self.ctx.io_count==0
         else:
             assert self.ctx.ready==0x314950434153484a and self.ctx.xsdt==self.xsdt and self.ctx.madt==self.madt
             assert sum(bool(self.cpus[i].flags & 1) for i in range(self.ctx.count))==self.ctx.enabled
@@ -323,7 +326,7 @@ for mutation in ['address','user']:
     entry.value ^= 4096 if mutation=='address' else 4
     f.build(1)
 # Full 64-KiB MADT remains bounded, spanning many pages with unknown records.
-f=AcpiFixture();f.tables(cpu()+bytes([200,2])*32742);f.build()
+f=AcpiFixture();f.tables(cpu()+bytes([200,2])*32736);f.build()
 assert C.c_uint32.from_address(f.madt+4).value==65536
 # Reserved CPU flag bits are retained without granting enabled authority.
 f=AcpiFixture();f.tables(cpu(flags=0x80000001)+cpu(1,1,0x80000000));f.build()
@@ -333,4 +336,12 @@ f=AcpiFixture()
 lib.host_acpi_abi.argtypes=[C.POINTER(AcpiContext)]
 assert lib.host_acpi_abi(C.byref(f.ctx))==0
 checks+=1
+# IOAPIC minimum/duplicate/bounds/capacity and LAPIC alias checks.
+for record,status in [(bytes([1,2]),4),(struct.pack('<BBBBII',1,12,2,0,0xfec01000,24),5),
+                       (struct.pack('<BBBBII',1,12,3,0,0xfec00000,24),5),
+                       (struct.pack('<BBBBII',1,12,3,0,0xfee00000,24),5),
+                       (struct.pack('<BBBBII',1,12,3,0,0xfec00001,24),5)]:
+    f=AcpiFixture();f.tables(cpu()+record);f.build(status)
+f=AcpiFixture();f.ctx.io_capacity=0;f.build(6)
+f=AcpiFixture();f.ctx.io_capacity=9;f.build(6)
 print(f'PASS: {checks} ACPI readability/topology cases, including 500 seeded CPU-list oracles.')
