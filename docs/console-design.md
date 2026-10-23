@@ -785,3 +785,45 @@ claim later stack bytes are intact. Actual QMP LAPIC state independently checks
 pending/EOI outcomes. Manifest hashes, exact fixture IDs, zero baselines, clean
 shutdown and stale-summary rules remain mandatory on all media. Undefined timer
 state, timeout or unrelated failure cannot satisfy an expected-stop oracle.
+
+## Independent live source and transcript oracle
+
+Normal Console target validation additionally binds the NASM listing and EFI to
+manifest size/hash entries. Console builds publish boot.lst as an artifact and
+reproducibility compares its bytes too. The actual HMP TR base must match TSS_READY;
+that base, bounded PE sections and unique listing symbols locate all nine console
+records plus owned boot/allocator/candidates/paging/ACPI/APIC/user/process/anchor
+sources. Console-reported addresses must match those independently derived locations.
+The manifest/build and QMP host remain trusted; this is not malicious-build attestation.
+
+Stopped captures validate source readiness, pointers, bounds, terminal user states,
+image identity and anchor geometry from boot info. These read-only sources must
+remain byte-identical across the session. They supply the fifteen expected facts;
+the oracle does not use the console facts or response as expected data. This checks
+reporting against owned records, not another proof of the underlying allocator,
+MADT interpretation, private roots or hardware compatibility.
+
+Before each Enter, freeze the exact idle CPU with no LAPIC pending/in-service
+vector, empty healthy queue and actual port64 OBF clear. Send one actual Enter make
+after resuming, keeping its break until the completed state is captured and checked.
+With no other host input in that interval, independently predict keyboard IRQ/EOI
+facts as the pre-submit source counters plus1. Other facts come from frozen sources.
+Key-up follows comparison and resume because QMP input is unavailable while stopped.
+The final Enter remains held until VM destruction after successful source retirement.
+Timeout, unexpected repeats or extra delivery fail rather than adjust this prediction.
+
+A separate host reference consumes intended qcode events, implements the frozen
+editor/parser/response/transcript contract, and compares complete editor/model/grid/
+command/facts/response bytes at every captured checkpoint, including history/zero
+tails, viewport, scrolling, clear and halt. Pixel comparisons use that independently
+predicted grid; the authored font content remains shared. Normal reference validation
+does not replace the separate fixture-specific negative/saturation/timer oracles.
+
+The trace records qcodes and pre-submit checkpoint names, not authoritative expected
+facts. Replay re-derives facts from those source captures and rebuilds all expected
+states; expected JSON dumps are diagnostic outputs only. A complete20-command
+success summary is required before replay. Mutations include records, immutable
+sources, address/TR/listing/EFI binding and a coordinated valid mem JSON/facts/grid/
+pixel forgery that passes grid/display self-consistency but fails the independent
+reference. These are host corruption tests, not guest execution or independent
+attestation of the host event trace. Summaries/traces publish only after clean exit.

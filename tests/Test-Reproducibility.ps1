@@ -7,7 +7,7 @@ if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root $(if ($Console) 
 if ($ConsoleTest -ne 'None' -and -not $PSBoundParameters.ContainsKey('OutputDirectory')) { $OutputDirectory=Join-Path $root ('out/console-test-'+$ConsoleTest.ToLowerInvariant()) }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $artifacts = @('BOOTX64.EFI', 'joshua-uefi.img', 'joshua-m0.iso', 'manifest.json')
-if ($Console) { $artifacts += 'JOSHUA-Console-Test.iso' }
+if ($Console) { $artifacts += @('JOSHUA-Console-Test.iso','boot.lst') }
 & (Join-Path $root 'tools/Build.ps1') -OutputDirectory $OutputDirectory -Console:$Console -ConsoleTest $ConsoleTest
 $hashes = @{}
 foreach ($artifact in $artifacts) {

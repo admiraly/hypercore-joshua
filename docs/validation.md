@@ -962,3 +962,31 @@ is not claimed. Current ordinary Console ISO remains SHA256
 No general asynchronous interrupt resilience or complete OS qualification follows.
 Independent live facts/transcript provenance, broader corruption, Windows and
 physical qualification remain open. No issue/milestone closure or merge.
+
+### Independent live facts and transcript checkpoint
+
+Host-only validation now derives source/console locations from a hashed build
+listing/EFI and actual TR base, captures read-only owned records and independently
+predicts complete editor/model/grid/command/facts/response state from real qcodes.
+Enter make/break separation permits an exact expected IRQ/EOI increment; source,
+CPU/LAPIC/queue/port quiet evidence is frozen before submission. Pixels use the
+reference grid. This addresses live reporting/composition against owned records;
+shared font content, underlying subsystem correctness, trusted build/host provenance
+and physical/Windows qualification remain separate assumptions/gates.
+
+An initial invocation matched independent status state but then failed when QMP
+rejected key-up while the VM was stopped. Its failed serial evidence is retained;
+key-up now follows the completed comparison and resume. That invocation is not a
+pass. Subsequent20-command ISO/FAT sessions passed before the final coherent port-
+capture/replay wiring. The final20-command ISO/FAT/x2APIC ISO sessions then passed
+with that wiring, each including full independent state/source-facts/transcript and
+pixel comparisons,30-second idle and physical retirement. Replay and mutation tests
+passed488 cumulative checks on each profile, including a valid coordinated forged
+facts/JSON/grid/pixel case. This count includes baseline/replayed events, not488
+independent corruption scenarios. Twenty-four pixel mutations and255 READY cases
+also passed. Console listing-inclusive reproducibility passed two builds,20,822
+assertions each and corrupt-PE rejection. Tested EFI/FAT/both ISO names/listing/
+manifest were byte-compared with the separate reproducibility output. Ordinary ISO
+remains byte-identical to frozen23a66e3. Source reviews found no findings, with
+assumptions retained; one stale pending-status documentation P3 was corrected.
+Reviewers did not run tests or inspect artifacts. No milestone/issue closure or merge.

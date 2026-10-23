@@ -184,8 +184,16 @@ jobs:
         run: |
           python ./tests/test_console_pixels.py out/console
           if ($LASTEXITCODE -ne 0) { throw 'Console pixel mutation checks failed.' }
+      - name: Replay independent console state and reject forged facts
+        run: |
+          python ./tests/test_console_live_mutations.py out/console
+          if ($LASTEXITCODE -ne 0) { throw 'Independent console replay/mutation checks failed.' }
       - name: Exercise real keyboard console from FAT
         run: ./tools/Test-Console.ps1 -Features -BootMedia Fat
+      - name: Replay independent FAT console captures
+        run: |
+          python ./tests/test_console_live_mutations.py out/console --boot-media fat
+          if ($LASTEXITCODE -ne 0) { throw 'Independent FAT console replay/mutation checks failed.' }
       - name: Validate isolated console rejection and saturation on both media
         run: |
           foreach ($fixture in @('BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust')) {
@@ -203,6 +211,8 @@ jobs:
         run: |
           ./tools/Build.ps1 -Console -TimerTest X2
           ./tools/Test-Console.ps1 -Features -OutputDirectory out/console-x2 -CpuModel 'qemu64,+x2apic'
+          python ./tests/test_console_live_mutations.py out/console-x2
+          if ($LASTEXITCODE -ne 0) { throw 'Independent x2APIC console replay/mutation checks failed.' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -212,6 +222,7 @@ jobs:
             out/console*/BOOTX64.EFI
             out/console*/joshua-uefi.img
             out/console*/manifest.json
+            out/console*/boot.lst
             out/console*/*.ppm
             out/console*/*.png
             out/console*/*.json

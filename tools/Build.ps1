@@ -72,7 +72,7 @@ try {
     $artifactNames = @('BOOTX64.EFI', 'joshua-uefi.img', 'joshua-m0.iso')
     if ($Console) {
         Copy-Item -LiteralPath (Join-Path $OutputDirectory 'joshua-m0.iso') -Destination (Join-Path $OutputDirectory 'JOSHUA-Console-Test.iso') -Force
-        $artifactNames += 'JOSHUA-Console-Test.iso'
+        $artifactNames += @('JOSHUA-Console-Test.iso','boot.lst')
     }
 
     $manifest = [ordered]@{

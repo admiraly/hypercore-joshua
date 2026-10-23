@@ -14,6 +14,8 @@ import subprocess
 import time
 import sys
 from console_pixels import validate_pixels
+from console_live_oracle import LiveReference
+from console_sources import Sources
 from console_timer_oracle import validate_timer_fixture
 from keyboard_runtime_oracle import validate_lapic, validate_output_quiet, validate_queue_indices
 
@@ -37,6 +39,8 @@ seed=MAX-1 if a.fixture=='Saturation' else 0
 assert 30 <= a.idle_seconds <= 120,'idle evidence requires at least30 seconds'
 out = a.output.resolve()
 summary_path = out/('console-'+a.boot_media.lower()+'-summary.json')
+trace_path=out/('console-'+a.boot_media.lower()+'-live-events.json')
+trace_path.unlink(missing_ok=True)
 summary_path.unlink(missing_ok=True) # stale success never survives a failed rerun
 manifest = json.loads((out/'manifest.json').read_text())
 assert manifest.get('consoleTest','None')==a.fixture,'exact console fixture identity'
@@ -119,6 +123,13 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert int(fixture_match[1],16)==['None','BadEditor','BadFacts','Saturation','UnexpectedTimer','PendingTimer','DrainExhaust'].index(a.fixture),'target fixture identity'
             if fixture_match[2]:
                 addresses['source']=int(fixture_match[2],16)
+        sources=reference=None
+        held_enter=False
+        expected_images=None
+        live_events=[]
+        if a.fixture=='None':
+            sources=Sources(out,manifest,log(),addresses,qmp('human-monitor-command',**{'command-line':'info registers'}))
+            addresses.update({name:address for name,(address,_) in sources.addresses.items()})
         def physical(name,size,suffix):
             path = out/(tag+'-'+suffix+'-'+name+'.bin')
             qmp('pmemsave',val=addresses[name],size=size,filename=str(path))
@@ -136,12 +147,16 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                     assert 'CPL=0' in text,'owned BSP kernel wait'
                     return
                 time.sleep(.02)
-        def snapshot(suffix,terminal=False):
+        def snapshot(suffix,terminal=False,before_enter=False):
+            global held_enter,expected_images
             if not terminal:
                 idle()
             qmp('stop')
             values = {name:physical(name,size,suffix) for name,size in
                       [('model',64),('grid',4904),('editor',1568),('command',40),('response',4112),('facts',128),('window',288),('decoder',216),('controller',56)]}
+            if sources:
+                values.update({name:physical(name,size,suffix) for name,(_,size) in sources.addresses.items()})
+                sources.facts(values)
             if 'source' in addresses:
                 values['source']=physical('source',64 if a.fixture in ('UnexpectedTimer','PendingTimer','DrainExhaust') else 8,suffix)
             regs = registers()
@@ -158,14 +173,29 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             assert w[14]==w[15],'actual IRQ44/EOI accounting'
             assert w[2]==int(re.search(r'OWNED_PAGING CR3=([0-9A-F]+)',log())[1],16),'retained owned root'
             assert 'CR3='+format(w[2],'016x') in regs.lower().replace('cr3=','CR3='),'actual current root'
+            if before_enter:
+                port=qmp('human-monitor-command',**{'command-line':'i /b 0x64'})
+                validate_output_quiet(port)
+                (out/(tag+'-'+suffix+'-i8042.log')).write_text(port)
+            if reference:
+                expected_images=reference.check(values,terminal)
+                live_events.append({'snapshot':suffix,'terminal':terminal})
+                (out/(tag+'-'+suffix+'-expected.json')).write_text(json.dumps({name:data.hex() for name,data in expected_images.items()},indent=2)+'\n')
             if not terminal:
                 assert int(re.search(r'RSP=([0-9A-Fa-f]+)',regs)[1],16)==w[3],'actual exact wait RSP'
                 assert int(re.search(r'RIP=([0-9A-Fa-f]+)',regs)[1],16)==w[6],'actual exact wait continuation'
                 assert w[4]+4096+192<=w[3]<=w[5] and w[10]==0x202,'owned stack/flags metadata'
                 assert 'HLT=1' in regs and int(re.search(r'RFL=([0-9A-Fa-f]+)',regs)[1],16)&0x200,'IF1 idle'
                 qmp('cont')
+                if held_enter:
+                    qmp('input-send-event',events=[{'type':'key','data':{'down':False,'key':{'type':'qcode','data':'ret'}}}])
+                    held_enter=False
             return values
         baseline = snapshot('ready')
+        if sources:
+            reference=LiveReference(sources.anchor)
+            reference.check(baseline)
+            live_events.append({'snapshot':'ready','terminal':False})
         assert struct.unpack('<8Q',baseline['model'])==(0x314c444f4d484f4a,2,0,seed,0,0,0,0),'initial model'
         if a.fixture in ('UnexpectedTimer','PendingTimer','DrainExhaust'):
             assert baseline['source']==bytes(64),'zero timer fixture baseline'
@@ -181,13 +211,32 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         assert after_idle['model']==baseline['model'] and after_idle['editor']==baseline['editor'],'idle preserves input/model'
         assert after_idle['window']==baseline['window'],'idle has no synthetic input/deadline progress'
         def key(code,modifier=None):
+            global held_enter
+            predicted=None
+            if reference and code=='ret':
+                assert not held_enter,'one outstanding Enter at a time'
+                before=snapshot('before-submit-'+str(reference.completed+1),before_enter=True)
+                predicted=sources.facts(before,next_enter=True)
             events=[]
             if modifier:
                 events.append({'type':'key','data':{'down':True,'key':{'type':'qcode','data':modifier}}})
-            events += [{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for down in [True,False]]
+            events += [{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for down in ([True] if reference and code=='ret' else [True,False])]
             if modifier:
                 events.append({'type':'key','data':{'down':False,'key':{'type':'qcode','data':modifier}}})
             qmp('input-send-event',events=events)
+            if reference:
+                if modifier=='ctrl':
+                    assert code=='c'
+                    token=3
+                elif code in {'ret','backspace','left','right','home','end','delete','up','down'}:
+                    token={'ret':13,'backspace':8,'left':0x100,'right':0x101,'home':0x102,'end':0x103,'delete':0x104,'up':0x105,'down':0x106}[code]
+                else:
+                    text={'spc':' ','minus':'-'}.get(code,code)
+                    assert len(text)==1
+                    token=ord(text.upper() if modifier=='shift' else text)
+                live_events.append({'token':token,'code':code,'modifier':modifier,'beforeSubmit':('before-submit-'+str(reference.completed+1)) if code=='ret' else None})
+                reference.event(token,predicted)
+                if code=='ret':held_enter=True
             time.sleep(.035)
         def type_text(text):
             for char in text:
@@ -373,7 +422,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
                 qmp('screendump',filename=str(out/(tag+'-feature-'+str(index)+'.ppm')))
                 # The guest remains idle with no further input between the
                 # physical record capture and display capture.
-                validate_pixels(values['grid'],(out/(tag+'-feature-'+str(index)+'.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+                validate_pixels(expected_images['grid'] if reference else values['grid'],(out/(tag+'-feature-'+str(index)+'.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
             # Capacity, viewport and navigation use the same actual key path.
             capacity_text='a'+'b'*125+'c'
             type_text(capacity_text)
@@ -384,7 +433,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
             prompt=full['grid'][104+(fg[8]-2)*100:104+(fg[8]-2)*100+fg[7]]
             assert prompt==b'JOSHUA> '+capacity_text.encode()[127-(fg[7]-9):]+b' ','full-line viewport reserves visible cursor cell'
             qmp('screendump',filename=str(out/(tag+'-full-line.ppm')))
-            validate_pixels(full['grid'],(out/(tag+'-full-line.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+            validate_pixels(expected_images['grid'] if reference else full['grid'],(out/(tag+'-full-line.ppm')).read_bytes(),Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
             rejected_before=struct.unpack_from('<Q',full['editor'],80)[0]
             if a.fixture=='Saturation':
                 assert rejected_before==seed,'accepted input preserves rejection seed'
@@ -463,7 +512,7 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         # Actual display pixels, independently rasterized from the constant halt
         # text and authored font asset, rather than trusting grid bytes alone.
         ppm = (out/(tag+'-screen.ppm')).read_bytes()
-        validate_pixels(grid,ppm,Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
+        validate_pixels(expected_images['grid'] if reference else grid,ppm,Path(__file__).resolve().parents[1]/'kernel/console/font.inc')
         header = re.match(rb'^P6\n(\d+) (\d+)\n255\n',ppm)
         assert header,'QEMU P6 screenshot header'
         width,height = map(int,header.groups())
@@ -498,8 +547,10 @@ with (out/(tag+'-stderr.log')).open('wb') as err, (out/(tag+'-stdout.log')).open
         stream.flush()
         process.wait(timeout=5)
         assert process.returncode==0,'clean QEMU shutdown'
+        if reference:
+            trace_path.write_text(json.dumps(live_events,indent=2)+'\n')
         temporary=summary_path.with_suffix('.json.tmp')
-        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':20 if a.features else 2,'fixture':a.fixture,'features':a.features,'checks':'real PS2 commands, editing/history, timer-free idle and full visible grid/display consistency; negative qualification pending'},indent=2)+'\n')
+        temporary.write_text(json.dumps({'bootMedia':a.boot_media,'cpu':a.cpu,'idleSeconds':a.idle_seconds,'commands':20 if a.features else 2,'fixture':a.fixture,'features':a.features,'independentLiveOracle':bool(reference),'checks':'real PS2 commands, complete state/transcript/source-facts and pixel checks for normal profile; fixture scope recorded separately'},indent=2)+'\n')
         temporary.replace(summary_path)
 
         print(f'PASS: Console commands={20 if a.features else 2} features={a.features} {a.boot_media} real PS2 editing/history/JSON, {a.idle_seconds}s timer-free idle, owned IRQs and physical IF0 halt retirement; broader campaign pending.')

@@ -402,3 +402,29 @@ six fixture profiles on both media and propagates mutation failures explicitly.
 complete/partial/malformed READY cases. The target driver awaits all nine fixed-width
 addresses and the line terminator under its existing deadline, so interrupted serial
 writes cannot be parsed prematurely. It retains exact address/profile validation.
+
+## Independent live console reporting and composition
+
+Normal Console tests now require a newly built manifest containing hashed boot.lst.
+The actual loaded TSS base, PE bounds and listing bind console/source physical
+addresses. Stopped owned-source captures supply expected diagnostic numbers;
+complete editor/model/grid/command/facts/response bytes are predicted from real
+qcodes. Pixels are compared against the reference grid, with the authored font
+still shared. The source payloads are trusted subsystem records, not independently
+reproved allocator/ACPI data or malicious-firmware protection.
+
+`python tests/test_console_live_mutations.py out/console` replays the completed
+Features ISO session; add `--boot-media fat` for FAT or use `out/console-x2` for its
+ISO. Each current Features profile passes488 cumulative baseline/event/mutation checks.
+It requires the published20-command independent summary and reconstructs facts
+from frozen pre-submit sources, not diagnostic expected-state JSON. Actual Enter
+make/break separation gives an exact predicted interrupt increment. The CPU/LAPIC/
+queue/port quiet checkpoint is frozen before the make. Captured trace delivery is
+trusted host evidence; unexpected extra delivery/repeat fails the live test.
+
+Mutations cover complete records, source stability and listing/EFI/TR/address
+identity. A coordinated valid memory-diagnostic JSON/facts/grid/pixel forgery passes
+the older self-consistency predicate and must fail the independent reference. No
+synthetic pixels or responses are substituted into the actual QEMU success campaign.
+CI uploads the listing and captures and runs replay for ISO/FAT/x2APIC with immediate
+native-exit checks. Windows execution and physical qualification remain separate.
