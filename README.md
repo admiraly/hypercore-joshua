@@ -130,3 +130,7 @@ The current local diagnostic-handle console test copy is
 Features ISO session passes; exact evidence and remaining Windows/physical gates
 are in docs/validation.md. The older23a66e3 copy and separate Piper ISO remain
 intact; this console image does not include the speech branch.
+
+For a checksummed, self-contained normal Console test ZIP, see
+[Console test bundle](docs/console-test-bundle.md). Packaging verifies existing
+media; it does not establish a new boot or hardware qualification.

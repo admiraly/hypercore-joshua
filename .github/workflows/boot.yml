@@ -8,7 +8,7 @@ concurrency:
 jobs:
   boot:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         shell: powershell
@@ -155,6 +155,9 @@ jobs:
       - name: Validate bounded console screen composition
         shell: pwsh
         run: ./tests/Test-ConsoleModel.ps1
+      - name: Validate console test bundle and rejection paths
+        shell: pwsh
+        run: ./tests/Test-ConsoleTestBundle.ps1
   keyboard:
     runs-on: windows-latest
     timeout-minutes: 15
@@ -187,6 +190,10 @@ jobs:
         run: ./tools/Get-Toolchain.ps1 -IncludeQemu
       - name: Build reproducible native console media
         run: ./tests/Test-Reproducibility.ps1 -Console
+      - name: Validate and package normal console test bundle
+        run: |
+          ./tests/Test-ConsoleTestBundle.ps1 -InputDirectory out/console
+          ./tools/New-ConsoleTestBundle.ps1 -InputDirectory out/console -BundleName normal-console
       - name: Exercise real keyboard console from ISO
         run: ./tools/Test-Console.ps1 -Features
       - name: Reject corrupted console pixels and grid captures
@@ -237,3 +244,11 @@ jobs:
             out/console*/*.json
             out/console*/*.log
             out/console*/*.bin
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: joshua-console-bundle
+          path: |
+            out/console-test-bundles/normal-console/JOSHUA-Console-Test.zip
+            out/console-test-bundles/normal-console/JOSHUA-Console-Test.zip.sha256
+          if-no-files-found: error
