@@ -254,6 +254,12 @@ owned_paging_start:
     call owned_map_preserved
     test eax,eax
     jnz .bad
+    lea rcx,[mapping_context]
+    mov rdx,r12
+    lea r8,[mapping_records]
+    call lifecycle_prepare
+    test eax,eax
+    jnz .bad
     ; Prove image boundaries, live stack, metadata and descriptor tables.
     mov rbx,[r12+OWNED_PAGING.image_base]
 .verify_image:

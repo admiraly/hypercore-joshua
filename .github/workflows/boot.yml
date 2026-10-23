@@ -67,3 +67,6 @@ jobs:
       - name: Exercise owned mapping and inherited-cache fixtures
         shell: pwsh
         run: ./tests/Test-OwnedMap.ps1
+      - name: Exercise active mapping lifecycle and invalidation ordering
+        shell: pwsh
+        run: ./tests/Test-Lifecycle.ps1

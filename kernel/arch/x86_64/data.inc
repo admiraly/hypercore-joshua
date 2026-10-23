@@ -20,3 +20,6 @@ align 8
 frame_allocator: times FRAME_ALLOCATOR_size db 0
 align 8
 owned_paging: times OWNED_PAGING_size db 0
+align 8
+mapping_context: times MAPPING_CONTEXT_size db 0
+mapping_records: times MAPPING_RECORD_CAPACITY*MAPPING_RECORD_size db 0

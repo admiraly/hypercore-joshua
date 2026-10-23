@@ -16,7 +16,8 @@ excluding the loaded image, page zero, framebuffer and inventoried active paging
 structures. A bounded physical frame allocator tracks exact ownership, zeroes
 allocations and checks allocate/write/free during boot. It builds and activates
 owned page tables with supervisor-only W^X/NX permissions and an unmapped stack
-guard and dedicated read-only constant storage, preserving inherited cache selectors. These paths are QEMU-tested; the
+guard and dedicated read-only constant storage, preserving inherited cache selectors. A bounded high-half kernel arena tracks allocations and invalidates translations
+before physical frame reuse. These paths are QEMU-tested; the
 new memory implementation has no physical qualification.
 There is no scheduler, process isolation, storage driver, network stack, shell,
 installer, or AI runtime. No disk-write protocol is opened.

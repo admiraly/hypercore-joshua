@@ -67,3 +67,4 @@ debug_paging: db 'JOSHUA:PAGING_RESERVED CR3=',0
 debug_table_count: db ' TABLES=',0
 debug_frames: db 'JOSHUA:FRAME_ALLOCATOR_OK FREE_PAGES=',0
 debug_owned: db 'JOSHUA:OWNED_PAGING CR3=',0
+debug_lifecycle: db 'JOSHUA:MAPPING_LIFECYCLE_OK',13,10,0

@@ -228,7 +228,7 @@ owned_paging_map:
     pop rbx
     ret
 
-; RCX trusted root physical address, RDX canonical low virtual address.
+; RCX trusted root physical address, RDX canonical virtual address (low or high half).
 ; RAX raw leaf, RDX translation, R8 leaf bytes (4K/2M/1G), or all zero if absent.
 ; Supports inherited large leaves; does not modify tables or nonvolatile registers.
 paging_lookup:

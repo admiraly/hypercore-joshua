@@ -125,3 +125,17 @@ The ConstWrite fixture writes the immutable screen title after owned activation.
 It requires #PF vector 14/error 3, the exact write instruction RIP and constant
 address CR2. Exact PE tests check all five section names, bounds and flags,
 including RO/non-executable `.rodata`; the boot proof checks every image page.
+
+`tests/Test-Lifecycle.ps1` runs the exact lifecycle core and real frame allocator
+through Linux wrappers. The host adapter records invalidation VA/PTE, physical free
+count and total present arena leaves. Assertions require all leaves published before
+allocation invalidation, all removed before retirement invalidation, and physical
+free only afterward. The 6,249 operations include 6,000 seeded mixed allocations/
+releases, 64-record and 512-page capacity, physical/metadata exhaustion, unchanged
+ordinary rejection, exact ownership, whole-run zeroing, corrupted-leaf/ownership
+quarantine, all eight PAT indices, A/D tolerance, unchanged boot tables and eight
+integer ABI sentinels. Privileged checks/INVLPG are exercised by QEMU, not the host.
+Normal ISO/FAT smoke writes real high-half memory, rejects invalid frees, releases,
+reallocates zeroed memory and restores accounting. Unmapped reads a released VA and
+requires #PF/error 0 with exact RIP and high-half CR2. This is local BSP evidence;
+no SMP shootdowns, hardware qualification or user isolation are established.

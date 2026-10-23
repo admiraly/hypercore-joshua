@@ -579,6 +579,9 @@ stop_cpu:
 %include 'kernel/mm/frame-check.inc'
 %include 'kernel/mm/owned-map.inc'
 %include 'kernel/mm/owned-start.inc'
+%include 'kernel/mm/lifecycle.inc'
+%include 'kernel/mm/lifecycle-platform.inc'
+%include 'kernel/mm/lifecycle-check.inc'
 times PE_TEXT_SIZE-($-$$) db 0
 
 section .data start=PE_DATA_RVA vstart=PE_DATA_RVA
