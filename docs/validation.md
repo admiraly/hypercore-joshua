@@ -684,3 +684,32 @@ checkpoint. These image runs exercise the existing boot path, not the unused
 editor. Linux CI includes the new editor suite but has not yet reported results.
 No interactive console, renderer, parser, IRQ lifecycle, Windows or physical
 qualification is established by this checkpoint. No merge or milestone completion.
+
+## Checked console renderer checkpoint (23 October 2026)
+
+Issue #40/PR #41 extends the host-only console component validation with five
+Assembly grid helpers and an original95-character font. No boot call site or
+interactive console is added at this checkpoint. `tests/Test-ConsoleGrid.ps1`
+passed **5,055 cumulative checks**, including complete actual-framebuffer byte
+comparisons for RGB/BGR surfaces, margins and stride padding, dirty rows/cursor,
+all printable glyph indices, min/clamped geometry, invalid state/anchor values,
+overflow/direct-overlap rejection and inaccessible guard pages around framebuffer,
+grid and anchor. Pixel addressing/colors are independently modeled; font rasters
+reuse the authored font asset with two literal checks, not an independent font
+oracle. The actual Assembly-rendered host preview was visually inspected at
+`out/console-grid-tests/console-grid-preview.png`; it is not a boot screenshot.
+The editor regression passed344,659 cumulative checks again.
+
+Independent renderer design review found P2 gaps in alias exclusion and success
+returns; both were corrected and re-reviewed before implementation. Independent
+read-only implementation and final guard/preview/CI reviews found no actionable
+findings. Reviewers did not reproduce tests or inspect output artifacts.
+
+`tests/Test-Reproducibility.ps1` invoked two successful `tools/Build.ps1` builds,
+each passing20,790 static assertions; EFI/FAT/ISO/manifest hashes matched and the
+corrupt PE was rejected. Normal QEMU ISO and FAT runs both passed private-root,
+permissions, ownership and actual CPL3/continuation assertions, then halted as
+expected. Those images still exercise the existing checkpoint, not the unused
+console helpers. Linux CI now includes both component suites but has not reported
+results here. Prompt/model/parser/IRQ integration, interactive target campaigns,
+Windows and physical qualification remain open. No merge/milestone completion.

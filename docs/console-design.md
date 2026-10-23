@@ -1,6 +1,6 @@
 # Native BSP development console (issue #40)
 
-Status: editor-only implementation under host validation; console runtime proposed. This builds on issue #38/PR #39's real PS2 path.
+Status: editor and renderer implementations host-validated; console runtime integration proposed. This builds on issue #38/PR #39's real PS2 path.
 The destination is an interactive, non-installing development preview, not the full
 user-space shell/capability system in the specification. Runtime stays Assembly.
 No speech, storage/network/AI, firmware-after-exit, process restart or merge changes.
@@ -199,3 +199,99 @@ validation and Windows/physical qualification remain open. Prior design review
 resolved exact layout, no-op/browsing semantics and helper/result ABI findings.
 Independent read-only implementation review found no actionable findings. It
 did not run tests or independently reproduce the reported count.
+
+## Exact renderer contract (review before implementation)
+
+A separately trusted `CONSOLE_SURFACE` is 48 bytes, eight-byte aligned, containing
+six qwords: mapped base, mapped byte size, visible width, visible height, stride
+in pixels, and GOP format (0 RGB-reserved, 1 BGR-reserved). Caller proves this
+anchor and framebuffer extent mapped, writable, exclusively owned and stable
+through each call. Caller proves backing-storage disjointness among framebuffer,
+anchor and grid, including distinct virtual aliases of the same physical storage.
+Every helper also rejects direct virtual-range overlap among the three complete
+extents before mutation. Prompt composition additionally requires a backing-
+disjoint editor source and rejects its direct virtual overlap with those extents. Helpers check
+nonzero base, format, width/height, stride>=width, checked stride*height*4<=size,
+and nonwrapping base+size-1 before stores. Surface and grid pointers themselves
+require trusted readable extents, nonzero eight-byte alignment and nonwrapping
+extent arithmetic. No arbitrary virtual mapping validation is implied.
+
+`CONSOLE_GRID` is 4904 bytes, eight-byte aligned: thirteen qwords at offsets0..96
+are ready, base, size, width, height, stride, format, columns, rows, dirty,
+cursor_x, cursor_y and cursor_enabled. Inline cells start104, exactly4800 bytes
+in 48 physical rows of100 bytes each. No other pointer, padding or reserved field.
+Surface copies must equal the independent anchor on every entry. Columns equal
+min(100,floor((width-32)/12)); rows equal min(48,floor((height-32)/16)). Reject
+columns<48 or rows<20, and reject width/height subtraction underflow. All active
+cells are ASCII32..126. Every inactive column/row byte is zero. Dirty bits above
+rows must be zero. Cursor_enabled is0/1; cursor_x<columns and cursor_y<rows even
+when disabled. Magic alone grants no authority. Check validates the entire grid,
+including all4800 bytes, before any mutation or framebuffer access.
+
+The row partition is exact: headers0/1; transcript2..rows-3 inclusive (rows-4
+rows); prompt rows-2; result rows-1. Model scrolling moves only transcript cells,
+clears the final transcript row to spaces and marks those rows dirty. It never
+moves framebuffer bytes. Full initialization fills active cells with spaces,
+zeroes inactive storage, disables the cursor at0,0 and marks all active rows dirty.
+Initialization is permitted only for inactive exclusive storage; it validates the
+anchor first and publishes readiness last. Initialization itself writes no pixels.
+
+`grid_init(RCX grid,RDX anchor)` and read-only `grid_check(RCX grid,RDX anchor)`
+return EAX0/EDX0 or EAX1/EDX0. `grid_cell(RCX grid,RDX anchor,R8D linear_index,
+R9D ASCII)` uses physical row stride100: index/100<rows and index%100<columns;
+ASCII must be32..126 and index<=4799. Unchanged cells are successful no-ops;
+changed cells mark their row dirty. Widths above32 bits in the qword argument
+registers reject. `grid_cursor(RCX grid,RDX anchor,R8D linear_index,R9D enabled)`
+uses the same checked index, enabled0/1, and marks both old/new rows dirty on
+change. `grid_render(RCX grid,RDX anchor)` validates the complete grid and anchor
+before stores, renders dirty rows, then clears dirty. All successful calls, including unchanged cells/cursors and clean renders, return
+EAX0/EDX0. All failures return EAX1, EDX0 without state or framebuffer changes. Integer nonvolatile preservation,
+aligned shadow space, DF0/BSP/IF0 and no SIMD/red-zone rules match the editor.
+
+Cell origin is (16+12*x,16+16*y). Each active cell is fully repainted background
+before foreground: its12x16 pixels, and no margins, inactive cells or stride
+padding, are touched. Glyphs use seven five-bit rows, bit4 leftmost, scaled2 at
+cell origin; final two columns and bottom two scanlines remain background.
+An enabled cursor adds a foreground12x2 underline at scanlines14/15, independently
+of glyph text. Original printable ASCII font data is immutable and indexed only
+by checked character-minus32 in0..94. Background RGB is (2,6,12); foreground RGB
+is (170,220,255); reserved byte is zero, packed according to format0/1. Validate
+maximum cell rectangle against width/height and checked surface arithmetic;
+each pixel address is base+4*((16+16*y+dy)*stride+16+12*x+dx), with bounded
+x/y/dx/dy and the already proved full-surface extent. No store may exceed that
+extent. Dirty state is cleared only after the deterministic non-failing store loop.
+Hardware faults despite trusted mapping are stop-only, not failure atomic recovery.
+
+The prompt prefix is exactly eight cells `JOSHUA> `. Input width W=columns-8
+is at least40. For editor cursor C, viewport start S=max(0,C-(W-1)); render
+line[S:S+W] truncated to line length then pad with spaces; cursor is at8+C-S.
+This reserves a visible cell even when C==length==127. Prompt composition validates
+both complete states before copying and marks the prompt row dirty. Transcript,
+header/result composition and response wrapping are later model helpers; these
+cannot bypass grid validation or the trusted surface anchor.
+
+
+Renderer design review responses: direct virtual overlap is rejected for the full
+framebuffer/anchor/grid extents; caller proves physical backing disjointness,
+including aliases, and prompt source disjointness. All helper success/no-op returns
+are explicitly EAX0/EDX0. Independent re-review accepted both fixes. Prompt composition is deferred to the
+model integration slice; its helper signature and explicit cursor-enable behavior
+must be frozen before implementation.
+
+
+## Renderer implementation checkpoint
+
+The five named grid helpers and the original95-glyph font now exist as Assembly
+source, without any boot call site. The Linux host runner exercises the actual
+helpers and all eight integer nonvolatile register sentinels. Its independent
+pixel-placement/color oracle compares the complete framebuffer, including clean
+rows, margins and stride padding. Font data is the authored asset; two literal
+raster checks establish selected indexing/content, not an independent font oracle.
+The local suite passes5,055 cumulative checks across RGB/BGR, minimum/clamped
+geometry, all printable characters, cursor/dirty behavior, invalid metadata,
+overflow, direct overlap and protected-page boundaries for all three extents.
+It exports `out/console-grid-tests/console-grid-preview.png` from actual Assembly
+pixel output; this has been visually inspected as a host-surface font preview,
+not a boot or interactive-console screenshot. Source-only independent review found
+no actionable runtime/oracle defect; the final guard/preview/CI additions also passed
+a read-only follow-up review with no actionable findings. No prompt/model/parser/IRQ integration is implied.
