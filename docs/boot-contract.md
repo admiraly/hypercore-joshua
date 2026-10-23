@@ -455,3 +455,30 @@ InheritedLdt installs an owned test LDT before machine preflight and requires th
 subsequent user far call to fault #GP(4) after LLDT0, followed by B continuation.
 KernelFault injects kernel-origin UD2 inside INT80: exact #UD/RIP on IST4, no user
 result or B continuation, and permanent stop under A's still-active private root.
+
+## Embedded ELF profile v1 (issue #36)
+
+The boot path now validates an immutable ELF64 ET_EXEC image before any private
+backing allocation. Its two sorted PT_LOAD entries describe one RX code page and
+one RW/NX data/BSS page at the existing user VAs. Four stack pages and the guard
+remain trusted launch policy. The profile rejects sections/dynamic linking and all
+unsupported headers, flags, addresses, sizes, alignment and entry states; see
+elf-loader-design.md. This is not general ELF or a public application ABI.
+
+The separate64-byte plan is revalidated before copy and launch. Exact whole backing
+ownership precedes every copy. Copy clears all six pages after complete preflight,
+then installs file bytes; any failure poisons the context before roots/readiness.
+USER_CONTEXT's18-qword prefix/layout and USER_PROCESS remain unchanged. The raw
+storage helper remains a trusted internal component; actual boot uses the ELF adapter.
+
+Launch RIP is USER_BASE+16, past an INT3 prefix that makes a page-start launch fail.
+The program verifies initialized data at128/136 and zero BSS at256. Data[0,128) is
+reserved for documented bootstrap/probe/scratch mutations. Independent QMP captures
+check the actual load plan against ELF headers, code/data bytes, BSS/padding and
+prior ownership/cache/permission invariants. Malformed magic/entry fixtures must
+stop before root publication/CPL3 and preserve the physically read allocation count.
+
+Current PE bounds supersede prior checkpoint layouts: text RVA1000h/sizeA000h,
+data B000h/1000h, constants C000h/4000h, BSS10000h/E5000h, relocation F5000h and
+image F6000h. The expanded constant section holds the authored ELF envelope; no
+external loader or interpreter runs in HyperCore.

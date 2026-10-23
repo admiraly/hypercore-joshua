@@ -19,6 +19,14 @@ user_payload_start:
     user_zero r13
     user_zero r14
     user_zero r15
+    mov rax,0x31464c4548534f4a
+    cmp [rdi+128],rax
+    jne user_payload_start.failed
+    mov rax,0x455441445f464c45
+    cmp [rdi+136],rax
+    jne user_payload_start.failed
+    cmp qword [rdi+256],0
+    jne user_payload_start.failed
     mov rax,USER_BASE+0x7000
     cmp rsp,rax
     jne user_payload_start.failed

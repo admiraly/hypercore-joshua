@@ -4,7 +4,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(15, 300)][int]$TimeoutSeconds = 90,
     [ValidateSet('Iso', 'Fat')][string]$BootMedia = 'Iso',
-    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard', 'UserKernelFault')][string]$ExpectedFault = 'None',
+    [ValidateSet('None', 'Ud2', 'Gp', 'ReadOnly', 'Nx', 'Guard', 'ConstWrite', 'Unmapped', 'StackFault', 'DoubleFault', 'WorkerGuard', 'UserKernelFault', 'ElfReject')][string]$ExpectedFault = 'None',
     [ValidateSet('qemu64', 'qemu64,+x2apic', 'host')][string]$CpuModel = 'qemu64',
     [ValidateSet('Xapic', 'X2apic')][string]$ExpectedApicMode = 'Xapic',
     [ValidateSet('Tcg','Kvm')][string]$Acceleration = 'Tcg',
@@ -61,7 +61,7 @@ try {
         $reader = New-Object IO.StreamReader($stream)
         try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
         if ($log -match 'JOSHUA:BOOT_FAILURE' -or ($ExpectedFault -eq 'None' -and $ExpectedUserStop -eq 'None' -and $log -match 'JOSHUA:KERNEL_FAULT')) { throw ('Boot failed: ' + $log) }
-    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedUserStop -ne 'None' -and $log.Contains('JOSHUA:KERNEL_FAULT')) -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT_STACK[^\r\n]+ IST=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
+    } until ($log.Contains('JOSHUA:KERNEL_HALTED') -or ($ExpectedUserStop -ne 'None' -and $log.Contains('JOSHUA:KERNEL_FAULT')) -or ($ExpectedFault -eq 'ElfReject' -and $log.Contains('JOSHUA:KERNEL_FAULT')) -or ($ExpectedFault -ne 'None' -and $log -match 'JOSHUA:FAULT_STACK[^\r\n]+ IST=[0-9A-F]{16}\r?\n') -or [DateTime]::UtcNow -ge $deadline)
     if ($log -notmatch 'JOSHUA:TSS_READY SELECTOR=([0-9A-F]{16}) BASE=([0-9A-F]{16})') { throw 'Missing owned TSS evidence.' }
     $tssSelector = [Convert]::ToUInt64($Matches[1], 16)
     $tssBase = [Convert]::ToUInt64($Matches[2], 16)
@@ -106,6 +106,24 @@ try {
         return $response.return
     }
     Invoke-Qmp 'qmp_capabilities' | Out-Null
+    if ($ExpectedFault -eq 'ElfReject') {
+        $manifest = Get-Content -Raw (Join-Path $OutputDirectory 'manifest.json') | ConvertFrom-Json
+        if ($manifest.elfTest -notin @('BadMagic','BadEntry')) { throw 'ELF rejection expectation requires a malformed-image fixture.' }
+        if ($log -match 'JOSHUA:USER_ROOTS_PROVED|JOSHUA:OWNED_PAGING|JOSHUA:USER_RESULT|JOSHUA:KERNEL_HALTED') { throw 'Malformed ELF reached publication or execution.' }
+        if ($log -notmatch 'JOSHUA:ELF_REJECT BEFORE=([0-9A-F]{16}) COUNT_ADDRESS=([0-9A-F]{16})') { throw 'Missing preallocation ELF rejection evidence.' }
+        $beforeCount = [Convert]::ToUInt64($Matches[1],16)
+        $countAddress = [Convert]::ToUInt64($Matches[2],16)
+        Invoke-Qmp 'stop' | Out-Null
+        $registers = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = 'info registers' }
+        [IO.File]::WriteAllText((Join-Path $OutputDirectory ($tag + '-registers.log')), $registers)
+        if ($registers -notmatch 'CPL=0' -or $registers -notmatch 'HLT=1' -or $registers -notmatch 'RFL=([0-9A-Fa-f]+)' -or (([Convert]::ToUInt64($Matches[1],16) -band 0x200) -ne 0)) { throw 'ELF rejection did not halt ring0 with IF clear.' }
+        $dump = Invoke-Qmp 'human-monitor-command' @{ 'command-line' = ('xp /1gx 0x{0:x}' -f $countAddress) }
+        if ($dump -notmatch ':\s+0x([0-9a-fA-F]{16})' -or [Convert]::ToUInt64($Matches[1],16) -ne $beforeCount) { throw 'Malformed ELF changed the live allocation count.' }
+        $qmpWriter.WriteLine('{"execute":"quit"}')
+        if (-not $process.WaitForExit(5000)) { throw 'QEMU did not exit after quit.' }
+        Write-Host 'PASS: malformed ELF rejected before private allocation/root publication/CPL3; QMP ledger unchanged, halted ring0/IF0.'
+        return
+    }
     Invoke-Qmp 'screendump' @{ filename = $screenshot; format = 'png' } | Out-Null
     if ($ownedExpected) {
         $modeHex = '0000000000000001'

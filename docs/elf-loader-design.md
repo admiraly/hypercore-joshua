@@ -47,7 +47,7 @@ fields rather than using the last record. Parser preserves the eight integer
 nonvolatile registers and uses the project's Microsoft x64/shadow-space convention.
 
 `elf_copy(RCX plan,RDX destination,R8 destination_bytes)` accepts exactly six pages
-of trusted zeroed private backing, checks ready and revalidates source bytes against
+of trusted privately owned backing (its prior bytes may be nonzero), checks ready and revalidates source bytes against
 a temporary plan before the first destination store, and checks all plan fields
 against that fresh plan. Destination length is exactly24KiB, page aligned, nonwrapping
 and disjoint from source and plan. The caller proves exact ownership and physical
@@ -66,9 +66,14 @@ through the existing storage contract; there is no speculative allocation rollba
 Build an ELF envelope around the existing Assembly payload and initialized data,
 with labels for actual payload byte bounds. Source provenance stays in NASM; no
 runtime third-party loader/linker is shipped. Reserve a separate image plan and
-carry it through USER_CONTEXT using appended internal fields (the existing18-qword
-prefix remains stable). Storage validates the ELF before allocating, uses the
-validated copy helper per process, then sets the existing per-process private marker.
+use a boot-only adapter around the existing raw-backing preparation helper. The
+adapter owns the separate plan, validates before allocation, supplies the validated
+code source/size to existing preparation, then invokes elf_copy on each exact owned
+six-page record and restores the per-process marker. The initial raw code copy is
+redundant but bounded; it grants no readiness. USER_CONTEXT's18-qword layout remains
+unchanged. Copy failure sets failed/ready0 and halts before roots/readiness, retaining
+quarantined owned backing; stage1 alone is not permission to run. A fresh-plan and
+ready check precedes launch, whose RIP uses the plan's validated entry offset.
 No process record/layout, stack addresses, public marker offsets or entry register
 scrubbing changes. Launch RIP is USER_BASE+validated entry offset. Existing code
 boundary/proof logic still seals exactly page0 and verifies every private leaf.
@@ -127,3 +132,8 @@ unchanged checks and baseline validation. Follow-up review found no remaining is
 This component is not yet included in the boot image; no ELF entry, initialized-data
 or target rejection evidence is inferred. Boot integration and full regressions are
 still mandatory before issue #36 is complete.
+
+
+Adapter-review response: elf_copy does not require pre-zeroed backing. It clears
+all six pages after complete preflight; old raw code/marker bytes are therefore
+safe inputs and need no additional clearing pass. Exact ownership remains mandatory.

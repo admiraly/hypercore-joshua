@@ -91,7 +91,7 @@ else:
     }
     vector,error,cr2=expected[mode]
     if intel_sysenter:vector=13  # explicit Intel-host KVM profile, null SYSENTER_CS
-    rip=BASE+symbol('user_payload_fixture')-symbol('user_payload_start')
+    rip=BASE+symbol('user_payload_fixture')-symbol('user_code_start')
     if mode=='Nx':rip=BASE+0x1000
     assert a['STATE']==4
     assert (a['VECTOR'],a['ERROR'],a['RIP'])==(vector,error,rip),(mode,a,(vector,error,rip))

@@ -112,10 +112,7 @@ owned_paging_start:
     mov [user_context+USER_CONTEXT.builder],r12
     lea rax,[user_processes]
     mov [user_context+USER_CONTEXT.processes],rax
-    lea rax,[user_payload_start]
-    mov [user_context+USER_CONTEXT.payload],rax
-    mov qword [user_context+USER_CONTEXT.payload_size],user_payload_end-user_payload_start
-    call user_storage_prepare
+    call user_elf_prepare
     test eax,eax
     jnz .bad
     lea rax,[user_entry1_stack]

@@ -483,3 +483,23 @@ parser correction, campaign wiring, private-paging oracle and documentation. Rev
 were read-only and did not independently reproduce the parent-run evidence. Windows
 CI on the final PR head remains pending. PR #35 stays draft; issue #32 and broader
 milestone/physical/speculative/SMP qualification are not declared complete.
+
+## Embedded ELF loading bring-up (issue #36)
+
+Linux PowerShell7.4.6/NASM2.16.03/QEMU10.2.2/OVMF: parser/copy host suite passes6,198
+cumulative checks. Reviewed design fixed the bootstrap reservation at128 bytes;
+reviewed alias fixtures now reach actual overlap checks with page-aligned mappings.
+No runtime defect remained in the component reviews, which were source-only.
+
+The current ELF-backed ISO/FAT boot pair passes actual two-process entry beyond an
+INT3 prefix, initialized-data/BSS checks and the private-paging oracle. Build passes
+20,790 media assertions. BadMagic/BadEntry targets reject before private allocation,
+root publication or CPL3; QMP allocation count stays unchanged and CPU halts CPL0/IF0.
+The count check is not a full ledger snapshot comparison. A prior reservation test
+failed because its synthetic loader coverage retained the old image size; C6 pages
+now cover the larger image and the corrected suite passes6,425 checks.
+
+Full current-source user/KVM, host/fault/APIC/context, snapshot-mutation and
+reproducibility regressions are running or pending. No CI, issue or milestone
+completion is claimed by this checkpoint. Reviews do not independently reproduce
+parent-run tests. Physical/speculative/general-ELF/SMP qualification stays open.

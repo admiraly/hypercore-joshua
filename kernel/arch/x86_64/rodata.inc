@@ -144,3 +144,8 @@ debug_user_result_eois: db ' EOIS=',0
 debug_user_pending: db ' PENDING=',0
 debug_user_windows: db ' WINDOWS=',0
 debug_user_ldt: db 'JOSHUA:USER_INHERITED_LDT_SET',13,10,0
+
+%if JOSHUA_ELF_TEST
+debug_elf_reject: db 'JOSHUA:ELF_REJECT BEFORE=',0
+debug_elf_count_address: db ' COUNT_ADDRESS=',0
+%endif

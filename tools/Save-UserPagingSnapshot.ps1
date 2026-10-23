@@ -34,6 +34,7 @@ function Save-UserPagingSnapshot([string]$Directory, [string]$Media, [string]$Py
         }
     }
     Get-SnapshotPage $seed.kernelRoot | Out-Null
+    Save-SnapshotRange $seed.elfPlan 64
     Save-SnapshotRange $seed.context 144
     Save-SnapshotRange $seed.builder 120
     Save-SnapshotRange $seed.processes (2 * 144)

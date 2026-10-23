@@ -34,6 +34,8 @@ jobs:
         run: ./tests/Test-ContextSwitch.ps1
       - name: Validate bounded CPL3 exits, faults and watchdog
         run: ./tests/Test-UserRuntime.ps1
+      - name: Reject malformed embedded ELF before private allocation
+        run: ./tests/Test-ElfRuntime.ps1
       - name: Reject corrupted private paging snapshots
         run: python ./tests/test_user_paging_mutations.py out/user-none
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -46,6 +48,8 @@ jobs:
             out/*.json
             out/*.log
             out/*.png
+            out/elf-*/*.log
+            out/elf-*/*.json
             out/fault-*/*.log
             out/fault-*/*.json
             out/user-*/*.json
@@ -109,3 +113,6 @@ jobs:
       - name: Validate returning and discarded user frames
         shell: pwsh
         run: ./tests/Test-UserFrame.ps1
+      - name: Validate bounded ELF plans and failure-atomic copies
+        shell: pwsh
+        run: ./tests/Test-Elf.ps1
