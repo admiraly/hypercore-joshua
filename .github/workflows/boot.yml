@@ -152,6 +152,11 @@ jobs:
       - name: Validate bounded console diagnostic responses
         shell: pwsh
         run: ./tests/Test-ConsoleResponse.ps1
+      - name: Validate bounded speech response segmentation
+        shell: pwsh
+        run: ./tests/Test-ConsoleSpeechSegment.ps1
+      - name: Validate host voice-bank encoding
+        run: python3 tests/test_console_voice_assets.py
       - name: Validate bounded console screen composition
         shell: pwsh
         run: ./tests/Test-ConsoleModel.ps1
