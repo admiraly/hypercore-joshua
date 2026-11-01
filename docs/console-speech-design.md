@@ -108,3 +108,36 @@ noise scales zero, length scale1.05). This is not a device playback test or an
 intelligibility assessment. It shows why maximum-response duration, responsive
 keyboard handling and cancellation need explicit bounds before choosing a clip
 strategy; no unbounded blocking speech may be introduced on that basis.
+
+## Pure response segmentation stage
+
+Before choosing voice clips or touching devices, a standalone Assembly helper may
+segment a validated response into an exact, recoverable byte partition. This stage
+speaks nothing and is not wired into the boot image. Input uses the existing
+`CONSOLE_RESPONSE` record and `response_check` contract: ready magic, length at
+most4095, newline or printable ASCII body, and all-zero tail. Source storage is
+caller-proved mapped, readable and stable for the call. Output is a caller-proved
+mapped, writable and physically disjoint 32,776-byte extent, serialized by the
+caller. Both source and output must also be disjoint from the entire active stack,
+including physical aliases, and the caller must provide at least104 bytes below
+its pre-call RSP for this helper and its deepest nested call. BSP execution with
+IF0 and DF0 on entry is required. Virtual source/output overlap, null/misaligned
+pointers and end-address wrap are rejected before dereference or output mutation.
+
+`RCX` is the response, `RDX` is the output. Return `EAX=0, EDX=0` on success;
+`EAX=1, EDX=0` on rejection, leaving both records byte-for-byte unchanged. Preserve
+all eight Microsoft x64 integer nonvolatiles, use no red zone/SIMD, maintain DF0
+and existing IF discipline. Output begins with qword magic `0x314b4f5453484f4a`
+(JOHSTOK1 in little-endian byte order) and qword count. It then contains4095
+8-byte entries (`uint16 source_offset`, `uint16 byte_length`, `uint32 kind`).
+Output is initialized to zero and magic published last after complete validation;
+unused entries stay zero. Empty responses succeed with zero entries.
+
+Each maximal contiguous ASCII-letter run is kind1; each digit is kind2, each
+other printable non-space character kind3, and each space or newline kind4. Every
+non-letter token has length1. Runs preserve original case and source offsets; every
+input byte appears in order exactly once. At most4095 tokens are possible.
+A later stage must freeze/copy the source before another response can overwrite it,
+choose a bounded vocabulary and voice clips, define audible case/whitespace and
+punctuation semantics, and establish audio playback safety. This partition alone
+is not speech, an intelligibility claim or permission to access audio hardware.

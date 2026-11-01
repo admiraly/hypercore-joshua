@@ -1246,3 +1246,30 @@ to818a898; local suite passes1,148 checks, workflow YAML/budget and diff checks 
 No runtime or media bytes change; previous PR #47 review and passing remote rerun
 justify reuse but do not establish PR #50's new-head CI result. New CI is pending.
 No physical qualification, milestone completion or merge is claimed.
+
+## Spoken-console first components — 2026-11-01
+
+Issue #52/PR #53 remains incomplete: no spoken console playback or combined ISO
+is delivered by this checkpoint. A pure, unlinked Assembly helper partitions the
+validated console response into byte-exact word/digit/symbol/space spans. The
+independent Python oracle passed2,060 register, full-output, random, bounds,
+overlap and failure-atomicity checks. Independent source review found missing
+active-stack/IF0/DF0 requirements and CI wiring, then a missing `pwsh` shell;
+those were corrected and follow-up found no actionable findings. Reviewers did
+not independently run tests. The helper is not included in the boot image.
+
+A separate host-only Piper1.8.0 research renderer verifies pinned John voice
+assets, handles all printable punctuation, letters and digits, and records source
+hashes, full synthesis settings and per-clip PCM hashes. Two same-host renders
+produced identical123-clip,19,904,256-byte PCM banks with SHA256
+`24646c4de2c8a2467c45f2f5a5d29220076595af0677fc6e2221f84d76eb0802`;
+all clip offsets, alignment and hashes were checked. Three local unit test methods
+passed, including malformed syntax, interpolation and size rejection. A first
+model-card pin typo was correctly rejected before being fixed. Independent source
+reviews identified and resolved silent vocabulary omissions and missing settings;
+final review found no actionable findings, without running tests or rendering.
+
+These components are not end-to-end speech. The bank exceeds the current16-MiB
+FAT image, and QEMU device authority, owned DMA lifecycle, keyboard-responsive
+scheduling, exact audible semantics, actual output capture and physical hardware
+qualification remain open. No boot/runtime image or public ABI changed here.
